@@ -1,0 +1,30 @@
+<main>
+  <form [formGroup]="formulario" (ngSubmit)="salvar()">
+    <h1>Trocar senha</h1>
+    <mat-form-field hideRequiredMarker>
+      <mat-label>Senha atual</mat-label>
+      <input matInput type="password" formControlName="senhaAtual" />
+      @if (formulario.controls.senhaAtual.touched && formulario.controls.senhaAtual.hasError('required')) {
+        <mat-error>Informe a senha atual.</mat-error>
+      }
+    </mat-form-field>
+    <mat-form-field hideRequiredMarker>
+      <mat-label>Nova senha</mat-label>
+      <input matInput type="password" formControlName="novaSenha" />
+      @if (formulario.controls.novaSenha.touched && formulario.controls.novaSenha.invalid) {
+        <mat-error>A nova senha precisa ter entre 10 e 72 caracteres.</mat-error>
+      }
+    </mat-form-field>
+    <mat-form-field hideRequiredMarker>
+      <mat-label>Confirmar nova senha</mat-label>
+      <input matInput type="password" formControlName="confirmarNovaSenha" />
+      @if (formulario.controls.confirmarNovaSenha.touched && formulario.hasError('senhasDiferentes')) {
+        <mat-error>As senhas não conferem.</mat-error>
+      }
+    </mat-form-field>
+    @if (erro(); as mensagem) {
+      <p role="alert">{{ mensagem }}</p>
+    }
+    <button mat-flat-button type="submit">Salvar</button>
+  </form>
+</main>

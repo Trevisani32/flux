@@ -1,0 +1,26 @@
+<main>
+  <form [formGroup]="formulario" (ngSubmit)="entrar()">
+    <h1>Entrar</h1>
+    <mat-form-field hideRequiredMarker>
+      <mat-label>E-mail</mat-label>
+      <input matInput type="email" formControlName="email" />
+      @if (formulario.controls.email.touched && formulario.controls.email.hasError('required')) {
+        <mat-error>Informe o e-mail.</mat-error>
+      }
+      @if (formulario.controls.email.touched && formulario.controls.email.hasError('email')) {
+        <mat-error>Informe um e-mail válido.</mat-error>
+      }
+    </mat-form-field>
+    <mat-form-field hideRequiredMarker>
+      <mat-label>Senha</mat-label>
+      <input matInput type="password" formControlName="senha" />
+      @if (formulario.controls.senha.touched && formulario.controls.senha.hasError('required')) {
+        <mat-error>Informe a senha.</mat-error>
+      }
+    </mat-form-field>
+    @if (erro(); as mensagem) {
+      <p role="alert">{{ mensagem }}</p>
+    }
+    <button mat-flat-button type="submit" [disabled]="enviando()">{{ enviando() ? 'Entrando...' : 'Entrar' }}</button>
+  </form>
+</main>

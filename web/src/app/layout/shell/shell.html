@@ -1,0 +1,18 @@
+<mat-toolbar>
+  <span>Flux</span>
+  <span class="espacador"></span>
+  <button mat-button [matMenuTriggerFor]="menu" aria-label="Menu do usuário">{{ nome() }}</button>
+  <mat-menu #menu="matMenu">
+    <a mat-menu-item routerLink="/minha-conta/senha">Minha conta</a>
+    <button mat-menu-item (click)="sair()">Sair</button>
+  </mat-menu>
+</mat-toolbar>
+
+<mat-sidenav-container>
+  <mat-sidenav mode="side" opened>
+    <a mat-button routerLink="/">Início</a>
+  </mat-sidenav>
+  <mat-sidenav-content>
+    <main><router-outlet /></main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

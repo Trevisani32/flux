@@ -1,0 +1,15 @@
+main {
+  display: grid;
+  min-height: 100%;
+  place-items: center;
+}
+
+form {
+  display: grid;
+  gap: 1rem;
+  width: min(100% - 2rem, 24rem);
+}
+
+mat-form-field {
+  width: 100%;
+}

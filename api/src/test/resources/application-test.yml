@@ -1,0 +1,9 @@
+app:
+  jwt:
+    segredo: teste-segredo-ficticio-com-mais-de-32-bytes
+  renovacao:
+    cookie-seguro: true
+  usuario-inicial:
+    email: ""
+    senha: ""
+    nome: ""
