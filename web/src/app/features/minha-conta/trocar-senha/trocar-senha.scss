@@ -1,0 +1,14 @@
+main {
+  display: grid;
+  place-items: start;
+}
+
+form {
+  display: grid;
+  gap: 1rem;
+  width: min(100%, 30rem);
+}
+
+mat-form-field {
+  width: 100%;
+}
