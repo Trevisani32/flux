@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: flux-api
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+server:
+  error:
+    include-stacktrace: never
+  forward-headers-strategy: native
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+app:
+  fuso: America/Sao_Paulo
+  jwt:
+    segredo: ${JWT_SEGREDO:}
+    validade-acesso: 15m
+  renovacao:
+    validade: 30d
+    cookie-seguro: ${COOKIE_SEGURO:true}
+  usuario-inicial:
+    email: ${USUARIO_INICIAL_EMAIL:}
+    senha: ${USUARIO_INICIAL_SENHA:}
+    nome: ${USUARIO_INICIAL_NOME:}
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

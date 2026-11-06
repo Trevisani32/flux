@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/flux_dev
+    username: postgres
+    password: postgres
+app:
+  jwt:
+    segredo: dev-somente-local-segredo-ficticio-0123456789abcdef
+  renovacao:
+    cookie-seguro: false
+  usuario-inicial:
+    email: dev@flux.local
+    senha: senha-de-dev-123
+    nome: Dev
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
