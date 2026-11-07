@@ -27,7 +27,7 @@ No Windows, use `mvnw.cmd spring-boot:run` e defina `JAVA_HOME` para um JDK 25. 
 
 ## Testes
 
-`cd api && ./mvnw verify` exige Docker. Para a web: `cd web && npm run lint && npm test && npm run build`.
+`cd api && ./mvnw verify` exige Docker. Para a web: `cd web && npm run lint && npm test && npm run build`. O e2e (`cd web && npx playwright test`) exige o banco e a API de desenvolvimento no ar e roda nos tamanhos de desktop e de celular.
 
 ## Documentação
 

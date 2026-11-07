@@ -44,6 +44,14 @@ O que isso exige do produto:
 - **Datas:** lançamentos têm data sem hora. "Hoje" é calculado no fuso
   `America/Sao_Paulo`.
 - **Formatação:** a interface usa pt-BR (R$ 1.234,56 e 06/11/2026).
+  - Nos lançamentos, entradas aparecem com "+" e saídas com "−", e a cor só
+    reforça o sinal. Transferências entre contas próprias aparecem sem sinal
+    e em cor neutra.
+  - Saldos aparecem sem "+" e, quando negativos, com "−" (em vermelho).
+  - Totais de despesa em relatórios seguem o
+    [ADR 0002](decisoes/0002-representacao-dinheiro.md): aparecem sem sinal
+    ("gastou R$ 50", não "−R$ 50").
+  - Um valor ausente aparece como "—".
 - **Isolamento:** um usuário nunca lê nem altera dado de outro. Pedir um recurso de
   outro usuário dá a mesma resposta que pedir um que não existe.
 - **Exclusão:** registros com histórico são arquivados, não apagados. A regra de
@@ -364,8 +372,8 @@ Ver [ADR 0005](decisoes/0005-cartao-fatura-parcelas.md).
 
 | Fatia | Conteúdo | Situação |
 |---|---|---|
-| 00 | Base: repositório, login, multiusuário, CI, Docker | Implementada, aguardando publicação |
-| 01 | Base visual: mockup aprovado, tema, componentes base e menu lateral responsivo (pendência da Fatia 00) | — |
+| 00 | Base: repositório, login, multiusuário, CI, Docker | Concluída |
+| 01 | Base visual: tema escuro com dourado, componentes base, menu lateral responsivo e e2e no CI | Implementada, aguardando publicação |
 | 02 | Conta de usuário: cadastro, confirmação de e-mail, esqueci a senha, perfil, exclusão da conta, termos e limite de tentativas | — |
 | 03 | Contas, categorias, lançamentos manuais e transferências | — |
 | 04 | Importação OFX/CSV e regras de categorização | — |
