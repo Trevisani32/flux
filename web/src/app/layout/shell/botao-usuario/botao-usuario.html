@@ -1,0 +1,13 @@
+<button type="button" class="usuario" [class.usuario--compacto]="compacto()" [matMenuTriggerFor]="menu()">
+  <span class="usuario__avatar" aria-hidden="true">{{ inicial() }}</span>
+  @if (compacto()) {
+    <span class="usuario__nome">{{ nome() }}</span>
+    <app-icone nome="baixo" [tamanho]="16" />
+  } @else {
+    <span class="usuario__textos">
+      <span class="usuario__nome">{{ nome() }}</span>
+      <span class="usuario__email">{{ email() }}</span>
+    </span>
+    <app-icone nome="mais-h" />
+  }
+</button>

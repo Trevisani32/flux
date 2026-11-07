@@ -1,0 +1,9 @@
+<app-marca class="navegacao__marca" />
+<nav class="navegacao" aria-label="Menu principal">
+  <p class="navegacao__grupo" id="navegacao-visao-geral">Visão geral</p>
+  <ul class="navegacao__lista" aria-labelledby="navegacao-visao-geral">
+    <li>
+      <a class="navegacao__link" routerLink="/" routerLinkActive="navegacao__link--ativo" ariaCurrentWhenActive="page" [routerLinkActiveOptions]="{ exact: true }" (click)="navegou.emit()"><app-icone nome="inicio" />Início</a>
+    </li>
+  </ul>
+</nav>

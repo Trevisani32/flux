@@ -1,12 +1,81 @@
-:host, mat-sidenav-container {
+@use '@angular/material' as mat;
+
+:host {
   display: block;
+  height: 100%;
+}
+
+.shell {
+  height: 100%;
+}
+
+.lateral__interno {
+  display: flex;
+  flex-direction: column;
+  gap: var(--flux-espaco-7);
   min-height: 100%;
+  padding: 22px 14px var(--flux-espaco-4);
 }
 
-.espacador {
-  flex: 1;
+.lateral__rodape {
+  margin-top: auto;
 }
 
-main {
-  padding: 2rem;
+.lateral--gaveta {
+  @include mat.sidenav-overrides(
+    (
+      container-width: 300px,
+      container-shape: 24px,
+      container-elevation-shadow: 24px 0 48px -24px rgba(0, 0, 0, 0.8),
+    )
+  );
+  --flux-nav-altura: 48px;
+  border-right: 1px solid var(--flux-lateral-borda);
+}
+
+.lateral--gaveta .lateral__interno {
+  gap: var(--flux-espaco-6);
+  padding: 18px var(--flux-espaco-3) 14px;
+}
+
+.barra {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 var(--flux-espaco-3) 0 6px;
+  border-bottom: 1px solid var(--flux-lateral-borda);
+  background: var(--flux-escuro-fundo);
+  --flux-marca-selo: 30px;
+  --flux-marca-fonte: 17px;
+  --flux-marca-espaco: 8px;
+}
+
+.barra__menu {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  border: 0;
+  border-radius: var(--flux-raio-controle);
+  background: transparent;
+  color: var(--flux-escuro-texto);
+  cursor: pointer;
+}
+
+.barra__marca {
+  flex: none;
+}
+
+.barra__espaco {
+  flex: 1 1 auto;
+}
+
+.principal {
+  display: block;
+  min-width: 0;
 }
