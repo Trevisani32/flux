@@ -1,3 +1,12 @@
+spring:
+  mail:
+    # Valores provisórios: o DynamicPropertyRegistrar da InfraestruturaDeTeste troca pelo
+    # host e pela porta do Mailpit. O host precisa existir aqui porque a
+    # autoconfiguração do e-mail exige spring.mail.host já na leitura da configuração.
+    # A porta 1 não tem serviço: um teste sem a InfraestruturaDeTeste falha no envio, em vez
+    # de mandar e-mail para outro Mailpit da máquina.
+    host: localhost
+    port: 1
 app:
   jwt:
     segredo: teste-segredo-ficticio-com-mais-de-32-bytes
@@ -7,3 +16,14 @@ app:
     email: ""
     senha: ""
     nome: ""
+  conta:
+    url-base: http://localhost:4200
+    cadastro-publico: true
+    controlador:
+      nome: Responsável fictício
+      email: privacidade@teste.local
+    limite-por-ip: true
+  email:
+    remetente: nao-responda@teste.local
+  agendamentos:
+    habilitados: false

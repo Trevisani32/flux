@@ -4,6 +4,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
+import com.flux.compartilhado.limite.LimiteExcedidoException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -61,6 +62,16 @@ public class TratadorGlobalDeErros extends ResponseEntityExceptionHandler {
     @ExceptionHandler(RegraDeNegocioException.class)
     public ResponseEntity<ProblemDetail> trataRegraDeNegocio(RegraDeNegocioException ex) {
         return resposta(HttpStatus.UNPROCESSABLE_ENTITY, "Operação não permitida", ex.getMessage());
+    }
+
+    @ExceptionHandler(LimiteExcedidoException.class)
+    public ResponseEntity<ProblemDetail> trataLimiteExcedido(LimiteExcedidoException ex) {
+        ProblemDetail corpo = ProblemDetail.forStatusAndDetail(
+                HttpStatus.TOO_MANY_REQUESTS, "Muitas tentativas. Tente de novo em alguns minutos.");
+        corpo.setTitle("Muitas tentativas");
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.segundosParaTentarDeNovo()))
+                .body(corpo);
     }
 
     @ExceptionHandler(Exception.class)
