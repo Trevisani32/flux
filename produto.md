@@ -98,45 +98,71 @@ O que isso exige do produto:
 - O e-mail é guardado em minúsculas e sem espaços nas pontas.
 - Errar o e-mail ou errar a senha dá a mesma mensagem: "E-mail ou senha inválidos".
 
-**Fatia 02** ([ADR 0009](decisoes/0009-contas-de-usuario-publicas.md)):
+   **Fatia 02** ([ADR 0009](decisoes/0009-contas-de-usuario-publicas.md) e
+   [ADR 0011](decisoes/0011-limite-de-tentativas-e-envio-de-email.md)):
 
-- **Cadastro:**
-  - campos: nome (até 120 caracteres), e-mail e senha (mesma regra da troca de
-    senha), mais o aceite dos termos de uso e da política de privacidade. O
-    aceite fica registrado com a versão dos textos e a data;
-  - só existe quando `APP_CADASTRO_PUBLICO=true`. Desligado, a tela e o endpoint
-    não ficam disponíveis.
-- **Confirmação de e-mail:**
-  - o cadastro envia um link de confirmação, que vale 24 horas e pode ser usado
-    uma vez;
-  - sem confirmar, o login responde "Confirme seu e-mail para entrar.", mas só
-    quando a senha está certa, e oferece reenviar o link;
-  - cadastros não confirmados em 7 dias são apagados.
-- **Cadastro com e-mail que já existe:** a tela mostra a mesma resposta de sucesso
-  ("Enviamos um link para o seu e-mail"), e o dono daquele e-mail recebe um aviso
-  de que alguém tentou criar uma conta com ele. Assim o cadastro não revela quais
-  e-mails estão em uso.
-- **Esqueci a senha:**
-  - a pessoa informa o e-mail e recebe um link de redefinição, que vale 30 minutos
-    e pode ser usado uma vez;
-  - a resposta da tela é sempre a mesma, exista ou não o e-mail;
-  - redefinir a senha encerra todas as sessões e invalida outros links pendentes.
-- **Perfil:**
-  - editar o nome;
-  - trocar o e-mail: o novo só passa a valer depois de confirmado pelo link
-    enviado a ele, e o e-mail antigo recebe um aviso da troca;
-  - trocar a senha (já existe desde a Fatia 00).
-- **Excluir minha conta:** pede a senha atual e apaga o usuário e todos os dados
-  dele, de forma definitiva. O e-mail recebe a confirmação da exclusão.
-- **Termos de uso e política de privacidade:** páginas públicas, em linguagem
-  simples.
-- **Limite de tentativas:**
-  - vale para login, cadastro, reenvio de confirmação e "esqueci a senha", por IP
-    e por e-mail;
-  - quando o limite estoura, a resposta é "Muitas tentativas. Tente de novo em
-    alguns minutos.".
-- **E-mails:** em português, com o nome do produto e um link. Nunca levam senha
-  nem dado financeiro.
+   - **Cadastro:**
+     - campos: nome (até 120 caracteres), e-mail e senha (mesma regra da troca de
+       senha), mais o aceite dos termos de uso e da política de privacidade. O
+       aceite fica registrado com a versão dos textos e a data;
+     - só existe quando `APP_CADASTRO_PUBLICO=true`. Desligado, a tela volta para o
+       Entrar, o Entrar não mostra "Criar conta" e o endpoint responde `404`.
+   - **Confirmação de e-mail:**
+     - o cadastro envia um link de confirmação, que vale 24 horas e pode ser usado
+       uma vez. Pedir um link novo invalida o anterior;
+     - o link confirma e mostra o botão "Entrar": ele não faz login;
+     - sem confirmar, o login responde "Confirme seu e-mail para entrar.", mas só
+       quando a senha está certa, e oferece reenviar o link;
+     - cadastros não confirmados em 7 dias são apagados.
+   - **Cadastro com e-mail que já existe:** a tela mostra a mesma resposta de sucesso
+     ("Enviamos um link para o seu e-mail").
+     - Se a conta já confirmou o e-mail, o dono recebe um aviso de que alguém tentou
+       criar uma conta com ele. Assim o cadastro não revela quais e-mails estão em uso.
+     - Se a conta ainda não confirmou, vai um link de confirmação novo, como no
+       reenvio. O cadastro existente continua como está (nome, senha e aceite do
+       primeiro pedido).
+   - **Esqueci a senha:**
+     - a pessoa informa o e-mail e recebe um link de redefinição, que vale 30 minutos
+       e pode ser usado uma vez;
+     - a resposta da tela é sempre a mesma, exista ou não o e-mail;
+     - redefinir a senha encerra todas as sessões, invalida outros links pendentes e
+       cancela a troca de e-mail pendente. Como o link chegou naquele endereço,
+       redefinir também confirma o e-mail.
+   - **Perfil (Minha conta):**
+     - editar o nome;
+     - trocar o e-mail: pede a senha atual; o novo só passa a valer depois de
+       confirmado pelo link enviado a ele (24 horas, uso único), e o e-mail atual
+       recebe um aviso já no pedido. Se o e-mail novo já for de outra conta, a tela
+       responde igual, mas nenhum link é enviado e o dono desse endereço não é
+       avisado: a troca não revela quais e-mails têm conta;
+     - trocar a senha (já existe desde a Fatia 00).
+   - **Excluir minha conta:** pede a senha atual e apaga o usuário e todos os dados
+     dele, de forma definitiva. O e-mail recebe a confirmação da exclusão.
+   - **Termos de uso e política de privacidade:** páginas públicas, em linguagem
+     simples, na versão `2026-11-06`. Mudar o texto é mudar a versão. O nome e o
+     e-mail do responsável pela instância vêm de `APP_CONTROLADOR_NOME` e
+     `APP_CONTROLADOR_EMAIL`; com o cadastro ligado, os dois são obrigatórios.
+   - **Limite de tentativas:**
+
+     | Ação | Por e-mail | Por IP |
+     |---|---|---|
+     | Entrar (só as tentativas erradas contam) | 10 em 15 min | 50 em 15 min |
+     | Criar conta | 3 por hora | 10 por hora |
+     | Reenviar confirmação | 3 por hora | 10 por hora |
+     | Esqueci a senha | 3 por hora | 10 por hora |
+     | Redefinir senha | — | 10 em 15 min |
+     | Conferir a senha atual (trocar senha, trocar e-mail, excluir conta) | 10 em 15 min, por usuário | — |
+     | Pedir a troca de e-mail (além da senha atual) | 3 por hora por endereço novo e 3 por hora por conta | — |
+
+     - quando o limite estoura, a resposta é "Muitas tentativas. Tente de novo em
+       alguns minutos.";
+     - os contadores ficam só na memória do servidor;
+     - não há desafio anti-robô (captcha) por enquanto.
+   - **E-mails:** em português, com o nome do produto e um link. Nunca levam senha
+     nem dado financeiro. Saem depois que a operação é gravada; se o envio falhar,
+     são reenviados. Tratam a pessoa pelo primeiro nome só quando ele tem apenas
+     letras, apóstrofos e hífens; senão, por "Usuário".
+
 
 **Fatia 06:** **exportar meus dados**, um arquivo com todos os dados do usuário
 (LGPD, direito de portabilidade).
@@ -356,9 +382,6 @@ Ver [ADR 0005](decisoes/0005-cartao-fatura-parcelas.md).
 
 | Ponto | Decidir em |
 |---|---|
-| Texto dos termos de uso e da política de privacidade | Fatia 02 |
-| Limite de tentativas: contado em memória ou no banco | Fatia 02 |
-| Desafio anti-robô (captcha) no cadastro | Fatia 02 |
 | Formatos de CSV dos bancos usados | Fatia 04 |
 | Guardar a pré-visualização da importação no servidor ou reenviar o arquivo na confirmação | Fatia 04 |
 | Importar fatura de cartão que já lista as parcelas ("3/10") | Fatia 05 |
@@ -367,14 +390,19 @@ Ver [ADR 0005](decisoes/0005-cartao-fatura-parcelas.md).
 | Demo: conta compartilhada, usuário temporário por visitante ou cadastro com dados de exemplo | Fatia 08 |
 | Provedor de e-mail em produção (SMTP) | Fatia 08 |
 | Hospedagem e domínio | Fatia 08 |
+   | Desafio anti-robô (captcha) no cadastro, se aparecer abuso | Fatia 08 |
+   | Trechos da política de privacidade que dependem da publicação (hospedagem, envio de e-mail, cópias de segurança) | Fatia 08 |
+   | Servir a fonte Manrope pelo nginx, para a política deixar de citar o Google Fonts | Fatia 08 |
+
 
 ## Entregas
 
 | Fatia | Conteúdo | Situação |
 |---|---|---|
 | 00 | Base: repositório, login, multiusuário, CI, Docker | Concluída |
-| 01 | Base visual: tema escuro com dourado, componentes base, menu lateral responsivo e e2e no CI | Implementada, aguardando publicação |
-| 02 | Conta de usuário: cadastro, confirmação de e-mail, esqueci a senha, perfil, exclusão da conta, termos e limite de tentativas | — |
+   | 01 | Base visual: tema escuro com dourado, componentes base, menu lateral responsivo e e2e no CI | Concluída |
+   | 02 | Conta de usuário: cadastro, confirmação de e-mail, esqueci a senha, perfil, exclusão da conta, termos e limite de tentativas | Implementada, aguardando publicação |
+
 | 03 | Contas, categorias, lançamentos manuais e transferências | — |
 | 04 | Importação OFX/CSV e regras de categorização | — |
 | 05 | Cartão de crédito: faturas e parcelamento | — |

@@ -23,7 +23,7 @@ cd api && ./mvnw spring-boot:run
 cd web && npm ci && npm start
 ```
 
-No Windows, use `mvnw.cmd spring-boot:run` e defina `JAVA_HOME` para um JDK 25. Abra `http://localhost:4200` e entre com o usuário de desenvolvimento definido em `api/src/main/resources/application-dev.yml`.
+No Windows, use `mvnw.cmd spring-boot:run` e defina `JAVA_HOME` para um JDK 25. Abra `http://localhost:4200` e entre com o usuário de desenvolvimento definido em `api/src/main/resources/application-dev.yml`, ou crie uma conta: os e-mails de desenvolvimento (confirmação, redefinição de senha e avisos) chegam no Mailpit, em `http://localhost:8026`.
 
 ## Testes
 
