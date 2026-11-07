@@ -1,0 +1,43 @@
+<app-layout-publico [compacto]="true">
+  @if (expirado()) {
+    <div class="flux-status">
+      <span class="flux-selo-status flux-selo-status--ruim" aria-hidden="true"><app-icone nome="alerta" [tamanho]="30" [traco]="1.9" /></span>
+      <h1>Este link expirou ou já foi usado</h1>
+      <p class="flux-status__texto">Os links de redefinição valem por 30 minutos e funcionam uma vez só. Peça um novo para continuar.</p>
+      <div class="flux-status__acoes">
+        <a mat-flat-button routerLink="/esqueci-a-senha">Pedir um link novo</a>
+        <a class="flux-voltar" routerLink="/entrar"><app-icone nome="esquerda" [tamanho]="16" />Voltar para entrar</a>
+      </div>
+    </div>
+  } @else {
+    <form class="flux-formulario-publico" [formGroup]="formulario" (ngSubmit)="salvar()">
+      <div class="flux-titulos-publicos">
+        <h1>Criar uma senha nova</h1>
+        <p>Use de 10 a 72 caracteres. Ao salvar, todas as sessões abertas da sua conta são encerradas.</p>
+      </div>
+      <div class="flux-campo">
+        <label for="redefinir-senha-nova">Nova senha</label>
+        <div class="flux-entrada" [class.flux-entrada--invalida]="erroNovaSenha() !== null">
+          <input id="redefinir-senha-nova" [type]="senhaVisivel() ? 'text' : 'password'" formControlName="novaSenha" autocomplete="new-password" [attr.aria-invalid]="erroNovaSenha() !== null ? 'true' : null" [attr.aria-describedby]="erroNovaSenha() !== null ? 'redefinir-senha-nova-erro' : null" />
+          <button type="button" class="flux-botao-olho" aria-label="Mostrar senha" aria-controls="redefinir-senha-nova" [attr.aria-pressed]="senhaVisivel()" (click)="alternarSenha()"><app-icone nome="olho" /></button>
+        </div>
+        @if (erroNovaSenha(); as mensagem) {
+          <p id="redefinir-senha-nova-erro" class="flux-campo__erro">{{ mensagem }}</p>
+        }
+      </div>
+      <div class="flux-campo">
+        <label for="redefinir-senha-confirmacao">Confirmar nova senha</label>
+        <div class="flux-entrada" [class.flux-entrada--invalida]="erroConfirmacao() !== null">
+          <input id="redefinir-senha-confirmacao" type="password" formControlName="confirmarNovaSenha" autocomplete="new-password" [attr.aria-invalid]="erroConfirmacao() !== null ? 'true' : null" [attr.aria-describedby]="erroConfirmacao() !== null ? 'redefinir-senha-confirmacao-erro' : null" />
+        </div>
+        @if (erroConfirmacao(); as mensagem) {
+          <p id="redefinir-senha-confirmacao-erro" class="flux-campo__erro">{{ mensagem }}</p>
+        }
+      </div>
+      @if (erro(); as atual) {
+        <app-alerta tipo="erro" [icone]="atual.icone" [titulo]="atual.texto" />
+      }
+      <button mat-flat-button type="submit" [disabled]="enviando()">{{ enviando() ? 'Salvando...' : 'Salvar senha nova' }}</button>
+    </form>
+  }
+</app-layout-publico>

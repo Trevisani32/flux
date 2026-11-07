@@ -1,0 +1,56 @@
+<app-layout-documento titulo="Termos de uso" leitura="cerca de 4 minutos de leitura" rotuloDoIndice="Seções dos termos" [secoes]="secoes" [outro]="outro">
+  <div class="flux-leitura__resumo">
+    <strong>EM POUCAS PALAVRAS</strong>
+    <ul>
+      <li>O Flux é um sistema gratuito e de código aberto para organizar as suas finanças pessoais.</li>
+      <li>Os seus dados são seus: você pode excluir a conta quando quiser, e tudo é apagado.</li>
+      <li>O Flux não é banco nem consultoria financeira, e é oferecido sem garantias.</li>
+    </ul>
+  </div>
+
+  <h2 id="t1">1. O que é o Flux</h2>
+  <p>O Flux é um sistema web de finanças pessoais. Nele você registra contas, lançamentos, cartões e orçamentos, digita ou importa extratos e acompanha para onde vai o seu dinheiro.</p>
+  <p>Esta instância é mantida por {{ responsavel() }} (o "responsável"), sem cobrança. O código do Flux é aberto, sob a licença MIT, e qualquer pessoa pode instalar a própria cópia. Estes termos valem só para esta instância.</p>
+
+  <h2 id="t2">2. Quem pode usar</h2>
+  <ul>
+    <li>Pessoas com 18 anos ou mais.</li>
+    <li>A conta é pessoal: não compartilhe o acesso com outras pessoas.</li>
+    <li>Você precisa de um e-mail válido, que confirma no cadastro.</li>
+  </ul>
+
+  <h2 id="t3">3. Sua conta e sua senha</h2>
+  <p>Você é responsável por manter a sua senha em segredo e pelo que for feito com ela. Se suspeitar de um acesso indevido, troque a senha em <b>Minha conta</b> ou use <b>Esqueci a senha</b>: as duas opções encerram todas as sessões abertas.</p>
+  <p>Cadastros que não confirmam o e-mail em 7 dias são apagados.</p>
+
+  <h2 id="t4">4. Uso permitido</h2>
+  <p>Ao usar o Flux, você se compromete a não:</p>
+  <ul>
+    <li>tentar acessar dados de outras pessoas ou partes do sistema que não são suas;</li>
+    <li>usar robôs ou automações para criar contas, adivinhar senhas ou sobrecarregar o serviço;</li>
+    <li>usar o Flux para qualquer atividade ilegal.</li>
+  </ul>
+  <p>Contas que violarem estes termos podem ser suspensas ou excluídas, com aviso por e-mail sempre que possível.</p>
+
+  <h2 id="t5">5. Seus dados</h2>
+  <p>Os dados que você registra são seus. O Flux não se conecta ao seu banco: só entra o que você digita ou importa. Você pode corrigir os seus dados quando quiser e excluir a conta em <b>Minha conta</b>, o que apaga tudo de forma definitiva. Como os dados são tratados está na <a routerLink="/privacidade">Política de privacidade</a>.</p>
+
+  <h2 id="t6">6. Sem garantias</h2>
+  <ul>
+    <li>O Flux não é instituição financeira e não faz recomendação de investimento. Os números dependem do que você registra.</li>
+    <li>O serviço é oferecido "no estado em que se encontra", sem garantia de funcionar sem interrupções ou sem erros. Ele pode ficar fora do ar, mudar ou ser encerrado.</li>
+    <li>Na medida permitida pela lei, o responsável não responde por perdas que venham do uso do Flux. Guarde uma cópia do que for importante para você.</li>
+  </ul>
+
+  <h2 id="t7">7. Encerramento</h2>
+  <p>Você pode excluir a sua conta a qualquer momento. Se esta instância for encerrada, o responsável avisa por e-mail com pelo menos 30 dias de antecedência, para você levar os seus dados.</p>
+
+  <h2 id="t8">8. Mudanças nos termos</h2>
+  <p>Quando estes termos mudarem, a versão e a data no topo mudam, e as mudanças importantes são avisadas por e-mail. Se não concordar com a versão nova, você pode excluir a sua conta.</p>
+
+  <h2 id="t9">9. Lei aplicável</h2>
+  <p>Estes termos seguem as leis do Brasil, inclusive o Código de Defesa do Consumidor e a Lei Geral de Proteção de Dados (LGPD). Fica eleito o foro do seu domicílio.</p>
+
+  <h2 id="t10">10. Contato</h2>
+  <p>Dúvidas sobre estes termos: @if (contato()) {<a [href]="'mailto:' + contato()">{{ contato() }}</a>} @else {—}.</p>
+</app-layout-documento>

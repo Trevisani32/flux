@@ -1,7 +1,7 @@
-<section class="painel" aria-label="Sobre o Flux">
+<section class="painel" [class.painel--compacto]="compacto()" aria-label="Sobre o Flux">
   <span class="painel__brilho" aria-hidden="true"></span>
   <app-marca class="painel__marca" />
-  <div>
+  <div class="painel__textos">
     <p class="painel__slogan">Seu dinheiro,<br />em <span class="flux-texto-ouro">fluxo</span>.</p>
     <p class="painel__apoio">Contas, cartões, orçamento e importação de extratos num só lugar, para digitar o mínimo possível.</p>
   </div>

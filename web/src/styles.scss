@@ -6,6 +6,10 @@
 @use 'styles/campos';
 @use 'styles/botoes';
 @use 'styles/menu';
+@use 'styles/alertas';
+@use 'styles/publico';
+@use 'styles/documentos';
+@use 'styles/dialogo';
 
 html {
   @include mat.theme(
@@ -98,5 +102,11 @@ html {
       button-color: var(--flux-ouro),
     )
   );
+}
+
+.mat-mdc-button-base .mdc-button__label:has(> app-icone) {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 /* You can add global styles to this file, and also import other style files */

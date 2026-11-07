@@ -1,0 +1,22 @@
+<app-layout-publico [compacto]="true">
+  <form class="flux-formulario-publico" [formGroup]="formulario" (ngSubmit)="enviar()">
+    <a class="flux-voltar" routerLink="/entrar"><app-icone nome="esquerda" [tamanho]="16" />Voltar para entrar</a>
+    <div class="flux-titulos-publicos">
+      <h1>Esqueci a senha</h1>
+      <p>Informe o e-mail da sua conta. Enviamos um link para você criar uma senha nova.</p>
+    </div>
+    <div class="flux-campo">
+      <label for="esqueci-email">E-mail</label>
+      <div class="flux-entrada" [class.flux-entrada--invalida]="erroEmail() !== null">
+        <input id="esqueci-email" type="email" formControlName="email" autocomplete="email" [attr.aria-invalid]="erroEmail() !== null ? 'true' : null" [attr.aria-describedby]="erroEmail() !== null ? 'esqueci-email-erro' : null" />
+      </div>
+      @if (erroEmail(); as mensagem) {
+        <p id="esqueci-email-erro" class="flux-campo__erro">{{ mensagem }}</p>
+      }
+    </div>
+    @if (erro(); as atual) {
+      <app-alerta tipo="erro" [icone]="atual.icone" [titulo]="atual.texto" />
+    }
+    <button mat-flat-button type="submit" [disabled]="enviando()">{{ enviando() ? 'Enviando...' : 'Enviar link' }}</button>
+  </form>
+</app-layout-publico>

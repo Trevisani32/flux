@@ -1,4 +1,4 @@
-/** Traços dos ícones (viewBox 0 0 24 24), copiados do mockup da Fatia 01. */
+/** Traços dos ícones (viewBox 0 0 24 24), copiados dos mockups das Fatias 01 e 02. */
 export const ICONES = {
   inicio: ['M3 10.5 12 3l9 7.5', 'M5 9v11a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9'],
   lancamentos: ['M7 4 3 8l4 4', 'M3 8h13', 'm17 12 4 4-4 4', 'M21 16H8'],
@@ -25,6 +25,23 @@ export const ICONES = {
   ],
   baixo: ['m6 9 6 6 6-6'],
   codigo: ['m8 7-5 5 5 5', 'm16 7 5 5-5 5'],
+  email: ['M5.5 5h13A2.5 2.5 0 0 1 21 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5v-9A2.5 2.5 0 0 1 5.5 5z', 'm3.5 7.5 8.5 6 8.5-6'],
+  cadeado: ['M6.5 11h11a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19.5v-7A1.5 1.5 0 0 1 6.5 11z', 'M8 11V7.5a4 4 0 0 1 8 0V11'],
+  sucesso: ['M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0', 'm8.5 12 2.5 2.5 4.5-5'],
+  check: ['m5 12.5 4.5 4.5L19 7.5'],
+  alerta: ['M10.3 4.2 2.6 17.5a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0z', 'M12 9.5v4', 'M12 17h.01'],
+  info: ['M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0', 'M12 11v5', 'M12 8h.01'],
+  relogio: ['M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0', 'M12 7.5V12l3 2'],
+  lixeira: [
+    'M4 7h16',
+    'M9.5 7V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v2',
+    'm6.5 7 .8 12a2 2 0 0 0 2 1.9h5.4a2 2 0 0 0 2-1.9L17.5 7',
+    'M10 11v6M14 11v6',
+  ],
+  documento: ['M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z', 'M14 3v5h5', 'M9 13h6M9 17h4'],
+  escudo: ['M12 3 4.5 6v6c0 4.5 3.2 7.8 7.5 9 4.3-1.2 7.5-4.5 7.5-9V6z', 'm9 12 2 2 4-4'],
+  esquerda: ['M19 12H5', 'm11 18-6-6 6-6'],
+  externo: ['M14 4h6v6', 'M20 4l-9 9', 'M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type NomeIcone = keyof typeof ICONES;

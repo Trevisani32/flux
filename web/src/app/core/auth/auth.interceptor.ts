@@ -8,7 +8,8 @@ import { AuthService } from './auth.service';
 export const JA_REPETIDA = new HttpContextToken<boolean>(() => false);
 
 export const authInterceptor: HttpInterceptorFn = (requisicao, next) => {
-  if (!requisicao.url.startsWith('/api/') || requisicao.url.startsWith('/api/auth/')) {
+  if (!requisicao.url.startsWith('/api/') || requisicao.url.startsWith('/api/auth/')
+    || requisicao.url.startsWith('/api/publico/')) {
     return next(requisicao);
   }
 

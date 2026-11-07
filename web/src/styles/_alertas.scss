@@ -1,0 +1,70 @@
+@use '@angular/material' as mat;
+
+// Alertas (app-alerta): informação (dourado), sucesso (verde) e erro (vermelho),
+// sempre com ícone e texto. Global porque o texto e as ações são projetados.
+app-alerta {
+  display: block;
+}
+
+.flux-alerta {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--flux-espaco-3);
+  padding: var(--flux-espaco-3) 14px;
+  border: 1px solid;
+  border-radius: var(--flux-raio-controle);
+}
+
+.flux-alerta__corpo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--flux-espaco-1);
+}
+
+.flux-alerta__titulo {
+  font-weight: 700;
+}
+
+.flux-alerta__texto {
+  color: var(--flux-texto-2);
+  font-size: 13px;
+  line-height: 19px;
+  font-weight: 500;
+}
+
+.flux-alerta__texto b {
+  color: var(--flux-texto);
+  font-weight: 700;
+}
+
+.flux-alerta__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--flux-espaco-2);
+  margin-top: 6px;
+  @include mat.button-overrides(
+    (
+      outlined-container-height: 36px,
+      outlined-horizontal-padding: 14px,
+    )
+  );
+}
+
+.flux-alerta--erro {
+  border-color: color-mix(in srgb, var(--flux-negativo) 40%, transparent);
+  background: color-mix(in srgb, var(--flux-negativo) 10%, transparent);
+  color: var(--flux-negativo);
+}
+
+.flux-alerta--info {
+  border-color: rgba(var(--flux-ouro-rgb), 0.38);
+  background: rgba(var(--flux-ouro-rgb), 0.08);
+  color: var(--flux-ouro-texto);
+}
+
+.flux-alerta--sucesso {
+  border-color: color-mix(in srgb, var(--flux-positivo) 38%, transparent);
+  background: color-mix(in srgb, var(--flux-positivo) 9%, transparent);
+  color: var(--flux-positivo);
+}

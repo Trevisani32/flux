@@ -1,0 +1,69 @@
+<app-layout-documento titulo="Política de privacidade" leitura="cerca de 5 minutos de leitura" rotuloDoIndice="Seções da política" [secoes]="secoes" [outro]="outro">
+  <div class="flux-leitura__resumo">
+    <strong>EM POUCAS PALAVRAS</strong>
+    <ul>
+      <li>Coletamos só o necessário para o Flux funcionar: nome, e-mail, a senha protegida e os dados financeiros que você registra.</li>
+      <li>Não vendemos os seus dados, não mostramos anúncios e não usamos rastreadores.</li>
+      <li>Você pode corrigir ou apagar tudo quando quiser, direto em Minha conta.</li>
+    </ul>
+  </div>
+
+  <h2 id="p1">1. Quem cuida dos seus dados</h2>
+  <p>O controlador dos dados desta instância do Flux é {{ responsavel() }}, pessoa física. O canal para qualquer assunto sobre os seus dados é @if (contato()) {<a [href]="'mailto:' + contato()">{{ contato() }}</a>} @else {—}.</p>
+
+  <h2 id="p2">2. Que dados coletamos</h2>
+  <ul>
+    <li><b>Conta:</b> nome, e-mail e senha. A senha é guardada só como um código embaralhado (hash BCrypt), que não permite descobri-la.</li>
+    <li><b>Aceite:</b> a versão destes documentos e a data em que você os aceitou.</li>
+    <li><b>Dados financeiros que você registra:</b> contas, lançamentos, categorias, cartões, faturas, regras, recorrências e orçamentos. Dos extratos importados ficam os lançamentos e um registro da importação (data, nome do arquivo e quantidades); o arquivo em si não é guardado.</li>
+    <li><b>Dados técnicos:</b> endereço IP e horário dos acessos e das tentativas de entrar, usados para segurança e para o limite de tentativas.</li>
+  </ul>
+
+  <h2 id="p3">3. Para que usamos</h2>
+  <ul>
+    <li><b>Prestar o serviço que você pediu</b> (LGPD, art. 7º, V): guardar e mostrar os seus dados, calcular saldos e relatórios.</li>
+    <li><b>Manter a conta segura</b> (LGPD, art. 7º, IX, legítimo interesse): limitar tentativas, detectar abuso e encerrar sessões.</li>
+    <li><b>Mandar os e-mails da conta:</b> confirmação de e-mail, redefinição de senha e avisos de segurança (troca de e-mail, tentativa de cadastro e exclusão da conta). Não mandamos propaganda.</li>
+  </ul>
+
+  <h2 id="p4">4. Com quem compartilhamos</h2>
+  <p>Não vendemos nem alugamos os seus dados. Eles só passam pelos serviços necessários para o Flux funcionar:</p>
+  <ul>
+    <li>hospedagem do servidor e do banco de dados: a definir na publicação;</li>
+    <li>envio de e-mail: a definir na publicação;</li>
+    <li>fonte das páginas: a fonte Manrope é carregada do Google Fonts, que recebe o seu endereço IP quando você abre o Flux.</li>
+  </ul>
+  <p>Alguns desses serviços podem ficar fora do Brasil; nesse caso, valem as regras da LGPD para transferência internacional. Os dados também podem ser fornecidos quando a lei ou uma ordem judicial exigir.</p>
+
+  <h2 id="p5">5. Cookies</h2>
+  <p>O Flux usa um único cookie, essencial para manter você conectado (<b>flux_renovacao</b>). Ele vale por até 30 dias, só é enviado ao próprio Flux e não pode ser lido por scripts da página. Não usamos cookies de publicidade nem de análise.</p>
+
+  <h2 id="p6">6. Por quanto tempo guardamos</h2>
+  <ul>
+    <li>Os dados da conta e os financeiros ficam guardados enquanto a conta existir.</li>
+    <li>Ao excluir a conta, apagamos na hora e de forma definitiva a conta e todos os dados ligados a ela. Cópias de segurança do banco: prazo a definir na publicação.</li>
+    <li>Cadastros sem e-mail confirmado são apagados em 7 dias.</li>
+    <li>Os links enviados por e-mail valem 30 minutos (senha) ou 24 horas (confirmação) e são apagados depois de vencidos.</li>
+    <li>Os contadores do limite de tentativas ficam só na memória do servidor, por no máximo uma hora.</li>
+  </ul>
+
+  <h2 id="p7">7. Seus direitos</h2>
+  <p>A LGPD (art. 18) garante a você:</p>
+  <ul>
+    <li>confirmar que tratamos os seus dados e ter acesso a eles;</li>
+    <li>corrigir dados incompletos ou errados (nome e e-mail ficam em <b>Minha conta</b>);</li>
+    <li>excluir a conta e todos os dados (<b>Minha conta → Excluir minha conta</b>);</li>
+    <li>levar os seus dados para outro serviço (portabilidade): a exportação chega numa próxima versão; até lá, peça pelo contato;</li>
+    <li>saber com quem os dados são compartilhados.</li>
+  </ul>
+  <p>Para pedidos que a tela não resolve, escreva para @if (contato()) {<a [href]="'mailto:' + contato()">{{ contato() }}</a>} @else {—}. A resposta vem em até 15 dias. Você também pode reclamar na Autoridade Nacional de Proteção de Dados (ANPD).</p>
+
+  <h2 id="p8">8. Segurança</h2>
+  <p>Usamos conexão criptografada (HTTPS), senha guardada com hash, sessões curtas que podem ser encerradas a qualquer momento, separação dos dados de cada usuário e limite de tentativas. Nenhum sistema é totalmente seguro: se acontecer um incidente que possa trazer risco a você, avisaremos você e a ANPD.</p>
+
+  <h2 id="p9">9. Menores de idade</h2>
+  <p>O Flux não é destinado a menores de 18 anos.</p>
+
+  <h2 id="p10">10. Mudanças nesta política</h2>
+  <p>Quando esta política mudar, a versão e a data no topo mudam, e as mudanças importantes são avisadas por e-mail.</p>
+</app-layout-documento>

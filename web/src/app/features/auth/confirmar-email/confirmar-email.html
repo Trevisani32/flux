@@ -1,0 +1,35 @@
+<app-layout-publico>
+  <div class="flux-status" aria-live="polite">
+    @switch (estado().tipo) {
+      @case ('confirmando') {
+        <span class="flux-carregando" aria-hidden="true"></span>
+        <h1>Confirmando seu e-mail…</h1>
+        <p class="flux-status__texto">Só um instante.</p>
+      }
+      @case ('cadastro') {
+        <span class="flux-selo-status" aria-hidden="true"><app-icone nome="sucesso" [tamanho]="30" [traco]="1.9" /></span>
+        <h1>E-mail confirmado</h1>
+        <p class="flux-status__texto">Sua conta está pronta. Entre com o seu e-mail e a sua senha para começar.</p>
+        <div class="flux-status__acoes"><a mat-flat-button routerLink="/entrar">Entrar</a></div>
+      }
+      @case ('troca') {
+        <span class="flux-selo-status" aria-hidden="true"><app-icone nome="sucesso" [tamanho]="30" [traco]="1.9" /></span>
+        <h1>Novo e-mail confirmado</h1>
+        <p class="flux-status__texto">A partir de agora, entre com <b>{{ emailDaTroca() }}</b>. O endereço antigo deixou de valer.</p>
+        <div class="flux-status__acoes"><a mat-flat-button routerLink="/minha-conta">Ir para o Flux</a></div>
+      }
+      @case ('expirado') {
+        <span class="flux-selo-status flux-selo-status--ruim" aria-hidden="true"><app-icone nome="alerta" [tamanho]="30" [traco]="1.9" /></span>
+        <h1>Este link expirou ou já foi usado</h1>
+        <p class="flux-status__texto">Os links de confirmação valem por 24 horas e funcionam uma vez só. Se você já confirmou, é só entrar. Se ainda não, entre com seu e-mail e senha: o Flux oferece um link novo.</p>
+        <div class="flux-status__acoes"><a mat-flat-button routerLink="/entrar">Entrar</a></div>
+      }
+      @default {
+        <span class="flux-selo-status flux-selo-status--ruim" aria-hidden="true"><app-icone nome="alerta" [tamanho]="30" [traco]="1.9" /></span>
+        <h1>Não foi possível confirmar agora</h1>
+        <p class="flux-status__texto">Tente abrir o link de novo em alguns minutos.</p>
+        <div class="flux-status__acoes"><a mat-flat-button routerLink="/entrar">Entrar</a></div>
+      }
+    }
+  </div>
+</app-layout-publico>

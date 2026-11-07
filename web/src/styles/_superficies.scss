@@ -43,6 +43,12 @@
   color: var(--flux-ouro-texto);
 }
 
+.flux-pilula--positiva {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--flux-positivo) 14%, transparent);
+  color: var(--flux-positivo);
+}
+
 .flux-selo-icone {
   width: 40px;
   height: 40px;

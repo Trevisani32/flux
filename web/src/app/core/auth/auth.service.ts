@@ -73,6 +73,13 @@ export class AuthService {
     );
   }
 
+  /** Atualiza nome e e-mail mostrados no shell (Minha conta). Não faz nada sem sessão. */
+  atualizarUsuario(usuario: Usuario): void {
+    if (this.usuarioInterno() !== null) {
+      this.usuarioInterno.set(usuario);
+    }
+  }
+
   limparSessao(): void {
     this.tokenInterno.set(null);
     this.usuarioInterno.set(null);

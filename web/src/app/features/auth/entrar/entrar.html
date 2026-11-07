@@ -1,35 +1,58 @@
-<main class="entrar">
-  <app-painel-marca />
-  <div class="entrar__lado">
-    <form class="entrar__formulario" [formGroup]="formulario" (ngSubmit)="entrar()">
-      <div class="entrar__titulos">
-        <h1>Entrar</h1>
-        <p>Que bom ver você de novo. Use o e-mail e a senha da sua conta.</p>
-      </div>
-      <div class="flux-campo">
-        <label for="entrar-email">E-mail</label>
-        <div class="flux-entrada" [class.flux-entrada--invalida]="erroEmail() !== null">
-          <input id="entrar-email" type="email" formControlName="email" autocomplete="username" [attr.aria-invalid]="erroEmail() !== null ? 'true' : null" [attr.aria-describedby]="erroEmail() !== null ? 'entrar-email-erro' : null" />
-        </div>
-        @if (erroEmail(); as mensagem) {
-          <p id="entrar-email-erro" class="flux-campo__erro">{{ mensagem }}</p>
-        }
-      </div>
-      <div class="flux-campo">
-        <label for="entrar-senha">Senha</label>
-        <div class="flux-entrada" [class.flux-entrada--invalida]="erroSenha() !== null">
-          <input id="entrar-senha" [type]="senhaVisivel() ? 'text' : 'password'" formControlName="senha" autocomplete="current-password" [attr.aria-invalid]="erroSenha() !== null ? 'true' : null" [attr.aria-describedby]="erroSenha() !== null ? 'entrar-senha-erro' : null" />
-          <button type="button" class="flux-botao-olho" aria-label="Mostrar senha" aria-controls="entrar-senha" [attr.aria-pressed]="senhaVisivel()" (click)="alternarSenha()"><app-icone nome="olho" /></button>
-        </div>
-        @if (erroSenha(); as mensagem) {
-          <p id="entrar-senha-erro" class="flux-campo__erro">{{ mensagem }}</p>
-        }
-      </div>
-      @if (erro(); as mensagem) {
-        <p role="alert" class="flux-alerta">{{ mensagem }}</p>
+<app-layout-publico [compacto]="faixaCompacta()">
+  <form class="flux-formulario-publico" [formGroup]="formulario" (ngSubmit)="entrar()">
+    <div class="flux-titulos-publicos">
+      <h1>Entrar</h1>
+      <p>Que bom ver você de novo. Use o e-mail e a senha da sua conta.</p>
+    </div>
+    @switch (aviso()) {
+      @case ('senha-redefinida') {
+        <app-alerta tipo="sucesso" icone="sucesso" titulo="Senha redefinida."><p class="flux-alerta__texto">Entre com a senha nova. As outras sessões foram encerradas.</p></app-alerta>
       }
-      <button mat-flat-button type="submit" [disabled]="enviando()">{{ enviando() ? 'Entrando...' : 'Entrar' }}</button>
-    </form>
-    <p class="entrar__rodape">Finanças pessoais · código aberto</p>
-  </div>
-</main>
+      @case ('conta-excluida') {
+        <app-alerta tipo="info" icone="info" titulo="Sua conta foi excluída."><p class="flux-alerta__texto">Todos os seus dados foram apagados. Enviamos a confirmação para o seu e-mail.</p></app-alerta>
+      }
+    }
+    <div class="flux-campo">
+      <label for="entrar-email">E-mail</label>
+      <div class="flux-entrada" [class.flux-entrada--invalida]="erroEmail() !== null">
+        <input id="entrar-email" type="email" formControlName="email" autocomplete="username" [attr.aria-invalid]="erroEmail() !== null ? 'true' : null" [attr.aria-describedby]="erroEmail() !== null ? 'entrar-email-erro' : null" />
+      </div>
+      @if (erroEmail(); as mensagemDoCampo) {
+        <p id="entrar-email-erro" class="flux-campo__erro">{{ mensagemDoCampo }}</p>
+      }
+    </div>
+    <div class="flux-campo">
+      <label for="entrar-senha">Senha</label>
+      <div class="flux-entrada" [class.flux-entrada--invalida]="erroSenha() !== null">
+        <input id="entrar-senha" [type]="senhaVisivel() ? 'text' : 'password'" formControlName="senha" autocomplete="current-password" [attr.aria-invalid]="erroSenha() !== null ? 'true' : null" [attr.aria-describedby]="erroSenha() !== null ? 'entrar-senha-erro' : null" />
+        <button type="button" class="flux-botao-olho" aria-label="Mostrar senha" aria-controls="entrar-senha" [attr.aria-pressed]="senhaVisivel()" (click)="alternarSenha()"><app-icone nome="olho" /></button>
+      </div>
+      @if (erroSenha(); as mensagemDoCampo) {
+        <p id="entrar-senha-erro" class="flux-campo__erro">{{ mensagemDoCampo }}</p>
+      }
+    </div>
+    <div class="flux-abaixo-campo"><a class="flux-link-campo" routerLink="/esqueci-a-senha">Esqueci a senha</a></div>
+    @if (mensagem(); as atual) {
+      @if (atual.tipo === 'credenciais') {
+        <app-alerta tipo="erro" icone="alerta" titulo="E-mail ou senha inválidos" />
+      } @else if (atual.tipo === 'nao-confirmado') {
+        <app-alerta tipo="info" icone="email" papel="alert" titulo="Confirme seu e-mail para entrar.">
+          <p class="flux-alerta__texto">Abra o link que enviamos para <b>{{ atual.email }}</b>. Não chegou?</p>
+          <div class="flux-alerta__acoes"><button mat-stroked-button type="button" [disabled]="reenviando()" (click)="reenviarLink(atual.email)">Reenviar link</button></div>
+        </app-alerta>
+      } @else if (atual.tipo === 'reenviado') {
+        <app-alerta tipo="sucesso" icone="sucesso" titulo="Link reenviado."><p class="flux-alerta__texto">Enviamos um link novo para <b>{{ atual.email }}</b>. O anterior deixou de valer. Veja também a caixa de spam.</p></app-alerta>
+      } @else if (atual.tipo === 'muitas-tentativas') {
+        <app-alerta tipo="erro" icone="relogio" [titulo]="muitasTentativas" />
+      } @else if (atual.tipo === 'falha-reenvio') {
+        <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível reenviar o link. Tente novamente." />
+      } @else {
+        <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível entrar. Tente novamente." />
+      }
+    }
+    <button mat-flat-button type="submit" [disabled]="enviando()">{{ enviando() ? 'Entrando...' : 'Entrar' }}</button>
+    @if (cadastroPublico()) {
+      <p class="flux-troca">Ainda não tem conta? <a routerLink="/criar-conta">Criar conta</a></p>
+    }
+  </form>
+</app-layout-publico>

@@ -1,0 +1,26 @@
+<div class="documento">
+  <header class="documento__topo">
+    <a class="documento__marca" [routerLink]="autenticado() ? '/' : '/entrar'"><app-marca /></a>
+    <span class="documento__espaco"></span>
+    @if (autenticado()) {
+      <a mat-stroked-button routerLink="/"><app-icone nome="esquerda" [tamanho]="18" [traco]="2.2" />Voltar ao Flux</a>
+    } @else {
+      <a mat-stroked-button routerLink="/entrar">Entrar</a>
+    }
+  </header>
+  <div class="documento__grade">
+    <nav class="documento__indice" [attr.aria-label]="rotuloDoIndice()">
+      <p class="documento__indice-titulo">Nesta página</p>
+      @for (secao of secoes(); track secao.id) {
+        <a [routerLink]="[]" [fragment]="secao.id">{{ secao.rotulo }}</a>
+      }
+    </nav>
+    <main class="flux-leitura">
+      <p class="flux-leitura__sobre">Documento</p>
+      <h1>{{ titulo() }}</h1>
+      <p class="flux-leitura__meta">Versão de {{ versaoPorExtenso }} · {{ leitura() }}</p>
+      <ng-content />
+      <footer class="flux-leitura__rodape"><span>Versão {{ versao }}</span><a [routerLink]="outro().rota">{{ outro().rotulo }}</a></footer>
+    </main>
+  </div>
+</div>

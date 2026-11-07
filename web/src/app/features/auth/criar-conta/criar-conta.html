@@ -1,0 +1,52 @@
+<app-layout-publico [compacto]="true">
+  <form class="flux-formulario-publico" [formGroup]="formulario" (ngSubmit)="criar()">
+    <div class="flux-titulos-publicos">
+      <h1>Criar conta</h1>
+      <p>Leva menos de um minuto. Depois é só confirmar o e-mail.</p>
+    </div>
+    <div class="flux-campo">
+      <label for="criar-conta-nome">Nome</label>
+      <div class="flux-entrada" [class.flux-entrada--invalida]="erroNome() !== null">
+        <input id="criar-conta-nome" type="text" formControlName="nome" autocomplete="name" [attr.aria-invalid]="erroNome() !== null ? 'true' : null" [attr.aria-describedby]="erroNome() !== null ? 'criar-conta-nome-erro' : null" />
+      </div>
+      @if (erroNome(); as mensagem) {
+        <p id="criar-conta-nome-erro" class="flux-campo__erro">{{ mensagem }}</p>
+      }
+    </div>
+    <div class="flux-campo">
+      <label for="criar-conta-email">E-mail</label>
+      <div class="flux-entrada" [class.flux-entrada--invalida]="erroEmail() !== null">
+        <input id="criar-conta-email" type="email" formControlName="email" autocomplete="email" [attr.aria-invalid]="erroEmail() !== null ? 'true' : null" [attr.aria-describedby]="erroEmail() !== null ? 'criar-conta-email-erro' : null" />
+      </div>
+      @if (erroEmail(); as mensagem) {
+        <p id="criar-conta-email-erro" class="flux-campo__erro">{{ mensagem }}</p>
+      }
+    </div>
+    <div class="flux-campo">
+      <label for="criar-conta-senha">Senha</label>
+      <div class="flux-entrada" [class.flux-entrada--invalida]="erroSenha() !== null">
+        <input id="criar-conta-senha" [type]="senhaVisivel() ? 'text' : 'password'" formControlName="senha" autocomplete="new-password" [attr.aria-invalid]="erroSenha() !== null ? 'true' : null" [attr.aria-describedby]="erroSenha() !== null ? 'criar-conta-senha-erro' : 'criar-conta-senha-dica'" />
+        <button type="button" class="flux-botao-olho" aria-label="Mostrar senha" aria-controls="criar-conta-senha" [attr.aria-pressed]="senhaVisivel()" (click)="alternarSenha()"><app-icone nome="olho" /></button>
+      </div>
+      @if (erroSenha(); as mensagem) {
+        <p id="criar-conta-senha-erro" class="flux-campo__erro">{{ mensagem }}</p>
+      } @else {
+        <span id="criar-conta-senha-dica" class="flux-dica">De 10 a 72 caracteres.</span>
+      }
+    </div>
+    <div class="flux-campo">
+      <label class="flux-aceite" [class.flux-aceite--invalido]="erroAceite() !== null" for="criar-conta-aceite">
+        <input id="criar-conta-aceite" type="checkbox" formControlName="aceiteDosTermos" [attr.aria-invalid]="erroAceite() !== null ? 'true' : null" [attr.aria-describedby]="erroAceite() !== null ? 'criar-conta-aceite-erro' : null" />
+        <span>Li e aceito os <a href="/termos-de-uso" target="_blank" rel="noopener">Termos de uso</a> e a <a href="/privacidade" target="_blank" rel="noopener">Política de privacidade</a>.</span>
+      </label>
+      @if (erroAceite(); as mensagem) {
+        <p id="criar-conta-aceite-erro" class="flux-campo__erro">{{ mensagem }}</p>
+      }
+    </div>
+    @if (erro(); as atual) {
+      <app-alerta tipo="erro" [icone]="atual.icone" [titulo]="atual.texto" />
+    }
+    <button mat-flat-button type="submit" [disabled]="enviando()">{{ enviando() ? 'Criando...' : 'Criar conta' }}</button>
+    <p class="flux-troca">Já tem conta? <a routerLink="/entrar">Entrar</a></p>
+  </form>
+</app-layout-publico>

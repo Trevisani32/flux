@@ -1,0 +1,10 @@
+<main class="publico">
+  <app-painel-marca [compacto]="compacto()" />
+  <div class="publico__lado">
+    <ng-content />
+    <footer class="publico__rodape">
+      <span>Finanças pessoais · código aberto</span>
+      <span class="publico__links"><a routerLink="/termos-de-uso">Termos de uso</a><a routerLink="/privacidade">Privacidade</a></span>
+    </footer>
+  </div>
+</main>
