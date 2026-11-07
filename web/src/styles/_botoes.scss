@@ -1,3 +1,5 @@
+@use '@angular/material' as mat;
+
 // Botão principal (mat-flat-button): degradê dourado, como o .btn-ouro do mockup.
 [mat-flat-button]:not(:disabled) {
   background-image: var(--flux-ouro-grad);
@@ -15,4 +17,34 @@
 
 [mat-stroked-button]:not(:disabled):hover {
   border-color: var(--flux-borda-2);
+}
+
+// Botões de perigo (excluir a conta): contorno vermelho e preenchido vermelho.
+.flux-botao-perigo {
+  @include mat.button-overrides(
+    (
+      outlined-outline-color: color-mix(in srgb, var(--flux-negativo) 55%, transparent),
+      outlined-label-text-color: var(--flux-negativo),
+    )
+  );
+}
+
+.flux-botao-perigo[mat-stroked-button]:not(:disabled):hover {
+  border-color: var(--flux-negativo);
+  background-color: color-mix(in srgb, var(--flux-negativo) 10%, var(--flux-card));
+}
+
+.flux-botao-perigo-cheio {
+  @include mat.button-overrides(
+    (
+      filled-container-color: var(--flux-negativo),
+      filled-label-text-color: var(--flux-sobre-ouro),
+    )
+  );
+}
+
+// Tira o degradê dourado do [mat-flat-button] (especificidade 0,3,0 contra 0,2,0).
+.flux-botao-perigo-cheio[mat-flat-button]:not(:disabled) {
+  background-image: none;
+  box-shadow: none;
 }

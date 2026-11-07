@@ -23,7 +23,7 @@
 </mat-sidenav-container>
 
 <mat-menu #menuUsuario="matMenu" class="flux-menu" [xPosition]="desktop() ? 'after' : 'before'" [yPosition]="desktop() ? 'above' : 'below'">
-  <a mat-menu-item routerLink="/minha-conta/senha"><app-icone matMenuItemIcon nome="pessoa" />Minha conta</a>
+  <a mat-menu-item routerLink="/minha-conta"><app-icone matMenuItemIcon nome="pessoa" />Minha conta</a>
   <mat-divider />
   <button mat-menu-item type="button" (click)="sair()"><app-icone matMenuItemIcon nome="sair" />Sair</button>
 </mat-menu>

@@ -1,0 +1,91 @@
+.excluir {
+  display: flex;
+  flex-direction: column;
+  gap: var(--flux-espaco-4);
+  padding: 26px 26px 22px;
+}
+
+.excluir__cabecalho {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.excluir__selo {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--flux-negativo) 13%, transparent);
+  color: var(--flux-negativo);
+}
+
+.excluir__cabecalho h2 {
+  margin: 0;
+  padding: 0;
+  color: var(--flux-texto);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+
+.excluir__cabecalho h2::before {
+  display: none;
+}
+
+.excluir__texto {
+  display: flex;
+  flex-direction: column;
+  gap: var(--flux-espaco-2);
+  color: var(--flux-texto-2);
+  font-size: 14px;
+  line-height: 21px;
+}
+
+.excluir__texto ul {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 22px;
+}
+
+.excluir__texto b {
+  color: var(--flux-texto);
+}
+
+// Texto do mockup de 375 px (linhas 1335–1336); no desktop, o das linhas 915–917.
+.excluir__texto--celular {
+  display: none;
+}
+
+.excluir__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+@media (max-width: 959.98px) {
+  .excluir__texto--desktop {
+    display: none;
+  }
+
+  .excluir__texto--celular {
+    display: flex;
+  }
+
+  .excluir {
+    padding: 22px var(--flux-espaco-5) var(--flux-espaco-5);
+  }
+
+  .excluir__acoes {
+    flex-direction: column-reverse;
+  }
+
+  .excluir__acoes button {
+    width: 100%;
+  }
+}
