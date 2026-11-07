@@ -1,0 +1,11 @@
+@if (titulo(); as texto) {
+  <div class="card__cabecalho">
+    @if (nivel() === 3) {
+      <h3 class="card__titulo">{{ texto }}</h3>
+    } @else {
+      <h2 class="card__titulo">{{ texto }}</h2>
+    }
+    <ng-content select="[acao]" />
+  </div>
+}
+<ng-content />

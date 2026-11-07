@@ -1,0 +1,11 @@
+<span class="estado-vazio__brilho" aria-hidden="true"></span>
+<span class="estado-vazio__selo" aria-hidden="true"><app-icone [nome]="icone()" [tamanho]="32" [traco]="1.9" /></span>
+@if (nivel() === 3) {
+  <h3 class="estado-vazio__titulo">{{ titulo() }}</h3>
+} @else {
+  <h2 class="estado-vazio__titulo">{{ titulo() }}</h2>
+}
+@if (texto(); as conteudo) {
+  <p class="estado-vazio__texto">{{ conteudo }}</p>
+}
+<ng-content />

@@ -1,0 +1,26 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--flux-marca-espaco, 10px);
+  font-weight: 800;
+  font-size: var(--flux-marca-fonte, 19px);
+  letter-spacing: -0.5px;
+  color: var(--flux-escuro-texto);
+}
+
+.marca__selo {
+  width: var(--flux-marca-selo, 34px);
+  height: var(--flux-marca-selo, 34px);
+  border-radius: calc(var(--flux-marca-selo, 34px) * 0.32);
+  background: var(--flux-ouro-grad);
+  color: var(--flux-sobre-ouro);
+  display: grid;
+  place-items: center;
+  flex: none;
+  box-shadow: 0 8px 20px -8px rgba(var(--flux-ouro-rgb), 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.marca__selo svg {
+  width: calc(var(--flux-marca-selo, 34px) * 0.6);
+  height: calc(var(--flux-marca-selo, 34px) * 0.6);
+}

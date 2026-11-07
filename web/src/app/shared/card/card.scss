@@ -1,0 +1,12 @@
+.card__cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--flux-espaco-2) var(--flux-espaco-3);
+}
+
+.card__titulo {
+  font: var(--flux-fonte-titulo-card);
+  letter-spacing: -0.2px;
+}
