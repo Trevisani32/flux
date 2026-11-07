@@ -22,6 +22,10 @@ updates:
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: vitest
         update-types: ["version-update:semver-major"]
+      # O jsdom 30+ exige Node ^22.22.2, e o desenvolvimento local ainda usa o 22.19.
+      # Liberar junto com a subida do Node.
+      - dependency-name: jsdom
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
