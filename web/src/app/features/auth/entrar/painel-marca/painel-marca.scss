@@ -1,0 +1,182 @@
+:host {
+  display: block;
+}
+
+.painel {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--flux-espaco-10);
+  padding: 44px 56px;
+  overflow: hidden;
+  background: var(--flux-escuro-fundo);
+  color: var(--flux-escuro-texto);
+}
+
+.painel__brilho {
+  position: absolute;
+  top: 120px;
+  right: -220px;
+  width: 640px;
+  height: 640px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(var(--flux-ouro-rgb), 0.22), transparent);
+  pointer-events: none;
+}
+
+.painel__marca,
+.painel__slogan,
+.painel__apoio,
+.painel__vitrine,
+.painel__pontos {
+  position: relative;
+}
+
+.painel__marca {
+  --flux-marca-selo: 40px;
+  --flux-marca-fonte: 22px;
+}
+
+.painel__slogan {
+  font-size: 54px;
+  line-height: 60px;
+  font-weight: 800;
+  letter-spacing: -2px;
+}
+
+.painel__apoio {
+  max-width: 440px;
+  margin-top: 14px;
+  color: var(--flux-escuro-texto-2);
+  font-size: 17px;
+  line-height: 27px;
+}
+
+.painel__vitrine {
+  height: 250px;
+}
+
+.painel__cartao {
+  position: absolute;
+  top: 18px;
+  left: 0;
+  width: 360px;
+  transform: rotate(-5deg);
+}
+
+.painel__vidro {
+  position: absolute;
+  top: 0;
+  left: 290px;
+  width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--flux-espaco-3);
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--flux-raio-card);
+  background: rgba(24, 24, 27, 0.78);
+  color: var(--flux-escuro-texto);
+  box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(10px);
+  transform: rotate(3deg);
+}
+
+.painel__vidro-rotulo {
+  color: var(--flux-escuro-texto-2);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.painel__barras {
+  height: 56px;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.painel__barras i {
+  flex: 1;
+  border-radius: 999px 999px 3px 3px;
+  background: rgba(var(--flux-ouro-rgb), 0.35);
+}
+
+.painel__barras i:last-child {
+  background: var(--flux-ouro);
+}
+
+.painel__vidro-valor {
+  color: var(--flux-positivo);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+}
+
+.painel__pontos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  padding: 0;
+  margin: 0;
+  color: var(--flux-escuro-texto-2);
+  font-size: 13px;
+  font-weight: 600;
+  list-style: none;
+}
+
+.painel__pontos li {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-espaco-2);
+}
+
+.painel__pontos .flux-icone {
+  color: var(--flux-ouro-texto);
+}
+
+@media (max-width: 1199.98px) {
+  .painel__vitrine {
+    display: none;
+  }
+}
+
+@media (max-width: 959.98px) {
+  :host {
+    height: auto;
+  }
+
+  .painel {
+    height: auto;
+    justify-content: flex-start;
+    gap: 34px;
+    padding: var(--flux-espaco-7) 22px 64px;
+  }
+
+  .painel__apoio,
+  .painel__vitrine,
+  .painel__pontos {
+    display: none;
+  }
+
+  .painel__marca {
+    --flux-marca-selo: 34px;
+    --flux-marca-fonte: 19px;
+  }
+
+  .painel__slogan {
+    font-size: 36px;
+    line-height: 40px;
+    letter-spacing: -1.4px;
+  }
+
+  .painel__brilho {
+    top: -120px;
+    right: -180px;
+    width: 420px;
+    height: 420px;
+    background: radial-gradient(closest-side, rgba(var(--flux-ouro-rgb), 0.26), transparent);
+  }
+}

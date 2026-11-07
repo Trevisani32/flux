@@ -1,39 +1,102 @@
-// Include theming for Angular Material with `mat.theme()`.
-// This Sass mixin will define CSS variables that are used for styling Angular Material
-// components according to the Material 3 design spec.
-// Learn more about theming and how to use it for your application's
-// custom components at https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
+@use 'styles/theme-colors' as cores;
+@use 'styles/tokens';
+@use 'styles/base';
+@use 'styles/superficies';
+@use 'styles/campos';
+@use 'styles/botoes';
+@use 'styles/menu';
 
 html {
-  height: 100%;
   @include mat.theme(
     (
       color: (
-        primary: mat.$cyan-palette,
-        tertiary: mat.$orange-palette,
+        primary: cores.$primary-palette,
+        theme-type: dark,
       ),
-      typography: Roboto,
+      typography: (
+        plain-family: (Manrope, system-ui, sans-serif),
+        brand-family: (Manrope, system-ui, sans-serif),
+        bold-weight: 700,
+        medium-weight: 600,
+        regular-weight: 500,
+      ),
       density: 0,
+    ),
+    $overrides: (
+      background: var(--flux-fundo),
+      on-background: var(--flux-texto),
+      surface: var(--flux-fundo),
+      surface-dim: var(--flux-fundo),
+      surface-bright: var(--flux-card-2),
+      surface-container-lowest: var(--flux-lateral),
+      surface-container-low: var(--flux-card),
+      surface-container: var(--flux-card),
+      surface-container-high: var(--flux-card-2),
+      surface-container-highest: var(--flux-borda-2),
+      surface-variant: var(--flux-card-2),
+      on-surface: var(--flux-texto),
+      on-surface-variant: var(--flux-texto-2),
+      outline: var(--flux-borda-2),
+      outline-variant: var(--flux-borda),
+      primary: var(--flux-ouro),
+      on-primary: var(--flux-sobre-ouro),
+      error: var(--flux-negativo),
+      on-error: var(--flux-sobre-ouro),
     )
   );
-}
-
-body {
-  // Default the application to a light color theme. This can be changed to
-  // `dark` to enable the dark color theme, or to `light dark` to defer to the
-  // user's system settings.
-  color-scheme: light;
-
-  // Set a default background, font and text colors for the application using
-  // Angular Material's system-level CSS variables. Learn more about these
-  // variables at https://material.angular.dev/guide/system-variables
-  background-color: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
-  font: var(--mat-sys-body-medium);
-
-  // Reset the user agent margin.
-  margin: 0;
-  height: 100%;
+  @include mat.strong-focus-indicators(
+    (
+      border-color: var(--flux-ouro),
+      border-width: 2px,
+    )
+  );
+  @include mat.button-overrides(
+    (
+      filled-container-shape: var(--flux-raio-controle),
+      filled-container-height: 42px,
+      filled-horizontal-padding: 18px,
+      filled-container-color: var(--flux-ouro),
+      filled-label-text-color: var(--flux-sobre-ouro),
+      filled-label-text-weight: 700,
+      outlined-container-shape: var(--flux-raio-controle),
+      outlined-container-height: 42px,
+      outlined-horizontal-padding: 18px,
+      outlined-outline-color: var(--flux-borda),
+      outlined-label-text-color: var(--flux-texto),
+      outlined-label-text-weight: 700,
+    )
+  );
+  @include mat.menu-overrides(
+    (
+      container-color: var(--flux-escuro-menu),
+      container-shape: 14px,
+      container-elevation-shadow: 0 24px 48px -16px rgba(0, 0, 0, 0.6),
+      divider-color: var(--flux-escuro-borda-2),
+      divider-top-spacing: 6px,
+      divider-bottom-spacing: 6px,
+      item-label-text-color: var(--flux-escuro-texto),
+    )
+  );
+  @include mat.sidenav-overrides(
+    (
+      container-background-color: var(--flux-lateral),
+      container-text-color: var(--flux-lateral-texto),
+      container-divider-color: var(--flux-lateral-borda),
+      container-shape: 0,
+      container-width: 252px,
+      content-background-color: var(--flux-fundo),
+      content-text-color: var(--flux-texto),
+      scrim-color: rgba(0, 0, 0, 0.55),
+    )
+  );
+  @include mat.snack-bar-overrides(
+    (
+      container-color: var(--flux-card-2),
+      container-shape: var(--flux-raio-controle),
+      supporting-text-color: var(--flux-texto),
+      button-color: var(--flux-ouro),
+    )
+  );
 }
 /* You can add global styles to this file, and also import other style files */

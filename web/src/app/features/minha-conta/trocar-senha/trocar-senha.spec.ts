@@ -67,6 +67,15 @@ describe('TrocarSenha', () => {
     expect(elemento.textContent).toContain('As senhas não conferem.');
   });
 
+  it('liga o erro de confirmação ao campo nativo', () => {
+    preencherFormulario('outra-senha-123');
+    componente.salvar();
+    atualizar();
+    const confirmacao = elemento.querySelector('#trocar-senha-confirmacao');
+    expect(confirmacao?.getAttribute('aria-invalid')).toBe('true');
+    expect(confirmacao?.getAttribute('aria-describedby')).toBe('trocar-senha-confirmacao-erro');
+  });
+
   it('envia a troca autenticada e encerra a sessão após resposta 204', () => {
     preencherFormulario();
 

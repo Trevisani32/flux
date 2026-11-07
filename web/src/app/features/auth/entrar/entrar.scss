@@ -1,15 +1,109 @@
-main {
-  display: grid;
+@use '@angular/material' as mat;
+
+:host {
+  display: block;
   min-height: 100%;
-  place-items: center;
 }
 
-form {
-  display: grid;
-  gap: 1rem;
-  width: min(100% - 2rem, 24rem);
+.entrar {
+  min-height: 100dvh;
+  display: flex;
+  background: var(--flux-fundo);
 }
 
-mat-form-field {
+app-painel-marca {
+  flex: 1.1 1 0;
+  min-width: 0;
+}
+
+.entrar__lado {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 48px var(--flux-espaco-8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--flux-espaco-6);
+  background: var(--flux-fundo);
+}
+
+.entrar__formulario {
   width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--flux-espaco-5);
+  @include mat.button-overrides(
+    (
+      filled-container-height: 50px,
+    )
+  );
+}
+
+.entrar__formulario > button[type='submit'] {
+  margin-top: 6px;
+  font-size: 15px;
+}
+
+.entrar__titulos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: var(--flux-espaco-2);
+}
+
+.entrar__titulos h1 {
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.entrar__titulos p {
+  font-size: 15px;
+  color: var(--flux-texto-3);
+}
+
+.entrar__rodape {
+  font-size: 12px;
+  color: var(--flux-texto-3);
+  text-align: center;
+}
+
+@media (max-width: 959.98px) {
+  .entrar {
+    flex-direction: column;
+  }
+
+  app-painel-marca {
+    flex: none;
+  }
+
+  .entrar__lado {
+    position: relative;
+    z-index: 1;
+    flex: 1 1 auto;
+    margin-top: -32px;
+    padding: var(--flux-espaco-7) var(--flux-espaco-5) var(--flux-espaco-6);
+    border-radius: 28px 28px 0 0;
+    justify-content: space-between;
+  }
+
+  .entrar__formulario {
+    gap: var(--flux-espaco-4);
+  }
+
+  .entrar__titulos {
+    margin-bottom: 0;
+  }
+
+  .entrar__titulos h1 {
+    font-size: 24px;
+    line-height: 30px;
+  }
+
+  .entrar__titulos p {
+    font-size: 13px;
+  }
 }

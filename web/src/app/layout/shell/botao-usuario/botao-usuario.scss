@@ -1,0 +1,80 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.usuario {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--flux-espaco-3);
+  padding: 10px var(--flux-espaco-3) 10px 10px;
+  border: 1px solid var(--flux-escuro-borda);
+  border-radius: 16px;
+  background: var(--flux-escuro-superficie);
+  color: var(--flux-escuro-texto);
+  cursor: pointer;
+  text-align: left;
+}
+
+.usuario:hover {
+  border-color: var(--flux-escuro-borda-2);
+}
+
+.usuario__avatar {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--flux-ouro-grad);
+  color: var(--flux-sobre-ouro);
+  font-weight: 800;
+}
+
+.usuario__textos {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.usuario__nome,
+.usuario__email {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usuario__nome {
+  flex: 1 1 auto;
+  font-weight: 700;
+}
+
+.usuario__email {
+  color: var(--flux-escuro-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.usuario .flux-icone {
+  flex: none;
+  color: var(--flux-escuro-texto-3);
+}
+
+.usuario--compacto {
+  width: auto;
+  max-width: 50vw;
+  height: 40px;
+  gap: var(--flux-espaco-2);
+  padding: 0 var(--flux-espaco-2) 0 3px;
+  border-radius: var(--flux-raio-pilula);
+}
+
+.usuario--compacto .usuario__avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+}

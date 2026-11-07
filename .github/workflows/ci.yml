@@ -40,3 +40,60 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      WEB_PORTA: '8088'
+      E2E_URL: http://localhost:8088
+      E2E_EMAIL: dono@flux.local
+      E2E_SENHA: troque-esta-senha
+      E2E_NOME: Dono
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Instalar dependências e o Chromium do Playwright
+        working-directory: web
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Subir banco, API e web pelo compose de produção
+        run: |
+          cp .env.example .env
+          docker compose up -d --build --wait
+      - name: Esperar a API responder pelo nginx
+        run: |
+          for i in $(seq 1 90); do
+            codigo=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$E2E_URL/api/auth/sair" || true)
+            if [ "$codigo" = "204" ]; then
+              echo "API pronta"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "A API não respondeu em 180 segundos"
+          exit 1
+      - name: E2E
+        working-directory: web
+        run: npx playwright test
+      - name: Guardar os logs do compose
+        if: failure()
+        run: docker compose logs --no-color > compose.log
+      - name: Publicar relatório e traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-falha
+          path: |
+            web/playwright-report/
+            web/test-results/
+            compose.log
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Derrubar o compose
+        if: always()
+        run: docker compose down -v

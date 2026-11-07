@@ -1,14 +1,13 @@
-main {
-  display: grid;
-  place-items: start;
+.trocar-senha {
+  max-width: 480px;
 }
 
-form {
-  display: grid;
-  gap: 1rem;
-  width: min(100%, 30rem);
+.trocar-senha__formulario {
+  display: flex;
+  flex-direction: column;
+  gap: var(--flux-espaco-5);
 }
 
-mat-form-field {
-  width: 100%;
+.trocar-senha__formulario > button[type='submit'] {
+  align-self: flex-start;
 }

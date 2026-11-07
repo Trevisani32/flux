@@ -1,0 +1,73 @@
+// Tokens do Flux. Os componentes usam estes nomes, nunca o hexadecimal.
+// Só o modo escuro existe na Fatia 01. O modo claro vai redefinir apenas o
+// bloco "Tema". Os blocos "Marca", "Áreas sempre escuras", "Forma e espaço" e
+// "Tipografia" valem para os dois modos.
+:root {
+  // Marca (dourado Clássico)
+  --flux-ouro: #D4AF37;
+  --flux-ouro-claro: #EBCB6B;
+  --flux-ouro-escuro: #A8862A;
+  --flux-ouro-rgb: 212, 175, 55;
+  --flux-ouro-grad: linear-gradient(135deg, #F7E7A6 0%, #E4C45A 28%, #D4AF37 55%, #A8862A 100%);
+  --flux-sobre-ouro: #0B0B0C;
+
+  // Áreas sempre escuras: lateral, gaveta, barra do celular, menu do usuário
+  // e painel da marca no Entrar
+  --flux-escuro-fundo: #09090B;
+  --flux-escuro-superficie: #131316;
+  --flux-escuro-menu: #18181B;
+  --flux-escuro-borda: #1F1F23;
+  --flux-escuro-borda-2: #2C2C31;
+  --flux-escuro-texto: #F4F4F5;
+  --flux-escuro-texto-2: #A1A1AA;
+  --flux-escuro-texto-3: #8B8B93;
+  --flux-lateral: #0E0E10;
+  --flux-lateral-borda: #1C1C1F;
+  --flux-lateral-texto: #D4D4D8;
+  --flux-lateral-link: #B4B4BC;
+
+  // Forma e espaço (grade de 4 px)
+  --flux-raio-controle: 12px;
+  --flux-raio-card: 20px;
+  --flux-raio-destaque: 24px;
+  --flux-raio-pilula: 999px;
+  --flux-margem: 40px;
+  --flux-espaco-1: 4px;
+  --flux-espaco-2: 8px;
+  --flux-espaco-3: 12px;
+  --flux-espaco-4: 16px;
+  --flux-espaco-5: 20px;
+  --flux-espaco-6: 24px;
+  --flux-espaco-7: 28px;
+  --flux-espaco-8: 32px;
+  --flux-espaco-9: 36px;
+  --flux-espaco-10: 40px;
+
+  // Tipografia (shorthand de font; a Manrope vem do Google Fonts)
+  --flux-fonte-familia: Manrope, system-ui, sans-serif;
+  --flux-fonte-titulo-pagina: 800 26px/34px var(--flux-fonte-familia);
+  --flux-fonte-titulo-card: 700 15px/22px var(--flux-fonte-familia);
+  --flux-fonte-rotulo-grupo: 700 11px/16px var(--flux-fonte-familia);
+  --flux-fonte-valor: 700 15px/20px var(--flux-fonte-familia);
+
+  // Tema: modo escuro
+  color-scheme: dark;
+  --flux-fundo: #09090B;
+  --flux-card: #131316;
+  --flux-card-2: #1A1A1E;
+  --flux-borda: #222226;
+  --flux-borda-2: #2C2C31;
+  --flux-texto: #F4F4F5;
+  --flux-texto-2: #A1A1AA;
+  --flux-texto-3: #8B8B93;
+  --flux-positivo: #4ADE80;
+  --flux-negativo: #F87171;
+  --flux-ouro-texto: var(--flux-ouro);
+  --flux-sombra: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 24px 48px -28px rgba(0, 0, 0, 0.9);
+}
+
+@media (max-width: 959.98px) {
+  :root {
+    --flux-margem: 16px;
+  }
+}

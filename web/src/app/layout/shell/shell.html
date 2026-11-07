@@ -1,18 +1,29 @@
-<mat-toolbar>
-  <span>Flux</span>
-  <span class="espacador"></span>
-  <button mat-button [matMenuTriggerFor]="menu" aria-label="Menu do usuário">{{ nome() }}</button>
-  <mat-menu #menu="matMenu">
-    <a mat-menu-item routerLink="/minha-conta/senha">Minha conta</a>
-    <button mat-menu-item (click)="sair()">Sair</button>
-  </mat-menu>
-</mat-toolbar>
-
-<mat-sidenav-container>
-  <mat-sidenav mode="side" opened>
-    <a mat-button routerLink="/">Início</a>
+<mat-sidenav-container class="shell">
+  <mat-sidenav #gaveta="matSidenav" id="menu-principal" class="lateral" [class.lateral--gaveta]="!desktop()" [mode]="desktop() ? 'side' : 'over'" [opened]="desktop() || gavetaAberta()" [disableClose]="desktop()" (openedChange)="aoMudarGaveta($event)">
+    <div class="lateral__interno">
+      <app-navegacao (navegou)="fecharGaveta()" />
+      @if (desktop()) {
+        <div class="lateral__rodape">
+          <app-botao-usuario [nome]="nome()" [email]="email()" [menu]="menuUsuario" />
+        </div>
+      }
+    </div>
   </mat-sidenav>
-  <mat-sidenav-content>
-    <main><router-outlet /></main>
+  <mat-sidenav-content class="area">
+    @if (!desktop()) {
+      <header class="barra">
+        <button type="button" class="barra__menu" aria-label="Abrir menu" aria-controls="menu-principal" [attr.aria-expanded]="gaveta.opened" (click)="abrirGaveta()"><app-icone nome="menu" [tamanho]="22" /></button>
+        <app-marca class="barra__marca" />
+        <span class="barra__espaco"></span>
+        <app-botao-usuario [nome]="nome()" [compacto]="true" [menu]="menuUsuario" />
+      </header>
+    }
+    <main class="principal"><router-outlet /></main>
   </mat-sidenav-content>
 </mat-sidenav-container>
+
+<mat-menu #menuUsuario="matMenu" class="flux-menu" [xPosition]="desktop() ? 'after' : 'before'" [yPosition]="desktop() ? 'above' : 'below'">
+  <a mat-menu-item routerLink="/minha-conta/senha"><app-icone matMenuItemIcon nome="pessoa" />Minha conta</a>
+  <mat-divider />
+  <button mat-menu-item type="button" (click)="sair()"><app-icone matMenuItemIcon nome="sair" />Sair</button>
+</mat-menu>

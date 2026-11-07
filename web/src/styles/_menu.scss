@@ -1,0 +1,20 @@
+// Menu do usuário (<mat-menu class="flux-menu">). O painel fica num overlay
+// fora do shell, por isso estas regras são globais.
+.flux-menu.mat-mdc-menu-panel {
+  min-width: 224px;
+  border: 1px solid var(--flux-escuro-borda-2);
+}
+
+.flux-menu .mat-mdc-menu-content {
+  padding: 6px;
+}
+
+.flux-menu .mat-mdc-menu-item {
+  min-height: 42px;
+  border-radius: 10px;
+}
+
+.flux-menu .mat-mdc-menu-item .flux-icone {
+  margin-right: var(--flux-espaco-3);
+  color: var(--flux-escuro-texto-3);
+}

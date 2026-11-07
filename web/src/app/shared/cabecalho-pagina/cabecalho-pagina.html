@@ -1,0 +1,9 @@
+<header class="cabecalho">
+  <div class="cabecalho__titulos">
+    <h1 class="cabecalho__titulo">{{ titulo() }}</h1>
+    @if (subtitulo(); as texto) {
+      <p class="cabecalho__subtitulo">{{ texto }}</p>
+    }
+  </div>
+  <div class="cabecalho__acoes"><ng-content /></div>
+</header>

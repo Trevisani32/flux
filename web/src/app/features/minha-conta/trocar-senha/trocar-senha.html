@@ -1,30 +1,38 @@
-<main>
-  <form [formGroup]="formulario" (ngSubmit)="salvar()">
-    <h1>Trocar senha</h1>
-    <mat-form-field hideRequiredMarker>
-      <mat-label>Senha atual</mat-label>
-      <input matInput type="password" formControlName="senhaAtual" />
-      @if (formulario.controls.senhaAtual.touched && formulario.controls.senhaAtual.hasError('required')) {
-        <mat-error>Informe a senha atual.</mat-error>
+<app-cabecalho-pagina titulo="Trocar senha" subtitulo="Ao trocar a senha, todas as sessões abertas são encerradas." />
+<div class="flux-conteudo">
+  <app-card class="trocar-senha">
+    <form class="trocar-senha__formulario" [formGroup]="formulario" (ngSubmit)="salvar()">
+      <div class="flux-campo">
+        <label for="trocar-senha-atual">Senha atual</label>
+        <div class="flux-entrada" [class.flux-entrada--invalida]="erroSenhaAtual() !== null">
+          <input id="trocar-senha-atual" type="password" formControlName="senhaAtual" autocomplete="current-password" [attr.aria-invalid]="erroSenhaAtual() !== null ? 'true' : null" [attr.aria-describedby]="erroSenhaAtual() !== null ? 'trocar-senha-atual-erro' : null" />
+        </div>
+        @if (erroSenhaAtual(); as mensagem) {
+          <p id="trocar-senha-atual-erro" class="flux-campo__erro">{{ mensagem }}</p>
+        }
+      </div>
+      <div class="flux-campo">
+        <label for="trocar-senha-nova">Nova senha</label>
+        <div class="flux-entrada" [class.flux-entrada--invalida]="erroNovaSenha() !== null">
+          <input id="trocar-senha-nova" type="password" formControlName="novaSenha" autocomplete="new-password" [attr.aria-invalid]="erroNovaSenha() !== null ? 'true' : null" [attr.aria-describedby]="erroNovaSenha() !== null ? 'trocar-senha-nova-erro' : null" />
+        </div>
+        @if (erroNovaSenha(); as mensagem) {
+          <p id="trocar-senha-nova-erro" class="flux-campo__erro">{{ mensagem }}</p>
+        }
+      </div>
+      <div class="flux-campo">
+        <label for="trocar-senha-confirmacao">Confirmar nova senha</label>
+        <div class="flux-entrada" [class.flux-entrada--invalida]="erroConfirmacao() !== null">
+          <input id="trocar-senha-confirmacao" type="password" formControlName="confirmarNovaSenha" autocomplete="new-password" [attr.aria-invalid]="erroConfirmacao() !== null ? 'true' : null" [attr.aria-describedby]="erroConfirmacao() !== null ? 'trocar-senha-confirmacao-erro' : null" />
+        </div>
+        @if (erroConfirmacao(); as mensagem) {
+          <p id="trocar-senha-confirmacao-erro" class="flux-campo__erro">{{ mensagem }}</p>
+        }
+      </div>
+      @if (erro(); as mensagem) {
+        <p role="alert" class="flux-alerta">{{ mensagem }}</p>
       }
-    </mat-form-field>
-    <mat-form-field hideRequiredMarker>
-      <mat-label>Nova senha</mat-label>
-      <input matInput type="password" formControlName="novaSenha" />
-      @if (formulario.controls.novaSenha.touched && formulario.controls.novaSenha.invalid) {
-        <mat-error>A nova senha precisa ter entre 10 e 72 caracteres.</mat-error>
-      }
-    </mat-form-field>
-    <mat-form-field hideRequiredMarker>
-      <mat-label>Confirmar nova senha</mat-label>
-      <input matInput type="password" formControlName="confirmarNovaSenha" />
-      @if (formulario.controls.confirmarNovaSenha.touched && formulario.hasError('senhasDiferentes')) {
-        <mat-error>As senhas não conferem.</mat-error>
-      }
-    </mat-form-field>
-    @if (erro(); as mensagem) {
-      <p role="alert">{{ mensagem }}</p>
-    }
-    <button mat-flat-button type="submit">Salvar</button>
-  </form>
-</main>
+      <button mat-flat-button type="submit">Salvar</button>
+    </form>
+  </app-card>
+</div>
