@@ -1,17 +1,16 @@
 import { expect, test } from '@playwright/test';
 
-import { botaoDoUsuario, ehDesktop, email, emailExibido, entrar, entrarNoInicio, nome, senha } from './apoio';
+import { botaoDoUsuario, ehDesktop, email, emailExibido, emailUnico, entrar, entrarCom, entrarNoInicio, nome, senha } from './apoio';
 
 test('login certo mostra o início', async ({ page }) => {
   await entrar(page);
   await expect(page.getByRole('heading', { name: `Olá, ${nome}` })).toBeVisible();
 });
 
-test('senha errada mostra a mensagem de credenciais inválidas', async ({ page }) => {
-  await page.goto('/entrar');
-  await page.getByLabel('E-mail', { exact: true }).fill(email);
-  await page.getByLabel('Senha', { exact: true }).fill('senha-errada');
-  await page.getByRole('button', { name: 'Entrar' }).click();
+test('e-mail ou senha errados mostram a mensagem de credenciais inválidas', async ({ page }) => {
+  // E-mail que não existe: a mensagem é a mesma da senha errada, e a tentativa falha
+  // não gasta o limite de 10 erros em 15 min do usuário de teste.
+  await entrarCom(page, emailUnico('inexistente'), 'senha-errada-123');
   await expect(page.getByRole('alert')).toHaveText('E-mail ou senha inválidos');
 });
 

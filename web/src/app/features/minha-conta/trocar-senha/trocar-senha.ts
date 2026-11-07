@@ -1,34 +1,21 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
-import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
+import { Alerta } from '../../../shared/alerta/alerta';
 import { Card } from '../../../shared/card/card';
 import { CabecalhoPagina } from '../../../shared/cabecalho-pagina/cabecalho-pagina';
-
-function senhasIguais(controle: AbstractControl): ValidationErrors | null {
-  const { novaSenha, confirmarNovaSenha } = controle.value as { novaSenha?: string; confirmarNovaSenha?: string };
-  const confirmacao = controle.get('confirmarNovaSenha');
-  if (novaSenha !== confirmarNovaSenha) {
-    if (!confirmacao?.hasError('senhasDiferentes')) {
-      confirmacao?.setErrors({ ...confirmacao.errors, senhasDiferentes: true });
-    }
-    return { senhasDiferentes: true };
-  }
-  if (confirmacao?.hasError('senhasDiferentes')) {
-    const { senhasDiferentes, ...demaisErros } = confirmacao.errors ?? {};
-    void senhasDiferentes;
-    confirmacao.setErrors(Object.keys(demaisErros).length === 0 ? null : demaisErros);
-  }
-  return null;
-}
+import { Icone } from '../../../shared/icone/icone';
+import { senhasIguais } from '../../../shared/validadores/validadores';
+import { MENSAGEM_MUITAS_TENTATIVAS } from '../../auth/erros-http';
 
 @Component({
   selector: 'app-trocar-senha',
-  imports: [MatButtonModule, ReactiveFormsModule, CabecalhoPagina, Card],
+  imports: [MatButtonModule, ReactiveFormsModule, RouterLink, Alerta, CabecalhoPagina, Card, Icone],
   templateUrl: './trocar-senha.html',
   styleUrl: './trocar-senha.scss',
 })
@@ -39,6 +26,7 @@ export class TrocarSenha {
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
 
+  readonly muitasTentativas = MENSAGEM_MUITAS_TENTATIVAS;
   readonly erro = signal<string | null>(null);
   readonly formulario = this.formularioBuilder.group({
     senhaAtual: ['', Validators.required],
@@ -60,6 +48,10 @@ export class TrocarSenha {
         void this.router.navigateByUrl('/entrar');
       },
       error: (erro: unknown) => {
+        if (erro instanceof HttpErrorResponse && erro.status === 429) {
+          this.erro.set(MENSAGEM_MUITAS_TENTATIVAS);
+          return;
+        }
         this.erro.set(erro instanceof HttpErrorResponse && erro.status === 422
           ? (erro.error?.detail ?? 'Não foi possível trocar a senha. Tente novamente.')
           : 'Não foi possível trocar a senha. Tente novamente.');

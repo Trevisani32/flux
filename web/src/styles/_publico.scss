@@ -1,0 +1,230 @@
+@use '@angular/material' as mat;
+
+// Peças das telas públicas (Entrar, Criar conta, Esqueci a senha, Redefinir senha,
+// Confira seu e-mail e Confirmar e-mail). A moldura é o app-layout-publico.
+.flux-formulario-publico {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--flux-espaco-5);
+  @include mat.button-overrides(
+    (
+      filled-container-height: 50px,
+    )
+  );
+}
+
+.flux-formulario-publico > button[type='submit'] {
+  margin-top: 6px;
+  font-size: 15px;
+}
+
+.flux-titulos-publicos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: var(--flux-espaco-2);
+}
+
+.flux-titulos-publicos h1,
+.flux-status h1 {
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.flux-titulos-publicos p {
+  color: var(--flux-texto-3);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.flux-abaixo-campo {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -10px;
+}
+
+.flux-link-campo {
+  color: var(--flux-ouro-texto);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.flux-link-campo:hover,
+.flux-troca a:hover {
+  text-decoration: underline;
+}
+
+.flux-troca {
+  color: var(--flux-texto-2);
+  font-size: 14px;
+  text-align: center;
+}
+
+.flux-troca a {
+  color: var(--flux-ouro-texto);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.flux-voltar {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--flux-texto-2);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.flux-voltar:hover {
+  color: var(--flux-ouro-texto);
+}
+
+// Telas de situação (link enviado, e-mail confirmado, link vencido)
+.flux-status {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.flux-status__texto {
+  color: var(--flux-texto-2);
+  font-size: 15px;
+  line-height: 24px;
+}
+
+.flux-status__texto b {
+  color: var(--flux-texto);
+  font-weight: 700;
+}
+
+.flux-status__acoes {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: var(--flux-espaco-1);
+  @include mat.button-overrides(
+    (
+      filled-container-height: 50px,
+      outlined-container-height: 50px,
+    )
+  );
+}
+
+.flux-selo-status {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--flux-raio-card);
+  background: var(--flux-ouro-grad);
+  color: var(--flux-sobre-ouro);
+  box-shadow: 0 16px 32px -14px rgba(var(--flux-ouro-rgb), 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.flux-selo-status--ruim {
+  background: color-mix(in srgb, var(--flux-negativo) 12%, transparent);
+  color: var(--flux-negativo);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--flux-negativo) 35%, transparent);
+}
+
+.flux-lista-dicas {
+  margin: 0;
+  padding: 14px var(--flux-espaco-4);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--flux-borda);
+  border-radius: 14px;
+  background: var(--flux-card);
+  color: var(--flux-texto-2);
+  font-size: 13px;
+  line-height: 19px;
+  list-style: none;
+}
+
+.flux-lista-dicas li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.flux-lista-dicas .flux-icone {
+  margin-top: 2px;
+  color: var(--flux-ouro-texto);
+}
+
+.flux-carregando {
+  width: 44px;
+  height: 44px;
+  border: 3px solid rgba(var(--flux-ouro-rgb), 0.2);
+  border-top-color: var(--flux-ouro);
+  border-radius: 50%;
+  animation: flux-girar 0.9s linear infinite;
+}
+
+@keyframes flux-girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flux-carregando {
+    animation-duration: 2.5s;
+  }
+}
+
+.flux-envio-ok {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-espaco-2);
+  color: var(--flux-positivo);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (max-width: 959.98px) {
+  .flux-formulario-publico {
+    gap: var(--flux-espaco-4);
+  }
+
+  .flux-titulos-publicos {
+    margin-bottom: 0;
+  }
+
+  .flux-titulos-publicos h1,
+  .flux-status h1 {
+    font-size: 24px;
+    line-height: 30px;
+  }
+
+  .flux-titulos-publicos p {
+    font-size: 13px;
+    line-height: 19px;
+  }
+
+  .flux-status {
+    gap: var(--flux-espaco-4);
+  }
+
+  .flux-status__texto {
+    font-size: 14px;
+    line-height: 22px;
+  }
+
+  .flux-selo-status {
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+  }
+}

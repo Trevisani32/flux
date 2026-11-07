@@ -79,11 +79,73 @@
   color: var(--flux-negativo);
 }
 
-.flux-alerta {
-  padding: var(--flux-espaco-3) 14px;
-  border: 1px solid color-mix(in srgb, var(--flux-negativo) 40%, transparent);
-  border-radius: var(--flux-raio-controle);
-  background: color-mix(in srgb, var(--flux-negativo) 10%, transparent);
-  color: var(--flux-negativo);
-  font-weight: 600;
+.flux-dica {
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+// Aceite dos termos: checkbox nativo com o visual do mockup.
+.flux-aceite {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--flux-espaco-3);
+  color: var(--flux-texto-2);
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.flux-aceite > input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--flux-borda-2);
+  border-radius: 6px;
+  background: var(--flux-card);
+  cursor: pointer;
+}
+
+.flux-aceite > input:checked {
+  border-color: transparent;
+  background: var(--flux-ouro-grad);
+}
+
+.flux-aceite > input:checked::after {
+  content: '';
+  width: 10px;
+  height: 5px;
+  border-bottom: 2px solid var(--flux-sobre-ouro);
+  border-left: 2px solid var(--flux-sobre-ouro);
+  transform: translateY(-1px) rotate(-45deg);
+}
+
+.flux-aceite--invalido > input {
+  border-color: var(--flux-negativo);
+}
+
+.flux-aceite a {
+  color: var(--flux-ouro-texto);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.flux-aceite a:hover {
+  text-decoration: underline;
+}
+
+@media (forced-colors: active) {
+  .flux-aceite > input {
+    appearance: auto;
+    -webkit-appearance: auto;
+  }
+
+  .flux-aceite > input:checked::after {
+    content: none;
+  }
 }

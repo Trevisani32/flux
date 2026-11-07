@@ -2,6 +2,7 @@ package com.flux.acesso.interno;
 
 import com.flux.acesso.interno.dto.EntrarRequest;
 import com.flux.acesso.interno.dto.SessaoResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -29,8 +30,9 @@ public class AuthController {
     }
 
     @PostMapping("/entrar")
-    public ResponseEntity<SessaoResponse> entrar(@Valid @RequestBody EntrarRequest request) {
-        ResultadoAutenticacao resultado = autenticacaoService.entrar(request.email(), request.senha());
+    public ResponseEntity<SessaoResponse> entrar(@Valid @RequestBody EntrarRequest request, HttpServletRequest http) {
+        ResultadoAutenticacao resultado = autenticacaoService.entrar(request.email(), request.senha(),
+                http.getRemoteAddr());
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookieRenovacao.criar(resultado.tokenRenovacao()).toString())
                 .body(resultado.sessao());
@@ -56,6 +58,14 @@ public class AuthController {
     @ExceptionHandler(CredenciaisInvalidasException.class)
     public ResponseEntity<ProblemDetail> trataCredenciaisInvalidas(CredenciaisInvalidasException ex) {
         return problema(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos", false);
+    }
+
+    @ExceptionHandler(EmailNaoConfirmadoException.class)
+    public ResponseEntity<ProblemDetail> trataEmailNaoConfirmado(EmailNaoConfirmadoException ex) {
+        ProblemDetail corpo = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Confirme seu e-mail para entrar.");
+        corpo.setTitle("E-mail não confirmado");
+        corpo.setProperty("codigo", "EMAIL_NAO_CONFIRMADO");
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(corpo);
     }
 
     @ExceptionHandler(SessaoInvalidaException.class)

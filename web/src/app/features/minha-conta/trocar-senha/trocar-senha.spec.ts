@@ -106,4 +106,21 @@ describe('TrocarSenha', () => {
     expect(navegar).not.toHaveBeenCalled();
     expect(auth.renovar).not.toHaveBeenCalled();
   });
+
+  it('oferece o link de volta para Minha conta', () => {
+    const link = Array.from(elemento.querySelectorAll('a')).find((ancora) => ancora.textContent?.trim() === 'Minha conta');
+
+    expect(link?.getAttribute('href')).toBe('/minha-conta');
+  });
+
+  it('mostra muitas tentativas quando a API responde 429', () => {
+    preencherFormulario();
+
+    componente.salvar();
+    httpTesting.expectOne('/api/usuarios/me/senha').flush(null, { status: 429, statusText: 'Muitas tentativas' });
+    atualizar();
+
+    expect(elemento.querySelector('[role="alert"]')?.textContent?.trim())
+      .toBe('Muitas tentativas. Tente de novo em alguns minutos.');
+  });
 });

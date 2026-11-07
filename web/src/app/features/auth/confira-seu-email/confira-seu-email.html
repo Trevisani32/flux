@@ -1,0 +1,28 @@
+<app-layout-publico [compacto]="true">
+  <div class="flux-status">
+    <span class="flux-selo-status" aria-hidden="true"><app-icone nome="email" [tamanho]="30" [traco]="1.9" /></span>
+    <h1>Confira seu e-mail</h1>
+    @if (tipo === 'senha') {
+      <p class="flux-status__texto">Se existir uma conta com @if (email) {<b>{{ email }}</b>} @else {o e-mail informado}, você vai receber um link para criar uma senha nova. Ele vale por 30 minutos.</p>
+    } @else {
+      <p class="flux-status__texto">Enviamos um link de confirmação para @if (email) {<b>{{ email }}</b>} @else {o e-mail informado}. Abra o link em até 24 horas para ativar a conta.</p>
+      <ul class="flux-lista-dicas">
+        <li><app-icone nome="relogio" [tamanho]="16" />Pode levar alguns minutos para chegar.</li>
+        <li><app-icone nome="email" [tamanho]="16" />Não achou? Veja as caixas de spam e de promoções.</li>
+        <li><app-icone nome="info" [tamanho]="16" />Se você já tem conta com esse e-mail, chega um aviso com o caminho para entrar.</li>
+      </ul>
+    }
+    <div class="flux-status__acoes">
+      @if (reenviado()) {
+        <p class="flux-envio-ok" role="status"><app-icone nome="check" [tamanho]="16" [traco]="2.4" />Link reenviado.</p>
+      }
+      @if (erro(); as atual) {
+        <app-alerta tipo="erro" [icone]="atual.icone" [titulo]="atual.texto" />
+      }
+      @if (email !== null) {
+        <button mat-stroked-button type="button" [disabled]="enviando()" (click)="reenviar()">Reenviar link</button>
+      }
+      <a class="flux-voltar" routerLink="/entrar"><app-icone nome="esquerda" [tamanho]="16" />Voltar para entrar</a>
+    </div>
+  </div>
+</app-layout-publico>

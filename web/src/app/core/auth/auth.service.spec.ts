@@ -104,4 +104,16 @@ describe('AuthService', () => {
     expect(localStorage.length).toBe(0);
     expect(sessionStorage.length).toBe(0);
   });
+
+  it('atualiza apenas o usuário de uma sessão aberta', () => {
+    auth.entrar('dev@flux.local', 'senha-de-dev-123').subscribe();
+    httpTesting.expectOne('/api/auth/entrar').flush(sessao);
+
+    auth.atualizarUsuario({ id: 1, nome: 'Novo nome', email: 'novo@flux.local' });
+    expect(auth.usuario()).toEqual({ id: 1, nome: 'Novo nome', email: 'novo@flux.local' });
+
+    auth.limparSessao();
+    auth.atualizarUsuario({ id: 1, nome: 'Ignorado', email: 'ignorado@flux.local' });
+    expect(auth.usuario()).toBeNull();
+  });
 });

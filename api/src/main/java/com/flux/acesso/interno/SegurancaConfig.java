@@ -30,7 +30,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
-@EnableConfigurationProperties(PropriedadesAcesso.class)
+@EnableConfigurationProperties({PropriedadesAcesso.class, PropriedadesConta.class})
 public class SegurancaConfig {
 
     @Bean
@@ -45,8 +45,11 @@ public class SegurancaConfig {
                 .requestCache(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(autorizacao -> autorizacao
-                        .requestMatchers(HttpMethod.POST, "/api/auth/entrar", "/api/auth/renovar", "/api/auth/sair")
+                        .requestMatchers(HttpMethod.POST, "/api/auth/entrar", "/api/auth/renovar", "/api/auth/sair",
+                                "/api/auth/cadastrar", "/api/auth/confirmar-email", "/api/auth/reenviar-confirmacao",
+                                "/api/auth/esqueci-a-senha", "/api/auth/redefinir-senha")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/publico/configuracao").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()
                         .requestMatchers("/error").permitAll()

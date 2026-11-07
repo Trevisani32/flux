@@ -179,4 +179,12 @@
     height: 420px;
     background: radial-gradient(closest-side, rgba(var(--flux-ouro-rgb), 0.26), transparent);
   }
+
+  .painel--compacto {
+    padding: 22px 22px 54px;
+  }
+
+  .painel--compacto .painel__textos {
+    display: none;
+  }
 }

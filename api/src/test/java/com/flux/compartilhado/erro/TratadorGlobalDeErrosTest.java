@@ -3,6 +3,8 @@ package com.flux.compartilhado.erro;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.time.Duration;
+import com.flux.compartilhado.limite.LimiteExcedidoException;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -95,6 +97,16 @@ class TratadorGlobalDeErrosTest {
                 .doesNotContain("erro de teste", "IllegalStateException");
     }
 
+    @Test
+    void trataLimiteComRetryAfter() {
+        org.springframework.test.web.servlet.assertj.MvcTestResult resultado = mvc.get().uri("/teste/limite").exchange();
+
+        assertThat(resultado).hasStatus(429).containsHeader("Retry-After")
+                .bodyJson().extractingPath("title").isEqualTo("Muitas tentativas");
+        assertThat(resultado.getResponse().getHeader("Retry-After")).isEqualTo("2");
+        assertThat(resultado).bodyJson().extractingPath("detail").isEqualTo("Muitas tentativas. Tente de novo em alguns minutos.");
+    }
+
     @RestController
     @RequestMapping("/teste")
     public static class ControladorDeTeste {
@@ -122,6 +134,11 @@ class TratadorGlobalDeErrosTest {
         @GetMapping("/erro")
         public void erro() {
             throw new IllegalStateException("erro de teste");
+        }
+
+        @GetMapping("/limite")
+        public void limite() {
+            throw new LimiteExcedidoException(Duration.ofMillis(1500));
         }
     }
 

@@ -33,6 +33,7 @@ class UsuarioInicialSeederIT extends IntegracaoBase {
         Usuario repetido = usuarioRepository.findByEmail(email.strip()).orElseThrow();
         assertThat(repetido.getNome()).isEqualTo("Seed");
         assertThat(repetido.getSenhaHash()).isEqualTo(hash);
+        assertThat(criado.getEmailConfirmadoEm()).isNotNull();
     }
 
     @Test

@@ -1,0 +1,116 @@
+// Texto dos Termos de uso e da Política de privacidade. O conteúdo é projetado no
+// app-layout-documento, por isso as regras são globais.
+.flux-leitura {
+  min-width: 0;
+}
+
+.flux-leitura__sobre {
+  color: var(--flux-ouro-texto);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.flux-leitura h1 {
+  margin-top: var(--flux-espaco-2);
+  font-size: 40px;
+  line-height: 46px;
+  font-weight: 800;
+  letter-spacing: -1.2px;
+}
+
+.flux-leitura__meta {
+  margin-top: 10px;
+  color: var(--flux-texto-3);
+  font-size: 13px;
+}
+
+.flux-leitura__resumo {
+  margin: var(--flux-espaco-7) 0 var(--flux-espaco-2);
+  padding: 18px var(--flux-espaco-5);
+  border: 1px solid rgba(var(--flux-ouro-rgb), 0.3);
+  border-radius: 16px;
+  background: rgba(var(--flux-ouro-rgb), 0.06);
+}
+
+.flux-leitura__resumo strong {
+  display: block;
+  margin-bottom: var(--flux-espaco-2);
+  color: var(--flux-ouro-texto);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
+.flux-leitura__resumo ul {
+  margin: 0;
+}
+
+.flux-leitura h2 {
+  margin: var(--flux-espaco-9) 0 10px;
+  font-size: 19px;
+  line-height: 26px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  scroll-margin-top: var(--flux-espaco-6);
+}
+
+.flux-leitura p,
+.flux-leitura li {
+  color: var(--flux-texto-2);
+  font-size: 15px;
+  line-height: 25px;
+}
+
+.flux-leitura p {
+  margin: 0 0 var(--flux-espaco-3);
+}
+
+.flux-leitura ul {
+  margin: 0 0 var(--flux-espaco-3);
+  padding-left: var(--flux-espaco-5);
+}
+
+.flux-leitura li + li {
+  margin-top: var(--flux-espaco-1);
+}
+
+.flux-leitura b,
+.flux-leitura strong {
+  color: var(--flux-texto);
+}
+
+.flux-leitura a {
+  color: var(--flux-ouro-texto);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.flux-leitura a:hover {
+  text-decoration: underline;
+}
+
+.flux-leitura__rodape {
+  margin-top: 44px;
+  padding-top: var(--flux-espaco-5);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--flux-espaco-3);
+  border-top: 1px solid var(--flux-borda);
+  color: var(--flux-texto-3);
+  font-size: 13px;
+}
+
+@media (max-width: 959.98px) {
+  .flux-leitura h1 {
+    font-size: 30px;
+    line-height: 36px;
+    letter-spacing: -0.9px;
+  }
+
+  .flux-leitura p,
+  .flux-leitura li {
+    line-height: 24px;
+  }
+}

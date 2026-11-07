@@ -1,0 +1,103 @@
+<app-cabecalho-pagina titulo="Minha conta" subtitulo="Seus dados de acesso e o controle da sua conta." />
+<div class="flux-conteudo">
+  @if (conta(); as conta) {
+    <div class="minha-conta">
+      <div class="minha-conta__coluna">
+        <section class="flux-card" aria-labelledby="minha-conta-perfil">
+          <div class="minha-conta__cabecalho">
+            <h2 id="minha-conta-perfil" class="minha-conta__titulo">Perfil</h2>
+            <p class="minha-conta__nota">O nome aparece no menu e nos e-mails.</p>
+          </div>
+          <form class="minha-conta__formulario" [formGroup]="formularioNome" (ngSubmit)="salvarNome()">
+            <div class="flux-campo">
+              <label for="minha-conta-nome">Nome</label>
+              <div class="flux-entrada" [class.flux-entrada--invalida]="erroNome() !== null">
+                <input id="minha-conta-nome" type="text" formControlName="nome" autocomplete="name" [attr.aria-invalid]="erroNome() !== null ? 'true' : null" [attr.aria-describedby]="erroNome() !== null ? 'minha-conta-nome-erro' : null" />
+              </div>
+              @if (erroNome(); as mensagem) {
+                <p id="minha-conta-nome-erro" class="flux-campo__erro">{{ mensagem }}</p>
+              }
+            </div>
+            @if (erroNomeEnvio(); as mensagem) {
+              <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem" />
+            }
+            <button mat-flat-button type="submit" [disabled]="salvandoNome()">Salvar nome</button>
+          </form>
+        </section>
+
+        <section class="flux-card" aria-labelledby="minha-conta-email">
+          <div class="minha-conta__cabecalho">
+            <h2 id="minha-conta-email" class="minha-conta__titulo">E-mail</h2>
+            <p class="minha-conta__nota">Usado para entrar e para receber os avisos da conta.</p>
+          </div>
+          <div class="minha-conta__email-atual">
+            <span class="minha-conta__endereco">{{ conta.email }}</span>
+            <span class="flux-pilula flux-pilula--positiva"><app-icone nome="check" [tamanho]="12" [traco]="2.4" />Confirmado</span>
+          </div>
+          @if (conta.trocaDeEmailPendente; as pendente) {
+            <app-alerta tipo="info" icone="relogio" [titulo]="'Troca pendente para ' + pendente.email">
+              <p class="flux-alerta__texto">Enviamos um link para o novo endereço, válido até <b>{{ dataHoraCurta(pendente.expiraEm) }}</b>. Até a confirmação, você continua entrando com {{ conta.email }}.</p>
+            </app-alerta>
+          }
+          <form class="minha-conta__formulario" [formGroup]="formularioEmail" (ngSubmit)="pedirTrocaDeEmail()">
+            <p class="minha-conta__subtitulo">Trocar e-mail</p>
+            <div class="flux-campo">
+              <label for="minha-conta-novo-email">Novo e-mail</label>
+              <div class="flux-entrada" [class.flux-entrada--invalida]="erroNovoEmail() !== null">
+                <input id="minha-conta-novo-email" type="email" formControlName="novoEmail" autocomplete="email" [attr.aria-invalid]="erroNovoEmail() !== null ? 'true' : null" [attr.aria-describedby]="erroNovoEmail() !== null ? 'minha-conta-novo-email-erro' : null" />
+              </div>
+              @if (erroNovoEmail(); as mensagem) {
+                <p id="minha-conta-novo-email-erro" class="flux-campo__erro">{{ mensagem }}</p>
+              }
+            </div>
+            <div class="flux-campo">
+              <label for="minha-conta-senha-atual">Senha atual</label>
+              <div class="flux-entrada" [class.flux-entrada--invalida]="erroSenhaAtual() !== null">
+                <input id="minha-conta-senha-atual" [type]="senhaVisivel() ? 'text' : 'password'" formControlName="senhaAtual" autocomplete="current-password" [attr.aria-invalid]="erroSenhaAtual() !== null ? 'true' : null" [attr.aria-describedby]="erroSenhaAtual() !== null ? 'minha-conta-senha-atual-erro' : null" />
+                <button type="button" class="flux-botao-olho" aria-label="Mostrar senha" aria-controls="minha-conta-senha-atual" [attr.aria-pressed]="senhaVisivel()" (click)="alternarSenha()"><app-icone nome="olho" /></button>
+              </div>
+              @if (erroSenhaAtual(); as mensagem) {
+                <p id="minha-conta-senha-atual-erro" class="flux-campo__erro">{{ mensagem }}</p>
+              }
+            </div>
+            @if (erroEmailEnvio(); as atual) {
+              <app-alerta tipo="erro" [icone]="atual.icone" [titulo]="atual.texto" />
+            }
+            <button mat-flat-button type="submit" [disabled]="enviandoEmail()">Enviar link de confirmação</button>
+          </form>
+        </section>
+      </div>
+
+      <div class="minha-conta__coluna">
+        <section class="flux-card" aria-labelledby="minha-conta-senha">
+          <h2 id="minha-conta-senha" class="minha-conta__titulo">Senha</h2>
+          <p class="minha-conta__texto">Trocar a senha encerra todas as sessões abertas, inclusive esta.</p>
+          <a mat-stroked-button class="minha-conta__acao" routerLink="/minha-conta/senha"><app-icone nome="cadeado" [tamanho]="18" [traco]="2.2" />Trocar senha</a>
+        </section>
+
+        <section class="flux-card" aria-labelledby="minha-conta-documentos">
+          <div class="minha-conta__cabecalho">
+            <h2 id="minha-conta-documentos" class="minha-conta__titulo">Termos e privacidade</h2>
+            @if (conta.termos; as termos) {
+              <p class="minha-conta__nota">Você aceitou a versão de {{ dataDaVersao(termos.versao) }}.</p>
+            }
+          </div>
+          <div class="minha-conta__links">
+            <a href="/termos-de-uso" target="_blank" rel="noopener"><app-icone nome="documento" />Termos de uso<span class="flux-visualmente-oculto"> (abre em nova aba)</span><app-icone class="minha-conta__externo" nome="externo" [tamanho]="16" /></a>
+            <a href="/privacidade" target="_blank" rel="noopener"><app-icone nome="escudo" />Política de privacidade<span class="flux-visualmente-oculto"> (abre em nova aba)</span><app-icone class="minha-conta__externo" nome="externo" [tamanho]="16" /></a>
+          </div>
+        </section>
+
+        <section class="flux-card minha-conta__perigo" aria-labelledby="minha-conta-excluir">
+          <h2 id="minha-conta-excluir" class="minha-conta__titulo"><app-icone nome="lixeira" [tamanho]="18" />Excluir minha conta</h2>
+          <p class="minha-conta__texto">Apaga de forma definitiva a conta e todos os seus dados: contas, lançamentos, cartões, regras e orçamentos. <b>Não dá para desfazer.</b></p>
+          <button mat-stroked-button class="flux-botao-perigo minha-conta__acao" type="button" (click)="abrirExclusao()">Excluir minha conta</button>
+        </section>
+      </div>
+    </div>
+  } @else if (falhaAoCarregar()) {
+    <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível carregar a sua conta.">
+      <div class="flux-alerta__acoes"><button mat-stroked-button type="button" (click)="carregar()">Tentar de novo</button></div>
+    </app-alerta>
+  }
+</div>

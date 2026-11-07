@@ -59,6 +59,15 @@ describe('authInterceptor', () => {
     autenticacao.flush(sessaoInicial);
   });
 
+  it('não põe Bearer na configuração pública', () => {
+    prepararSessao();
+
+    TestBed.inject(HttpClient).get('/api/publico/configuracao').subscribe();
+    const publica = httpTesting.expectOne('/api/publico/configuracao');
+    expect(publica.request.headers.has('Authorization')).toBe(false);
+    publica.flush({});
+  });
+
   it('renova a sessão e repete a requisição com o token novo após 401', () => {
     prepararSessao();
 

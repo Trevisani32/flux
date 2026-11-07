@@ -1,10 +1,13 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { authInterceptor } from '../../../core/auth/auth.interceptor';
+import { ConfiguracaoService } from '../../../core/configuracao/configuracao.service';
+import { EstadoDaNavegacao } from '../../../core/navegacao/estado-da-navegacao';
 import { Entrar } from './entrar';
 
 describe('Entrar', () => {
@@ -20,7 +23,7 @@ describe('Entrar', () => {
 
   afterEach(() => httpTesting.verify());
 
-  function criarComponente(retorno?: string): {
+  function criarComponente(retorno?: string, opcoes: { aviso?: string; cadastroPublico?: boolean } = {}): {
     componente: Entrar;
     elemento: HTMLElement;
     navegar: ReturnType<typeof vi.spyOn>;
@@ -40,6 +43,8 @@ describe('Entrar', () => {
             },
           },
         },
+        { provide: EstadoDaNavegacao, useValue: { texto: (chave: string) => (chave === 'aviso' ? opcoes.aviso ?? null : null) } },
+        { provide: ConfiguracaoService, useValue: { cadastroPublico: signal(opcoes.cadastroPublico ?? false) } },
       ],
     });
     httpTesting = TestBed.inject(HttpTestingController);
@@ -156,5 +161,48 @@ describe('Entrar', () => {
     botao?.click();
     atualizar();
     expect(campo?.type).toBe('password');
+  });
+
+  it('com 403 de e-mail não confirmado oferece reenviar e mostra o sucesso', () => {
+    const { componente, elemento, atualizar } = criarComponente();
+    componente.formulario.setValue({ email: 'Dev@Flux.Local', senha });
+    componente.entrar();
+    httpTesting.expectOne('/api/auth/entrar').flush(
+      { detail: 'Confirme seu e-mail para entrar.', codigo: 'EMAIL_NAO_CONFIRMADO' },
+      { status: 403, statusText: 'Proibido' },
+    );
+    atualizar();
+    const alerta = elemento.querySelector('[role="alert"]');
+    expect(alerta?.querySelector('strong')?.textContent).toBe('Confirme seu e-mail para entrar.');
+    expect(alerta?.querySelector('b')?.textContent).toBe('dev@flux.local');
+    alerta?.querySelector<HTMLButtonElement>('button')?.click();
+    const reenvio = httpTesting.expectOne({ method: 'POST', url: '/api/auth/reenviar-confirmacao' });
+    expect(reenvio.request.body).toEqual({ email: 'dev@flux.local' });
+    reenvio.flush(null, { status: 202, statusText: 'Aceito' });
+    atualizar();
+    expect(elemento.querySelector('[role="status"] strong')?.textContent).toBe('Link reenviado.');
+  });
+
+  it('mostra muitas tentativas com 429', () => {
+    const { componente, elemento, atualizar } = criarComponente();
+    preencherFormulario(componente);
+    componente.entrar();
+    httpTesting.expectOne('/api/auth/entrar').flush(null, { status: 429, statusText: 'Muitas tentativas' });
+    atualizar();
+    expect(elemento.querySelector('[role="alert"]')?.textContent?.trim()).toBe('Muitas tentativas. Tente de novo em alguns minutos.');
+  });
+
+  it('mostra o aviso de conta excluída vindo da navegação', () => {
+    const { elemento } = criarComponente(undefined, { aviso: 'conta-excluida' });
+    expect(elemento.querySelector('[role="status"] strong')?.textContent).toBe('Sua conta foi excluída.');
+  });
+
+  it('mostra Criar conta só com o cadastro público ligado e sempre Esqueci a senha', () => {
+    const desligado = criarComponente();
+    expect(desligado.elemento.querySelector('a[href="/criar-conta"]')).toBeNull();
+    expect(desligado.elemento.querySelector('a[href="/esqueci-a-senha"]')?.textContent).toBe('Esqueci a senha');
+    TestBed.resetTestingModule();
+    const ligado = criarComponente(undefined, { cadastroPublico: true });
+    expect(ligado.elemento.querySelector('a[href="/criar-conta"]')?.textContent).toBe('Criar conta');
   });
 });

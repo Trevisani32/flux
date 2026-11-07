@@ -1,0 +1,26 @@
+@use '@angular/material' as mat;
+
+// Diálogo de exclusão da conta (panelClass "flux-dialogo-perigo"). O painel fica num
+// overlay fora do app, por isso as regras são globais. A borda usa uma classe interna
+// do Material (.mat-mdc-dialog-surface), como o _menu.scss.
+.flux-dialogo-perigo {
+  @include mat.dialog-overrides(
+    (
+      container-color: var(--flux-escuro-menu),
+      container-shape: var(--flux-raio-destaque),
+      container-max-width: 460px,
+      container-small-max-width: calc(100vw - 32px),
+      container-elevation-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.9),
+      subhead-color: var(--flux-texto),
+      supporting-text-color: var(--flux-texto-2),
+      headline-padding: 0,
+      content-padding: 0,
+      with-actions-content-padding: 0,
+      actions-padding: 0,
+    )
+  );
+}
+
+.flux-dialogo-perigo .mat-mdc-dialog-surface {
+  border: 1px solid var(--flux-borda-2);
+}

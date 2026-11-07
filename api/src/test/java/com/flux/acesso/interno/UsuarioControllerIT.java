@@ -23,10 +23,14 @@ class UsuarioControllerIT extends IntegracaoBase {
         assertThat(respostaPrimeiro).hasStatusOk().bodyJson().extractingPath("id").isEqualTo(primeiro.id().intValue());
         assertThat(respostaPrimeiro).bodyJson().extractingPath("nome").isEqualTo("Usuário de Teste");
         assertThat(respostaPrimeiro).bodyJson().extractingPath("email").isEqualTo(primeiro.email());
+        assertThat(respostaPrimeiro).bodyJson().extractingPath("trocaDeEmailPendente").isNull();
+        assertThat(respostaPrimeiro).bodyJson().extractingPath("termos").isNull();
         MvcTestResult respostaSegundo = me(segundo);
         assertThat(respostaSegundo).hasStatusOk().bodyJson().extractingPath("id").isEqualTo(segundo.id().intValue());
         assertThat(respostaSegundo).bodyJson().extractingPath("nome").isEqualTo("Usuário de Teste");
         assertThat(respostaSegundo).bodyJson().extractingPath("email").isEqualTo(segundo.email());
+        assertThat(respostaSegundo).bodyJson().extractingPath("trocaDeEmailPendente").isNull();
+        assertThat(respostaSegundo).bodyJson().extractingPath("termos").isNull();
     }
 
     @Test

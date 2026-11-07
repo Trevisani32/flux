@@ -1,5 +1,6 @@
 package com.flux.suporte;
 
+import com.flux.compartilhado.limite.LimiteDeTentativasEmMemoria;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,8 +24,16 @@ public abstract class IntegracaoBase {
     @Autowired
     protected UsuariosDeTeste usuariosDeTeste;
 
+    @Autowired
+    protected CaixaDeEntrada caixaDeEntrada;
+
+    @Autowired
+    protected LimiteDeTentativasEmMemoria limiteDeTentativas;
+
     @AfterEach
-    void reiniciaRelogio() {
+    void reiniciaRelogioEContadores() {
+        caixaDeEntrada.aguardarEnvios();
         relogioDeTeste.reiniciar();
+        limiteDeTentativas.limpar();
     }
 }

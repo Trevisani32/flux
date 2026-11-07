@@ -15,5 +15,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+  # Captura os e-mails de dev: SMTP na 1026 e caixa de entrada em http://localhost:8026
+  # (fora das portas padrão 1025/8025, para não colidir com o Mailpit de outro projeto).
+  mailpit:
+    image: axllent/mailpit:v1.33.0
+    ports:
+      - "1026:1025"
+      - "8026:8025"
 volumes:
   dados_dev:

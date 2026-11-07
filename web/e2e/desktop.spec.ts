@@ -8,7 +8,7 @@ test('o painel de marca ocupa toda a altura da tela de entrada', async ({ page }
   const painel = page.locator('app-painel-marca');
   await expect(painel).toBeVisible();
 
-  const alturas = await page.locator('main.entrar').evaluate((entrar) => ({
+  const alturas = await page.locator('main.publico').evaluate((entrar) => ({
     entrar: entrar.getBoundingClientRect().height,
     painel: entrar.querySelector('app-painel-marca')?.getBoundingClientRect().height,
   }));

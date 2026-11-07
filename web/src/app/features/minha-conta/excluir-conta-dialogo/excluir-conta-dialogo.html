@@ -1,0 +1,36 @@
+<form class="excluir" [formGroup]="formulario" (ngSubmit)="excluir()">
+  <div class="excluir__cabecalho">
+    <span class="excluir__selo" aria-hidden="true"><app-icone nome="lixeira" /></span>
+    <h2 mat-dialog-title id="excluir-conta-titulo">Excluir sua conta?</h2>
+  </div>
+  <div class="excluir__texto excluir__texto--desktop">
+    <p>Isso apaga de forma definitiva:</p>
+    <ul>
+      <li>o acesso com <b>{{ dados.email }}</b>;</li>
+      <li>contas, lançamentos, cartões, categorias, regras e orçamentos;</li>
+      <li>o histórico de importações.</li>
+    </ul>
+    <p><b>Não dá para desfazer.</b> Enviamos a confirmação para o seu e-mail.</p>
+  </div>
+  <div class="excluir__texto excluir__texto--celular">
+    <p>Isso apaga de forma definitiva o acesso com <b>{{ dados.email }}</b> e todos os seus dados: contas, lançamentos, cartões, categorias, regras, orçamentos e importações.</p>
+    <p><b>Não dá para desfazer.</b></p>
+  </div>
+  <div class="flux-campo">
+    <label for="excluir-conta-senha">Senha atual</label>
+    <div class="flux-entrada" [class.flux-entrada--invalida]="erroSenha() !== null">
+      <input id="excluir-conta-senha" [type]="senhaVisivel() ? 'text' : 'password'" formControlName="senha" autocomplete="current-password" [attr.aria-invalid]="erroSenha() !== null ? 'true' : null" [attr.aria-describedby]="erroSenha() !== null ? 'excluir-conta-senha-erro' : null" />
+      <button type="button" class="flux-botao-olho" aria-label="Mostrar senha" aria-controls="excluir-conta-senha" [attr.aria-pressed]="senhaVisivel()" (click)="alternarSenha()"><app-icone nome="olho" /></button>
+    </div>
+    @if (erroSenha(); as mensagem) {
+      <p id="excluir-conta-senha-erro" class="flux-campo__erro">{{ mensagem }}</p>
+    }
+  </div>
+  @if (erro(); as atual) {
+    <app-alerta tipo="erro" [icone]="atual.icone" [titulo]="atual.texto" />
+  }
+  <div class="excluir__acoes">
+    <button mat-stroked-button type="button" mat-dialog-close>Cancelar</button>
+    <button mat-flat-button class="flux-botao-perigo-cheio" type="submit" [disabled]="senha.invalid || enviando()">Excluir definitivamente</button>
+  </div>
+</form>

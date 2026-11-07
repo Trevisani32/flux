@@ -55,3 +55,23 @@ test('nenhuma tela tem rolagem horizontal a 375 px', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Trocar senha' })).toBeVisible();
   expect(await semRolagemHorizontal(page)).toBe(true);
 });
+
+test('telas públicas e Minha conta sem rolagem horizontal a 375 px', async ({ page }) => {
+  for (const [rota, titulo] of [
+    ['/criar-conta', 'Criar conta'],
+    ['/esqueci-a-senha', 'Esqueci a senha'],
+    ['/confira-seu-email', 'Confira seu e-mail'],
+    ['/redefinir-senha', 'Este link expirou ou já foi usado'],
+    ['/termos-de-uso', 'Termos de uso'],
+    ['/privacidade', 'Política de privacidade'],
+  ]) {
+    await page.goto(rota);
+    await expect(page.getByRole('heading', { name: titulo, level: 1 })).toBeVisible();
+    expect(await semRolagemHorizontal(page), rota).toBe(true);
+  }
+  await entrarNoInicio(page);
+  await page.goto('/minha-conta');
+  await expect(page.getByRole('heading', { name: 'Minha conta', level: 1 })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Excluir minha conta' })).toBeVisible();
+  expect(await semRolagemHorizontal(page)).toBe(true);
+});

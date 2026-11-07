@@ -1,14 +1,7 @@
 package com.flux.acesso.interno;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.HexFormat;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,7 +24,7 @@ public class AutenticacaoService {
     private final UsuarioService usuarioService;
     private final Clock clock;
     private final PropriedadesAcesso propriedades;
-    private final SecureRandom secureRandom = new SecureRandom();
+    private final LimitesDaConta limites;
     private final String hashFicticio;
 
     public AutenticacaoService(UsuarioRepository usuarioRepository,
@@ -39,7 +32,7 @@ public class AutenticacaoService {
                                PasswordEncoder passwordEncoder,
                                TokenAcessoService tokenAcessoService,
                                UsuarioService usuarioService, Clock clock,
-                               PropriedadesAcesso propriedades) {
+                               PropriedadesAcesso propriedades, LimitesDaConta limites) {
         this.usuarioRepository = usuarioRepository;
         this.tokenRenovacaoRepository = tokenRenovacaoRepository;
         this.passwordEncoder = passwordEncoder;
@@ -47,18 +40,26 @@ public class AutenticacaoService {
         this.usuarioService = usuarioService;
         this.clock = clock;
         this.propriedades = propriedades;
+        this.limites = limites;
         this.hashFicticio = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
     @Transactional
-    public ResultadoAutenticacao entrar(String email, String senha) {
-        Optional<Usuario> usuario = usuarioRepository.findByEmail(UsuarioService.normalizarEmail(email));
+    public ResultadoAutenticacao entrar(String email, String senha, String ip) {
+        String emailNormalizado = UsuarioService.normalizarEmail(email);
+        limites.entrar(ip, emailNormalizado);
+        Optional<Usuario> usuario = usuarioRepository.findByEmail(emailNormalizado);
         if (usuario.isEmpty()) {
             passwordEncoder.matches(senha, hashFicticio);
             throw new CredenciaisInvalidasException();
         }
         if (!passwordEncoder.matches(senha, usuario.get().getSenhaHash())) {
             throw new CredenciaisInvalidasException();
+        }
+        // Senha certa: a tentativa não conta para o limite.
+        limites.devolverEntrar(ip, emailNormalizado);
+        if (!usuario.get().emailConfirmado()) {
+            throw new EmailNaoConfirmadoException();
         }
         return criarSessao(usuario.get());
     }
@@ -116,16 +117,10 @@ public class AutenticacaoService {
     }
 
     private String novoToken() {
-        byte[] bytes = new byte[32];
-        secureRandom.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        return Tokens.novoValor();
     }
 
     static String hash(String valor) {
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(valor.getBytes(UTF_8)));
-        } catch (NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("SHA-256 indisponível", ex);
-        }
+        return Tokens.hash(valor);
     }
 }

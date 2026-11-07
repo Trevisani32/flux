@@ -49,6 +49,7 @@ jobs:
       E2E_EMAIL: dono@flux.local
       E2E_SENHA: troque-esta-senha
       E2E_NOME: Dono
+      E2E_MAILPIT_URL: http://localhost:8027
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -61,10 +62,10 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium
-      - name: Subir banco, API e web pelo compose de produção
+      - name: Subir banco, API, web e Mailpit pelo compose de produção com o arquivo de e2e
         run: |
           cp .env.example .env
-          docker compose up -d --build --wait
+          docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build --wait
       - name: Esperar a API responder pelo nginx
         run: |
           for i in $(seq 1 90); do
@@ -82,7 +83,7 @@ jobs:
         run: npx playwright test
       - name: Guardar os logs do compose
         if: failure()
-        run: docker compose logs --no-color > compose.log
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml logs --no-color > compose.log
       - name: Publicar relatório e traces
         if: failure()
         uses: actions/upload-artifact@v7
@@ -96,4 +97,4 @@ jobs:
           retention-days: 7
       - name: Derrubar o compose
         if: always()
-        run: docker compose down -v
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml down -v

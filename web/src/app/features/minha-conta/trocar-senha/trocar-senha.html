@@ -1,5 +1,6 @@
 <app-cabecalho-pagina titulo="Trocar senha" subtitulo="Ao trocar a senha, todas as sessões abertas são encerradas." />
 <div class="flux-conteudo">
+  <a class="flux-voltar" routerLink="/minha-conta"><app-icone nome="esquerda" [tamanho]="16" />Minha conta</a>
   <app-card class="trocar-senha">
     <form class="trocar-senha__formulario" [formGroup]="formulario" (ngSubmit)="salvar()">
       <div class="flux-campo">
@@ -30,7 +31,7 @@
         }
       </div>
       @if (erro(); as mensagem) {
-        <p role="alert" class="flux-alerta">{{ mensagem }}</p>
+        <app-alerta tipo="erro" [icone]="mensagem === muitasTentativas ? 'relogio' : 'alerta'" [titulo]="mensagem" />
       }
       <button mat-flat-button type="submit">Salvar</button>
     </form>
