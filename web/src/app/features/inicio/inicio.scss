@@ -1,0 +1,26 @@
+.em-breve {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--flux-espaco-4);
+}
+
+.em-breve app-card {
+  gap: 10px;
+}
+
+.em-breve__topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.em-breve__titulo {
+  font: var(--flux-fonte-titulo-card);
+}
+
+.em-breve__texto {
+  color: var(--flux-texto-2);
+  font-size: 13px;
+  line-height: 20px;
+}

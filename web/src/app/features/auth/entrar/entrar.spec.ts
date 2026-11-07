@@ -77,7 +77,7 @@ describe('Entrar', () => {
     componente.entrar();
     atualizar();
 
-    expect(elemento.querySelector<HTMLButtonElement>('button')?.disabled).toBe(true);
+    expect(elemento.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
     httpTesting.expectOne('/api/auth/entrar').flush(sessao);
   });
 
@@ -121,5 +121,40 @@ describe('Entrar', () => {
     httpTesting.expectOne('/api/auth/entrar').flush(sessao);
 
     expect(navegar).toHaveBeenCalledWith('/');
+  });
+
+  it('liga os rótulos aos campos nativos', () => {
+    const { elemento } = criarComponente();
+    expect(elemento.querySelector('label[for="entrar-email"]')?.textContent).toBe('E-mail');
+    expect(elemento.querySelector('label[for="entrar-senha"]')?.textContent).toBe('Senha');
+    expect(elemento.querySelector('#entrar-email')).not.toBeNull();
+    expect(elemento.querySelector('#entrar-senha')).not.toBeNull();
+  });
+
+  it('mostra erros nativos ao enviar formulário vazio', () => {
+    const { componente, elemento, atualizar } = criarComponente();
+    componente.entrar();
+    atualizar();
+    const emailInput = elemento.querySelector('#entrar-email');
+    expect(emailInput?.getAttribute('aria-invalid')).toBe('true');
+    expect(emailInput?.getAttribute('aria-describedby')).toBe('entrar-email-erro');
+    expect(elemento.querySelector('#entrar-email-erro')?.textContent).toBe('Informe o e-mail.');
+    expect(elemento.querySelector('#entrar-senha-erro')?.textContent).toBe('Informe a senha.');
+    httpTesting.expectNone('/api/auth/entrar');
+  });
+
+  it('alterna a visibilidade da senha sem mudar o rótulo', () => {
+    const { elemento, atualizar } = criarComponente();
+    const botao = elemento.querySelector<HTMLButtonElement>('button[aria-label="Mostrar senha"]');
+    const campo = elemento.querySelector<HTMLInputElement>('#entrar-senha');
+    expect(botao?.getAttribute('aria-pressed')).toBe('false');
+    expect(campo?.type).toBe('password');
+    botao?.click();
+    atualizar();
+    expect(botao?.getAttribute('aria-pressed')).toBe('true');
+    expect(campo?.type).toBe('text');
+    botao?.click();
+    atualizar();
+    expect(campo?.type).toBe('password');
   });
 });

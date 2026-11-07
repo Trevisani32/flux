@@ -1,2 +1,16 @@
-<h1>Olá, {{ nome() }}</h1>
-<p>Em breve: contas e lançamentos.</p>
+<app-cabecalho-pagina [titulo]="titulo()" [subtitulo]="hoje" />
+<div class="flux-conteudo">
+  <app-estado-vazio icone="carteira" titulo="Tudo pronto para começar" texto="A base do Flux está no ar. As próximas versões trazem contas, lançamentos, importação de extratos e cartões." />
+  <section class="em-breve" aria-label="Em breve">
+    @for (item of emBreve; track item.titulo) {
+      <app-card>
+        <div class="em-breve__topo">
+          <span class="flux-selo-icone"><app-icone [nome]="item.icone" /></span>
+          <span class="flux-pilula">Em breve</span>
+        </div>
+        <h3 class="em-breve__titulo">{{ item.titulo }}</h3>
+        <p class="em-breve__texto">{{ item.texto }}</p>
+      </app-card>
+    }
+  </section>
+</div>

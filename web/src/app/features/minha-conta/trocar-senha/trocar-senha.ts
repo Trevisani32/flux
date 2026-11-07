@@ -2,12 +2,12 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
+import { Card } from '../../../shared/card/card';
+import { CabecalhoPagina } from '../../../shared/cabecalho-pagina/cabecalho-pagina';
 
 function senhasIguais(controle: AbstractControl): ValidationErrors | null {
   const { novaSenha, confirmarNovaSenha } = controle.value as { novaSenha?: string; confirmarNovaSenha?: string };
@@ -28,7 +28,7 @@ function senhasIguais(controle: AbstractControl): ValidationErrors | null {
 
 @Component({
   selector: 'app-trocar-senha',
-  imports: [MatButtonModule, MatFormFieldModule, MatInputModule, ReactiveFormsModule],
+  imports: [MatButtonModule, ReactiveFormsModule, CabecalhoPagina, Card],
   templateUrl: './trocar-senha.html',
   styleUrl: './trocar-senha.scss',
 })
@@ -65,5 +65,21 @@ export class TrocarSenha {
           : 'Não foi possível trocar a senha. Tente novamente.');
       },
     });
+  }
+
+  erroSenhaAtual(): string | null {
+    const controle = this.formulario.controls.senhaAtual;
+    return controle.touched && controle.hasError('required') ? 'Informe a senha atual.' : null;
+  }
+
+  erroNovaSenha(): string | null {
+    const controle = this.formulario.controls.novaSenha;
+    return controle.touched && controle.invalid ? 'A nova senha precisa ter entre 10 e 72 caracteres.' : null;
+  }
+
+  erroConfirmacao(): string | null {
+    return this.formulario.controls.confirmarNovaSenha.touched && this.formulario.hasError('senhasDiferentes')
+      ? 'As senhas não conferem.'
+      : null;
   }
 }

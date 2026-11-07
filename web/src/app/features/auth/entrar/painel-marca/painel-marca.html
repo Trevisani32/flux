@@ -1,0 +1,26 @@
+<section class="painel" aria-label="Sobre o Flux">
+  <span class="painel__brilho" aria-hidden="true"></span>
+  <app-marca class="painel__marca" />
+  <div>
+    <p class="painel__slogan">Seu dinheiro,<br />em <span class="flux-texto-ouro">fluxo</span>.</p>
+    <p class="painel__apoio">Contas, cartões, orçamento e importação de extratos num só lugar, para digitar o mínimo possível.</p>
+  </div>
+  <div class="painel__vitrine" aria-hidden="true">
+    <div class="flux-cartao-destaque painel__cartao">
+      <svg class="flux-cartao-destaque__ondas" viewBox="0 0 300 180" preserveAspectRatio="none"><path d="M0 60 C 60 10, 120 110, 180 60 S 260 10, 300 50"></path><path d="M0 95 C 60 45, 120 145, 180 95 S 260 45, 300 85"></path><path d="M0 130 C 60 80, 120 180, 180 130 S 260 80, 300 120"></path></svg>
+      <div class="flux-cartao-destaque__topo"><span class="flux-cartao-destaque__rotulo">Saldo total</span><span class="flux-cartao-destaque__chip"></span></div>
+      <span class="flux-cartao-destaque__valor flux-num">R$ 12.847<small>,90</small></span>
+      <div class="flux-cartao-destaque__rodape"><span>3 contas</span><span class="flux-cartao-destaque__pilula">+R$ 1.380,00 no mês</span></div>
+    </div>
+    <div class="painel__vidro">
+      <span class="painel__vidro-rotulo">Resultado mensal</span>
+      <div class="painel__barras">@for (altura of barras; track $index) {<i [style.height.%]="altura"></i>}</div>
+      <span class="painel__vidro-valor flux-num">+R$ 1.380,00</span>
+    </div>
+  </div>
+  <ul class="painel__pontos">
+    <li><app-icone nome="importar" [tamanho]="16" />Extratos OFX e CSV</li>
+    <li><app-icone nome="cartao" [tamanho]="16" />Cartões e parcelas</li>
+    <li><app-icone nome="codigo" [tamanho]="16" />Código aberto</li>
+  </ul>
+</section>
