@@ -1,0 +1,18 @@
+// Botão principal (mat-flat-button): degradê dourado, como o .btn-ouro do mockup.
+[mat-flat-button]:not(:disabled) {
+  background-image: var(--flux-ouro-grad);
+  box-shadow: 0 10px 24px -12px rgba(var(--flux-ouro-rgb), 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+[mat-flat-button]:not(:disabled):hover {
+  filter: brightness(1.06);
+}
+
+// Botão sutil (mat-stroked-button): fundo de card, como o .btn-sutil do mockup.
+[mat-stroked-button]:not(:disabled) {
+  background-color: var(--flux-card);
+}
+
+[mat-stroked-button]:not(:disabled):hover {
+  border-color: var(--flux-borda-2);
+}

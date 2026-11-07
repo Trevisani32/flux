@@ -1,0 +1,89 @@
+.flux-campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--flux-espaco-2);
+}
+
+.flux-campo > label {
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 700;
+  color: var(--flux-texto-2);
+}
+
+.flux-entrada {
+  height: 50px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 6px 0 var(--flux-espaco-4);
+  border: 1px solid var(--flux-borda-2);
+  border-radius: var(--flux-raio-controle);
+  background: var(--flux-card);
+}
+
+.flux-entrada:focus-within {
+  border-color: rgba(var(--flux-ouro-rgb), 0.85);
+  box-shadow: 0 0 0 4px rgba(var(--flux-ouro-rgb), 0.16);
+}
+
+@media (forced-colors: active) {
+  .flux-entrada:focus-within {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
+.flux-entrada--invalida {
+  border-color: var(--flux-negativo);
+}
+
+.flux-entrada > input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 15px;
+  color: var(--flux-texto);
+}
+
+.flux-entrada > input:-webkit-autofill {
+  -webkit-text-fill-color: var(--flux-texto);
+  caret-color: var(--flux-texto);
+  box-shadow: 0 0 0 1000px var(--flux-card) inset;
+}
+
+.flux-botao-olho {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--flux-texto-3);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.flux-botao-olho[aria-pressed='true'] {
+  color: var(--flux-ouro-texto);
+}
+
+.flux-campo__erro {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--flux-negativo);
+}
+
+.flux-alerta {
+  padding: var(--flux-espaco-3) 14px;
+  border: 1px solid color-mix(in srgb, var(--flux-negativo) 40%, transparent);
+  border-radius: var(--flux-raio-controle);
+  background: color-mix(in srgb, var(--flux-negativo) 10%, transparent);
+  color: var(--flux-negativo);
+  font-weight: 600;
+}
