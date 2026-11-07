@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -44,20 +45,23 @@ class AutenticacaoServiceTest {
     @Mock
     private UsuarioService usuarioService;
 
+    @Mock
+    private LimitesDaConta limites;
+
     private AutenticacaoService service;
 
     @BeforeEach
     void prepara() {
         when(passwordEncoder.encode(anyString())).thenReturn("hash-ficticio");
         service = new AutenticacaoService(usuarioRepository, tokenRenovacaoRepository, passwordEncoder,
-                tokenAcessoService, usuarioService, Clock.fixed(AGORA, ZoneOffset.UTC), propriedades());
+                tokenAcessoService, usuarioService, Clock.fixed(AGORA, ZoneOffset.UTC), propriedades(), limites);
     }
 
     @Test
     void usaHashFicticioParaEmailInexistente() {
         when(usuarioRepository.findByEmail("ausente@teste.local")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.entrar("ausente@teste.local", "senha"))
+        assertThatThrownBy(() -> service.entrar("ausente@teste.local", "senha", "127.0.0.1"))
                 .isInstanceOf(CredenciaisInvalidasException.class);
 
         verify(passwordEncoder).matches(eq("senha"), anyString());
@@ -67,7 +71,7 @@ class AutenticacaoServiceTest {
     void normalizaEmailNoLogin() {
         when(usuarioRepository.findByEmail("dev@exemplo.local")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.entrar("  DEV@EXEMPLO.LOCAL ", "senha"))
+        assertThatThrownBy(() -> service.entrar("  DEV@EXEMPLO.LOCAL ", "senha", "127.0.0.1"))
                 .isInstanceOf(CredenciaisInvalidasException.class);
 
         verify(usuarioRepository).findByEmail("dev@exemplo.local");
@@ -130,6 +134,45 @@ class AutenticacaoServiceTest {
         when(tokenRenovacaoRepository.buscarComTravaPorHash(anyString())).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.renovar("inexistente"))
                 .isInstanceOf(SessaoInvalidaException.class);
+    }
+
+    @Test
+    void devolveLimiteQuandoSenhaCertaEEmailConfirmado() {
+        Usuario usuario = usuario(1L);
+        when(usuario.getSenhaHash()).thenReturn("hash");
+        when(usuario.emailConfirmado()).thenReturn(true);
+        when(usuarioRepository.findByEmail("dev@teste.local")).thenReturn(Optional.of(usuario));
+        when(passwordEncoder.matches("senha", "hash")).thenReturn(true);
+        when(tokenAcessoService.emitir(1L)).thenReturn(new TokenAcessoEmitido("jwt", AGORA.plusSeconds(900)));
+        when(usuarioService.resposta(usuario)).thenReturn(new UsuarioResponse(1L, "Dev", "dev@teste.local"));
+
+        service.entrar("dev@teste.local", "senha", "127.0.0.1");
+
+        verify(limites).devolverEntrar("127.0.0.1", "dev@teste.local");
+    }
+
+    @Test
+    void devolveLimiteAntesDeRecusarEmailNaoConfirmado() {
+        Usuario usuario = org.mockito.Mockito.mock(Usuario.class);
+        when(usuario.getSenhaHash()).thenReturn("hash");
+        when(usuario.emailConfirmado()).thenReturn(false);
+        when(usuarioRepository.findByEmail("dev@teste.local")).thenReturn(Optional.of(usuario));
+        when(passwordEncoder.matches("senha", "hash")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.entrar("dev@teste.local", "senha", "127.0.0.1"))
+                .isInstanceOf(EmailNaoConfirmadoException.class);
+
+        verify(limites).devolverEntrar("127.0.0.1", "dev@teste.local");
+    }
+
+    @Test
+    void naoDevolveLimiteParaEmailInexistente() {
+        when(usuarioRepository.findByEmail("ausente@teste.local")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.entrar("ausente@teste.local", "senha", "127.0.0.1"))
+                .isInstanceOf(CredenciaisInvalidasException.class);
+
+        verify(limites, never()).devolverEntrar("127.0.0.1", "ausente@teste.local");
     }
 
     private PropriedadesAcesso propriedades() {

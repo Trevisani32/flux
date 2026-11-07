@@ -5,6 +5,26 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+  mail:
+    properties:
+      "[mail.smtp.connectiontimeout]": 10000
+      "[mail.smtp.timeout]": 10000
+      "[mail.smtp.writetimeout]": 10000
+      "[mail.from]": ${app.email.remetente}
+      "[mail.smtp.localhost]": ${MAIL_EHLO:flux.local}
+  task:
+    execution:
+      pool:
+        # Os envios de e-mail rodam aqui e seguram uma conexão do banco durante o SMTP.
+        # Com 2 threads, um SMTP lento ocupa no máximo 2 das 10 conexões do Hikari.
+        core-size: 2
+  modulith:
+    events:
+      jdbc:
+        schema-initialization:
+          enabled: false
+      completion-mode: delete
+      republish-outstanding-events-on-restart: true
 server:
   error:
     include-stacktrace: never
@@ -14,6 +34,9 @@ management:
     web:
       exposure:
         include: health
+  health:
+    mail:
+      enabled: false
 app:
   fuso: America/Sao_Paulo
   jwt:
@@ -26,6 +49,17 @@ app:
     email: ${USUARIO_INICIAL_EMAIL:}
     senha: ${USUARIO_INICIAL_SENHA:}
     nome: ${USUARIO_INICIAL_NOME:}
+  conta:
+    url-base: ${APP_URL_BASE:}
+    cadastro-publico: ${APP_CADASTRO_PUBLICO:false}
+    controlador:
+      nome: ${APP_CONTROLADOR_NOME:}
+      email: ${APP_CONTROLADOR_EMAIL:}
+    limite-por-ip: true
+  email:
+    remetente: ${APP_EMAIL_REMETENTE:}
+  agendamentos:
+    habilitados: true
 springdoc:
   api-docs:
     enabled: false

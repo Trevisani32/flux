@@ -22,4 +22,8 @@ public interface TokenRenovacaoRepository extends JpaRepository<TokenRenovacao, 
     @Query("update TokenRenovacao t set t.revogadoEm = :agora "
             + "where t.usuarioId = :usuarioId and t.revogadoEm is null")
     int revogarTodosDoUsuario(@Param("usuarioId") Long usuarioId, @Param("agora") Instant agora);
+
+    @Modifying
+    @Query("delete from TokenRenovacao t where t.expiraEm < :agora")
+    int apagarVencidos(@Param("agora") Instant agora);
 }

@@ -3,6 +3,9 @@ spring:
     url: jdbc:postgresql://localhost:5433/flux_dev
     username: postgres
     password: postgres
+  mail:
+    host: localhost
+    port: 1026
 app:
   jwt:
     segredo: dev-somente-local-segredo-ficticio-0123456789abcdef
@@ -12,6 +15,15 @@ app:
     email: dev@flux.local
     senha: senha-de-dev-123
     nome: Dev
+  conta:
+    url-base: http://localhost:4200
+    cadastro-publico: true
+    controlador:
+      nome: Responsável fictício
+      email: privacidade@flux.local
+    limite-por-ip: false
+  email:
+    remetente: nao-responda@flux.local
 springdoc:
   api-docs:
     enabled: true
