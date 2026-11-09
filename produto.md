@@ -390,19 +390,17 @@ Ver [ADR 0005](decisoes/0005-cartao-fatura-parcelas.md).
 | Demo: conta compartilhada, usuário temporário por visitante ou cadastro com dados de exemplo | Fatia 08 |
 | Provedor de e-mail em produção (SMTP) | Fatia 08 |
 | Hospedagem e domínio | Fatia 08 |
-   | Desafio anti-robô (captcha) no cadastro, se aparecer abuso | Fatia 08 |
-   | Trechos da política de privacidade que dependem da publicação (hospedagem, envio de e-mail, cópias de segurança) | Fatia 08 |
-   | Servir a fonte Manrope pelo nginx, para a política deixar de citar o Google Fonts | Fatia 08 |
-
+| Desafio anti-robô (captcha) no cadastro, se aparecer abuso | Fatia 08 |
+| Trechos da política de privacidade que dependem da publicação (hospedagem, envio de e-mail, cópias de segurança) | Fatia 08 |
+| Servir a fonte Manrope pelo nginx, para a política deixar de citar o Google Fonts | Fatia 08 |
 
 ## Entregas
 
 | Fatia | Conteúdo | Situação |
 |---|---|---|
 | 00 | Base: repositório, login, multiusuário, CI, Docker | Concluída |
-   | 01 | Base visual: tema escuro com dourado, componentes base, menu lateral responsivo e e2e no CI | Concluída |
-   | 02 | Conta de usuário: cadastro, confirmação de e-mail, esqueci a senha, perfil, exclusão da conta, termos e limite de tentativas | Implementada, aguardando publicação |
-
+| 01 | Base visual: tema escuro com dourado, componentes base, menu lateral responsivo e e2e no CI | Concluída |
+| 02 | Conta de usuário: cadastro, confirmação de e-mail, esqueci a senha, perfil, exclusão da conta, termos e limite de tentativas | Concluída |
 | 03 | Contas, categorias, lançamentos manuais e transferências | — |
 | 04 | Importação OFX/CSV e regras de categorização | — |
 | 05 | Cartão de crédito: faturas e parcelamento | — |
