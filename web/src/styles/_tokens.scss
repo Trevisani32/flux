@@ -64,6 +64,19 @@
   --flux-negativo: #F87171;
   --flux-ouro-texto: var(--flux-ouro);
   --flux-sombra: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 24px 48px -28px rgba(0, 0, 0, 0.9);
+  // Cores das contas (Fatia 03a). Sem verde e sem vermelho, que indicam entrada e saída.
+  // Ficam no bloco "Tema": o modo claro pode trocar o tom sem mudar o nome guardado.
+  --flux-cor-conta-ouro: #D4AF37;
+  --flux-cor-conta-laranja: #FB923C;
+  --flux-cor-conta-rosa: #F472B6;
+  --flux-cor-conta-roxo: #A78BFA;
+  --flux-cor-conta-indigo: #818CF8;
+  --flux-cor-conta-azul: #60A5FA;
+  --flux-cor-conta-ciano: #22D3EE;
+  --flux-cor-conta-cinza: #A1A1AA;
+  // Negativo sobre o dourado do cartão de destaque: o --flux-negativo, claro, some no ouro
+  // (contraste de 1,2:1 a 2,2:1); este dá de 4,7:1 a 13:1 em todo o degradê.
+  --flux-negativo-sobre-ouro: #450A0A;
 }
 
 @media (max-width: 959.98px) {

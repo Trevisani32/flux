@@ -13,7 +13,7 @@ interface Apresentacao {
 
 @Component({
   selector: 'app-valor',
-  template: `<span class="valor__texto" [attr.aria-hidden]="apresentacao().falado === null ? null : 'true'">{{ apresentacao().visivel }}</span>@if (apresentacao().falado; as falado) {<span class="flux-visualmente-oculto">{{ falado }}</span>}`,
+  template: `<span class="valor__texto" [attr.aria-hidden]="apresentacao().falado === null ? null : 'true'">{{ partes().principal }}@if (partes().centavos) {<small>{{ partes().centavos }}</small>}</span>@if (apresentacao().falado; as falado) {<span class="flux-visualmente-oculto">{{ falado }}</span>}`,
   styles: `
     :host { font: var(--flux-fonte-valor); font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; white-space: nowrap; letter-spacing: -0.2px; }
     :host(.flux-valor--positivo) { color: var(--flux-positivo); }
@@ -30,6 +30,8 @@ interface Apresentacao {
 export class Valor {
   readonly valor = input.required<number | null | undefined>();
   readonly tipo = input<TipoValor>('sinal');
+  /** Centavos (",45") num `<small>`, como no cartão dourado (`app-saldo-em-destaque`). */
+  readonly centavosMenores = input(false);
 
   readonly apresentacao = computed<Apresentacao>(() => {
     const partes = partesDaMoeda(this.valor());
@@ -50,5 +52,14 @@ export class Valor {
       return { visivel: absoluto, falado: null, cor: 'neutro' };
     }
     return { visivel: `+${absoluto}`, falado: `mais ${absoluto}`, cor: 'positivo' };
+  });
+
+  /** O texto visível; com `centavosMenores`, os centavos ficam à parte. */
+  readonly partes = computed(() => {
+    const texto = this.apresentacao().visivel;
+    const virgula = texto.lastIndexOf(',');
+    return this.centavosMenores() && virgula >= 0
+      ? { principal: texto.slice(0, virgula), centavos: texto.slice(virgula) }
+      : { principal: texto, centavos: '' };
   });
 }

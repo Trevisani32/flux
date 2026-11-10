@@ -1,0 +1,173 @@
+// Resumo: cartão dourado + Disponível + Investimentos (mockup 03a, linhas 556–561).
+.contas-resumo {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) repeat(2, minmax(0, 1fr));
+  gap: var(--flux-espaco-4);
+}
+
+.contas-resumo__parte {
+  gap: 14px;
+}
+
+.contas-resumo__rotulo {
+  color: var(--flux-texto-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.contas-resumo__valor {
+  font-size: 24px;
+  line-height: 30px;
+  letter-spacing: -0.6px;
+}
+
+.contas-resumo__nota {
+  margin-top: auto;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+// Linha de conta: nome e tipo à esquerda, saldo e "⋯" à direita.
+.conta {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'selo nome valor acoes'
+    'selo meta valor acoes';
+  align-items: center;
+  column-gap: 14px;
+  row-gap: 2px;
+  min-height: 64px;
+  padding: 10px 14px 10px var(--flux-espaco-6);
+}
+
+.conta + .conta {
+  border-top: 1px solid var(--flux-borda);
+}
+
+.conta--arquivada {
+  grid-template-columns: 42px minmax(0, 1fr) auto auto auto;
+  grid-template-areas:
+    'selo nome valor reativar acoes'
+    'selo meta valor reativar acoes';
+}
+
+.conta__selo {
+  grid-area: selo;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--flux-cor, var(--flux-ouro)) 15%, transparent);
+  color: var(--flux-cor, var(--flux-ouro));
+}
+
+.conta--arquivada .conta__selo {
+  --flux-cor: #71717A;
+}
+
+.conta__nome {
+  grid-area: nome;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conta__meta {
+  grid-area: meta;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conta__valor {
+  grid-area: valor;
+}
+
+.conta--arquivada .conta__nome,
+.conta--arquivada .conta__valor {
+  color: var(--flux-texto-2);
+}
+
+.conta__reativar {
+  grid-area: reativar;
+}
+
+.conta__acoes {
+  grid-area: acoes;
+}
+
+// Abaixo de 1.280 px (a largura do quadro de desktop do mockup), o cartão dourado ocupa a
+// linha inteira, como no quadro do celular: na grade de três colunas, sobram 187 px para o
+// saldo a 960 px, e um total de 7 dígitos negativo tem 282 px.
+@media (max-width: 1279.98px) {
+  .contas-resumo {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .contas-resumo__total {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 959.98px) {
+  .contas-resumo {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--flux-espaco-3);
+  }
+
+  .contas-resumo__total {
+    grid-column: 1 / -1;
+    min-height: 176px;
+  }
+
+  .contas-resumo__parte {
+    gap: var(--flux-espaco-2);
+    padding: 14px;
+  }
+
+  .contas-resumo__selo,
+  .contas-resumo__nota {
+    display: none;
+  }
+
+  .contas-resumo__valor {
+    font-size: 17px;
+    line-height: 22px;
+    letter-spacing: -0.4px;
+  }
+
+  // No celular, o saldo desce para a linha do tipo: o nome fica com a largura toda.
+  .conta {
+    grid-template-columns: 40px minmax(0, 1fr) auto 36px;
+    grid-template-areas:
+      'selo nome nome acoes'
+      'selo meta valor acoes';
+    column-gap: var(--flux-espaco-3);
+    padding: 10px 6px 10px var(--flux-espaco-4);
+  }
+
+  .conta--arquivada {
+    grid-template-columns: 40px minmax(0, 1fr) auto 36px;
+    grid-template-areas:
+      'selo nome reativar acoes'
+      'selo meta reativar acoes';
+  }
+
+  .conta__selo {
+    width: 40px;
+    height: 40px;
+  }
+
+  .conta__valor {
+    font-size: 14px;
+  }
+}

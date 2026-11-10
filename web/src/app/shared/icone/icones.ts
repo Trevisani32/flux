@@ -42,6 +42,26 @@ export const ICONES = {
   escudo: ['M12 3 4.5 6v6c0 4.5 3.2 7.8 7.5 9 4.3-1.2 7.5-4.5 7.5-9V6z', 'm9 12 2 2 4-4'],
   esquerda: ['M19 12H5', 'm11 18-6-6 6-6'],
   externo: ['M14 4h6v6', 'M20 4l-9 9', 'M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4'],
+  // Fatia 03a: os quatro primeiros vêm do mockup da Fatia 01 (o cofre, redesenhado só com caminhos).
+  contas: ['M3 21h18', 'M5 21v-9M9.7 21v-9M14.3 21v-9M19 21v-9', 'M12 3 3 8.5h18z'],
+  cofre: [
+    'M5.5 4h13A2.5 2.5 0 0 1 21 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5v-11A2.5 2.5 0 0 1 5.5 4z',
+    'M8.5 12a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0',
+    'M12 8.5V7M15.5 12H17M12 15.5V17M8.5 12H7',
+  ],
+  alta: ['m3 17 6-6 4 4 8-8', 'M14 7h7v7'],
+  mais: ['M12 5v14M5 12h14'],
+  etiqueta: [
+    'M3 5v6.2a2 2 0 0 0 .6 1.4l8.8 8.8a2 2 0 0 0 2.8 0l6.2-6.2a2 2 0 0 0 0-2.8L12.6 3.6a2 2 0 0 0-1.4-.6H5a2 2 0 0 0-2 2z',
+    'M7 8a1 1 0 1 0 2 0a1 1 0 1 0-2 0',
+  ],
+  editar: ['M4 20h4L19 9a2.83 2.83 0 0 0-4-4L4 16v4z', 'm13.5 6.5 4 4'],
+  arquivar: [
+    'M4 4h16a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z',
+    'M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8',
+    'M10 12h4',
+  ],
+  reativar: ['M3.5 12a8.5 8.5 0 1 0 2.5-6L3 9', 'M3 4v5h5'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type NomeIcone = keyof typeof ICONES;

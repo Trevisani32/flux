@@ -16,6 +16,27 @@ export function codigoDoErro(erro: unknown): string | null {
   return typeof codigo === 'string' ? codigo : null;
 }
 
+/** Campos inválidos de um 400 ("campos": [{ campo, mensagem }]), por nome do campo. */
+export function camposDoErro(erro: unknown): Readonly<Record<string, string>> {
+  if (!(erro instanceof HttpErrorResponse) || typeof erro.error !== 'object' || erro.error === null) {
+    return {};
+  }
+  const campos: unknown = (erro.error as Record<string, unknown>)['campos'];
+  if (!Array.isArray(campos)) {
+    return {};
+  }
+  const porCampo: Record<string, string> = {};
+  for (const item of campos as unknown[]) {
+    if (typeof item === 'object' && item !== null) {
+      const { campo, mensagem } = item as Record<string, unknown>;
+      if (typeof campo === 'string' && typeof mensagem === 'string' && !(campo in porCampo)) {
+        porCampo[campo] = mensagem;
+      }
+    }
+  }
+  return porCampo;
+}
+
 /** Campo `detail` do ProblemDetail, ou o texto padrão. */
 export function detalheDoErro(erro: unknown, padrao: string): string {
   if (!(erro instanceof HttpErrorResponse) || typeof erro.error !== 'object' || erro.error === null) {

@@ -1,0 +1,77 @@
+<form class="conta-dialogo" [formGroup]="formulario" (ngSubmit)="salvar()">
+  <h2 mat-dialog-title class="conta-dialogo__titulo">{{ editando ? 'Editar conta' : 'Nova conta' }}</h2>
+
+  <div class="flux-campo">
+    <label for="conta-nome">Nome</label>
+    <div class="flux-entrada" [class.flux-entrada--invalida]="erro('nome') !== null">
+      <input id="conta-nome" type="text" formControlName="nome" maxlength="60" autocomplete="off" [attr.aria-invalid]="erro('nome') !== null ? 'true' : null" [attr.aria-describedby]="erro('nome') !== null ? 'conta-nome-erro' : null" />
+    </div>
+    @if (erro('nome'); as mensagem) {
+      <p id="conta-nome-erro" class="flux-campo__erro">{{ mensagem }}</p>
+    }
+  </div>
+
+  <fieldset class="flux-grupo">
+    <legend>Tipo</legend>
+    <div class="flux-opcoes-tipo">
+      @for (tipo of tipos; track tipo.valor) {
+        <label class="flux-opcao-tipo">
+          <input type="radio" name="tipo" formControlName="tipo" [value]="tipo.valor" />
+          <span class="flux-opcao-tipo__selo"><app-icone [nome]="tipo.icone" [tamanho]="18" /></span>
+          {{ tipo.nome }}
+        </label>
+      }
+    </div>
+  </fieldset>
+
+  <div class="conta-dialogo__duas">
+    <div class="flux-campo">
+      <label for="conta-saldo">Saldo inicial</label>
+      <div class="flux-entrada" [class.flux-entrada--invalida]="erro('saldoInicial') !== null">
+        <span class="flux-entrada__prefixo" aria-hidden="true">R$</span>
+        <input id="conta-saldo" type="text" inputmode="decimal" formControlName="saldoInicial" autocomplete="off" (blur)="formatarSaldo()" [attr.aria-invalid]="erro('saldoInicial') !== null ? 'true' : null" [attr.aria-describedby]="erro('saldoInicial') !== null ? 'conta-saldo-erro' : 'conta-saldo-dica'" />
+      </div>
+      @if (erro('saldoInicial'); as mensagem) {
+        <p id="conta-saldo-erro" class="flux-campo__erro">{{ mensagem }}</p>
+      } @else {
+        <p id="conta-saldo-dica" class="flux-dica">Negativo com "-" (cheque especial).</p>
+      }
+    </div>
+    <div class="flux-campo">
+      <label for="conta-data">Data do saldo inicial</label>
+      <div class="flux-entrada" [class.flux-entrada--invalida]="erro('dataSaldoInicial') !== null">
+        <input id="conta-data" type="date" formControlName="dataSaldoInicial" [max]="dados.hoje" [attr.aria-invalid]="erro('dataSaldoInicial') !== null ? 'true' : null" [attr.aria-describedby]="erro('dataSaldoInicial') !== null ? 'conta-data-erro' : 'conta-data-dica'" />
+      </div>
+      @if (erro('dataSaldoInicial'); as mensagem) {
+        <p id="conta-data-erro" class="flux-campo__erro">{{ mensagem }}</p>
+      } @else {
+        <p id="conta-data-dica" class="flux-dica">Quanto havia na conta no começo deste dia.</p>
+      }
+    </div>
+  </div>
+
+  <fieldset class="flux-grupo">
+    <legend>Cor <span class="flux-grupo__opcional">(opcional)</span></legend>
+    <div class="flux-cores">
+      <label class="flux-cor">
+        <input type="radio" name="cor" formControlName="cor" [value]="null" aria-label="Sem cor" />
+        <span class="flux-cor__amostra flux-cor__amostra--sem"></span>
+      </label>
+      @for (cor of cores; track cor.valor) {
+        <label class="flux-cor">
+          <input type="radio" name="cor" formControlName="cor" [value]="cor.valor" [attr.aria-label]="cor.nome" />
+          <span class="flux-cor__amostra" [style.background]="'var(--flux-cor-conta-' + cor.valor.toLowerCase() + ')'"></span>
+        </label>
+      }
+    </div>
+  </fieldset>
+
+  @if (erroGeral(); as mensagem) {
+    <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem" />
+  }
+
+  <div class="conta-dialogo__acoes">
+    <button mat-stroked-button type="button" [disabled]="enviando()" (click)="cancelar()">Cancelar</button>
+    <button mat-flat-button type="submit" [disabled]="enviando()">{{ editando ? 'Salvar' : 'Criar conta' }}</button>
+  </div>
+</form>

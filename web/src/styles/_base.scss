@@ -31,9 +31,23 @@ p {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
   color: inherit;
+}
+
+// Trechos que só existem numa das larguras (mesma quebra de 960 px da navegação).
+@media (max-width: 959.98px) {
+  .flux-so-desktop {
+    display: none !important;
+  }
+}
+
+@media (min-width: 960px) {
+  .flux-so-celular {
+    display: none !important;
+  }
 }
 
 a {

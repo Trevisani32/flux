@@ -1,0 +1,90 @@
+<app-cabecalho-pagina titulo="Contas" subtitulo="Onde o seu dinheiro fica: conta corrente, poupança, carteira e investimentos.">
+  <button mat-flat-button type="button" (click)="novaConta()"><app-icone nome="mais" [tamanho]="18" [traco]="2.2" />Nova conta</button>
+</app-cabecalho-pagina>
+<div class="flux-conteudo">
+  @if (falhaAoCarregar()) {
+    <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível carregar as contas.">
+      <div class="flux-alerta__acoes"><button mat-stroked-button type="button" (click)="carregar()">Tentar de novo</button></div>
+    </app-alerta>
+  } @else if (lista(); as lista) {
+    @if (lista.ativas.length > 0) {
+      <section class="contas-resumo" aria-label="Saldo das contas">
+        <app-saldo-em-destaque class="contas-resumo__total" rotulo="Saldo total" [valor]="lista.totais.geral">
+          <span>{{ quantidadeDeContasAtivas(lista.ativas.length) }}</span>
+          <span class="flux-cartao-destaque__pilula">hoje, <span class="flux-so-desktop">{{ hojeCurto() }}</span><span class="flux-so-celular">{{ hojeCurto().slice(0, 5) }}</span></span>
+        </app-saldo-em-destaque>
+        <app-card class="contas-resumo__parte">
+          <span class="flux-selo-icone contas-resumo__selo" aria-hidden="true"><app-icone nome="carteira" /></span>
+          <div><p class="contas-resumo__rotulo">Disponível</p><app-valor class="contas-resumo__valor" [valor]="lista.totais.disponivel" tipo="saldo" /></div>
+          <p class="contas-resumo__nota">Conta corrente, poupança e carteira</p>
+        </app-card>
+        <app-card class="contas-resumo__parte">
+          <span class="flux-selo-icone contas-resumo__selo" aria-hidden="true"><app-icone nome="alta" /></span>
+          <div><p class="contas-resumo__rotulo">Investimentos</p><app-valor class="contas-resumo__valor" [valor]="lista.totais.investimentos" tipo="saldo" /></div>
+          <p class="contas-resumo__nota">Só o saldo, sem cotação</p>
+        </app-card>
+      </section>
+
+      <section class="flux-card flux-lista-card" aria-labelledby="contas-ativas-titulo">
+        <div class="flux-lista-card__cabecalho"><h2 id="contas-ativas-titulo" class="flux-lista-card__titulo">Contas ativas</h2><span class="flux-lista-card__nota">Saldo de hoje</span></div>
+        <ul class="flux-lista">
+          @for (conta of lista.ativas; track conta.id) {
+            <li class="conta">
+              <span class="conta__selo" [style.--flux-cor]="corDaConta(conta.cor)" aria-hidden="true"><app-icone [nome]="tipoDaConta(conta.tipo).icone" /></span>
+              <span class="conta__nome">{{ conta.nome }}</span>
+              <span class="conta__meta">{{ tipoDaConta(conta.tipo).nome }}<span class="flux-so-desktop"> · desde {{ dataCurta(conta.dataSaldoInicial) }}</span></span>
+              <app-valor class="conta__valor" [valor]="conta.saldoAtual" tipo="saldo" />
+              <button type="button" class="flux-botao-acoes conta__acoes" [attr.aria-label]="'Ações de ' + conta.nome" [matMenuTriggerFor]="menuDaConta" [matMenuTriggerData]="{ conta }"><app-icone nome="mais-h" /></button>
+            </li>
+          }
+        </ul>
+      </section>
+    } @else {
+      <app-estado-vazio icone="contas" titulo="Nenhuma conta ainda" texto="Cadastre onde o seu dinheiro fica: conta corrente, poupança, carteira ou investimento. O saldo inicial é o ponto de partida.">
+        <button mat-stroked-button type="button" (click)="novaConta()">Cadastrar conta</button>
+      </app-estado-vazio>
+    }
+
+    @if (lista.arquivadas.length > 0) {
+      <section class="flux-card flux-arquivadas">
+        <button type="button" class="flux-arquivadas__alternar" [attr.aria-expanded]="arquivadasAbertas()" aria-controls="contas-arquivadas" (click)="alternarArquivadas()">
+          Arquivadas <span class="flux-contador">{{ lista.arquivadas.length }}</span>
+          <app-icone class="flux-arquivadas__seta" nome="baixo" />
+        </button>
+        <div id="contas-arquivadas" class="flux-arquivadas__corpo" [hidden]="!arquivadasAbertas()">
+          @if (erroAoReativar(); as mensagem) {
+            <app-alerta class="flux-arquivadas__erro" tipo="erro" icone="alerta" titulo="Não foi possível reativar"><p class="flux-alerta__texto">{{ mensagem }}</p></app-alerta>
+          }
+          <p class="flux-arquivadas__explica">Ficam fora do saldo total e dos seletores. O histórico continua nos relatórios.</p>
+          <ul class="flux-lista">
+            @for (conta of lista.arquivadas; track conta.id) {
+              <li class="conta conta--arquivada">
+                <span class="conta__selo" aria-hidden="true"><app-icone [nome]="tipoDaConta(conta.tipo).icone" /></span>
+                <span class="conta__nome">{{ conta.nome }}</span>
+                <span class="conta__meta"><span class="flux-so-desktop">{{ tipoDaConta(conta.tipo).nome }} · arquivada em {{ dataCurtaDoInstante(conta.arquivadaEm ?? '') }}</span><span class="flux-so-celular">Arquivada em {{ dataCurtaDoInstante(conta.arquivadaEm ?? '') }}</span></span>
+                <app-valor class="conta__valor flux-so-desktop" [valor]="conta.saldoAtual" tipo="saldo" />
+                <button mat-stroked-button type="button" class="conta__reativar" (click)="reativar(conta)"><app-icone nome="reativar" [tamanho]="16" />Reativar</button>
+                <button type="button" class="flux-botao-acoes conta__acoes" [attr.aria-label]="'Mais ações de ' + conta.nome" [matMenuTriggerFor]="menuDaArquivada" [matMenuTriggerData]="{ conta }"><app-icone nome="mais-h" /></button>
+              </li>
+            }
+          </ul>
+        </div>
+      </section>
+    }
+  }
+</div>
+
+<mat-menu #menuDaConta="matMenu" class="flux-menu" xPosition="before">
+  <ng-template matMenuContent let-conta="conta">
+    <button mat-menu-item type="button" (click)="editar(conta)"><app-icone matMenuItemIcon nome="editar" />Editar</button>
+    <button mat-menu-item type="button" (click)="arquivar(conta)"><app-icone matMenuItemIcon nome="arquivar" />Arquivar</button>
+    <mat-divider />
+    <button mat-menu-item type="button" class="flux-menu__perigo" (click)="excluir(conta)"><app-icone matMenuItemIcon nome="lixeira" />Excluir</button>
+  </ng-template>
+</mat-menu>
+
+<mat-menu #menuDaArquivada="matMenu" class="flux-menu" xPosition="before">
+  <ng-template matMenuContent let-conta="conta">
+    <button mat-menu-item type="button" class="flux-menu__perigo" (click)="excluir(conta)"><app-icone matMenuItemIcon nome="lixeira" />Excluir</button>
+  </ng-template>
+</mat-menu>

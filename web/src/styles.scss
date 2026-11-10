@@ -10,6 +10,7 @@
 @use 'styles/publico';
 @use 'styles/documentos';
 @use 'styles/dialogo';
+@use 'styles/listas';
 
 html {
   @include mat.theme(

@@ -20,6 +20,10 @@
   color: var(--flux-escuro-texto-3);
 }
 
+.navegacao__grupo--seguinte {
+  padding-top: var(--flux-espaco-4);
+}
+
 .navegacao__lista {
   display: flex;
   flex-direction: column;

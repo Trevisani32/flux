@@ -1,0 +1,125 @@
+<app-cabecalho-pagina titulo="Categorias" subtitulo="Classifique receitas e despesas em até dois níveis.">
+  <button mat-flat-button type="button" (click)="novaCategoria()"><app-icone nome="mais" [tamanho]="18" [traco]="2.2" />Nova categoria</button>
+</app-cabecalho-pagina>
+<div class="flux-conteudo">
+  <div class="categorias">
+    @if (falhaAoCarregar()) {
+      <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível carregar as categorias.">
+        <div class="flux-alerta__acoes"><button mat-stroked-button type="button" (click)="carregar()">Tentar de novo</button></div>
+      </app-alerta>
+    } @else if (lista(); as lista) {
+      <nav class="flux-abas" aria-label="Natureza">
+        <a class="flux-abas__aba" routerLink="/categorias" [attr.aria-current]="natureza() === 'DESPESA' ? 'page' : null">Despesas <span class="flux-contador">{{ quantidadeAtiva(lista.despesas) }}</span></a>
+        <a class="flux-abas__aba" routerLink="/categorias" [queryParams]="{ natureza: 'receita' }" [attr.aria-current]="natureza() === 'RECEITA' ? 'page' : null">Receitas <span class="flux-contador">{{ quantidadeAtiva(lista.receitas) }}</span></a>
+      </nav>
+
+      @if (grupo(); as grupo) {
+        @if (grupo.ativas.length > 0) {
+          <section class="flux-card flux-lista-card" [attr.aria-label]="natureza() === 'RECEITA' ? 'Categorias de receita ativas' : 'Categorias de despesa ativas'">
+            <ul class="arvore">
+              @for (principal of grupo.ativas; track principal.id) {
+                <li class="arvore__principal">
+                  <div class="arvore__linha">
+                    <span class="arvore__selo" aria-hidden="true"><app-icone nome="etiqueta" [tamanho]="15" /></span>
+                    <span class="arvore__nome">{{ principal.nome }}</span>
+                    @if (principal.subcategorias.length > 0) {
+                      <span class="arvore__quantidade flux-so-desktop">{{ quantidadeDeSubcategorias(principal.subcategorias.length) }}</span>
+                    }
+                    <button type="button" class="flux-botao-acoes arvore__acoes" [attr.aria-label]="'Ações de ' + principal.nome" [matMenuTriggerFor]="menuDaPrincipal" [matMenuTriggerData]="{ categoria: principal }"><app-icone nome="mais-h" /></button>
+                  </div>
+                  @if (principal.subcategorias.length > 0) {
+                    <ul class="arvore__filhas" [attr.aria-label]="'Subcategorias de ' + principal.nome">
+                      @for (subcategoria of principal.subcategorias; track subcategoria.id) {
+                        <li class="arvore__linha arvore__linha--filha">
+                          <span class="arvore__nome-filha">{{ subcategoria.nome }}</span>
+                          <button type="button" class="flux-botao-acoes arvore__acoes" [attr.aria-label]="'Ações de ' + subcategoria.nome" [matMenuTriggerFor]="menuDaSubcategoria" [matMenuTriggerData]="{ categoria: subcategoria }"><app-icone nome="mais-h" /></button>
+                        </li>
+                      }
+                    </ul>
+                  }
+                </li>
+              }
+            </ul>
+          </section>
+        } @else {
+          <app-estado-vazio icone="etiqueta"
+            [titulo]="natureza() === 'RECEITA' ? 'Nenhuma categoria de receita' : 'Nenhuma categoria de despesa'"
+            [texto]="natureza() === 'RECEITA' ? 'Crie categorias para separar salário, freelas e rendimentos.' : 'Crie categorias para separar moradia, mercado, transporte e o que mais quiser acompanhar.'">
+            <button mat-stroked-button type="button" (click)="novaCategoria()">Nova categoria</button>
+          </app-estado-vazio>
+        }
+
+        @if (grupo.arquivadas.length > 0) {
+          <section class="flux-card flux-arquivadas">
+            <button type="button" class="flux-arquivadas__alternar" [attr.aria-expanded]="arquivadasAbertas()" aria-controls="categorias-arquivadas" (click)="alternarArquivadas()">
+              Arquivadas <span class="flux-contador">{{ grupo.arquivadas.length }}</span>
+              <app-icone class="flux-arquivadas__seta" nome="baixo" />
+            </button>
+            <div id="categorias-arquivadas" class="flux-arquivadas__corpo" [hidden]="!arquivadasAbertas()">
+              @if (erroAoReativar(); as mensagem) {
+                <app-alerta class="flux-arquivadas__erro" tipo="erro" icone="alerta" titulo="Não foi possível reativar"><p class="flux-alerta__texto">{{ mensagem }}</p></app-alerta>
+              }
+              <p class="flux-arquivadas__explica">Somem dos seletores. Os lançamentos continuam com elas nos relatórios.</p>
+              <ul class="flux-lista">
+                @for (categoria of grupo.arquivadas; track categoria.id) {
+                  <li class="arquivada">
+                    <div class="arquivada__linha">
+                      <span class="arvore__selo" aria-hidden="true"><app-icone nome="etiqueta" [tamanho]="15" /></span>
+                      <span class="arquivada__textos">
+                        <span class="arquivada__nome">{{ categoria.nome }}</span>
+                        <span class="arquivada__meta">
+                          @if (categoria.nomeDaMae !== null) {
+                            Em {{ categoria.nomeDaMae }} · <span class="flux-so-desktop">arquivada em </span>{{ dataCurtaDoInstante(categoria.arquivadaEm ?? '') }}
+                          } @else {
+                            <span class="flux-so-desktop">Categoria principal · arquivada em {{ dataCurtaDoInstante(categoria.arquivadaEm ?? '') }}</span><span class="flux-so-celular">Arquivada em {{ dataCurtaDoInstante(categoria.arquivadaEm ?? '') }}</span>
+                          }
+                        </span>
+                      </span>
+                      <button mat-stroked-button type="button" class="arquivada__reativar" (click)="reativar(categoria)"><app-icone nome="reativar" [tamanho]="16" />Reativar</button>
+                      <button type="button" class="flux-botao-acoes" [attr.aria-label]="'Mais ações de ' + categoria.nome" [matMenuTriggerFor]="menuDaArquivada" [matMenuTriggerData]="{ categoria }"><app-icone nome="mais-h" /></button>
+                    </div>
+                    @if (categoria.subcategorias.length > 0) {
+                      <ul class="arvore__filhas" [attr.aria-label]="'Subcategorias arquivadas de ' + categoria.nome">
+                        @for (subcategoria of categoria.subcategorias; track subcategoria.id) {
+                          <li class="arvore__linha arvore__linha--filha">
+                            <span class="arvore__nome-filha arquivada__nome">{{ subcategoria.nome }}</span>
+                            <button type="button" class="flux-botao-acoes arvore__acoes" [attr.aria-label]="'Mais ações de ' + subcategoria.nome" [matMenuTriggerFor]="menuDaArquivada" [matMenuTriggerData]="{ categoria: subcategoria }"><app-icone nome="mais-h" /></button>
+                          </li>
+                        }
+                      </ul>
+                    }
+                  </li>
+                }
+              </ul>
+            </div>
+          </section>
+        }
+      }
+    }
+  </div>
+</div>
+
+<mat-menu #menuDaPrincipal="matMenu" class="flux-menu" xPosition="before">
+  <ng-template matMenuContent let-categoria="categoria">
+    <button mat-menu-item type="button" (click)="novaCategoria(categoria.id)"><app-icone matMenuItemIcon nome="mais" />Nova subcategoria</button>
+    <button mat-menu-item type="button" (click)="editar(categoria)"><app-icone matMenuItemIcon nome="editar" />Editar</button>
+    <button mat-menu-item type="button" (click)="arquivar(categoria)"><app-icone matMenuItemIcon nome="arquivar" />Arquivar</button>
+    <mat-divider />
+    <button mat-menu-item type="button" class="flux-menu__perigo" (click)="excluir(categoria)"><app-icone matMenuItemIcon nome="lixeira" />Excluir</button>
+  </ng-template>
+</mat-menu>
+
+<mat-menu #menuDaSubcategoria="matMenu" class="flux-menu" xPosition="before">
+  <ng-template matMenuContent let-categoria="categoria">
+    <button mat-menu-item type="button" (click)="editar(categoria)"><app-icone matMenuItemIcon nome="editar" />Editar</button>
+    <button mat-menu-item type="button" (click)="arquivar(categoria)"><app-icone matMenuItemIcon nome="arquivar" />Arquivar</button>
+    <mat-divider />
+    <button mat-menu-item type="button" class="flux-menu__perigo" (click)="excluir(categoria)"><app-icone matMenuItemIcon nome="lixeira" />Excluir</button>
+  </ng-template>
+</mat-menu>
+
+<mat-menu #menuDaArquivada="matMenu" class="flux-menu" xPosition="before">
+  <ng-template matMenuContent let-categoria="categoria">
+    <button mat-menu-item type="button" class="flux-menu__perigo" (click)="excluir(categoria)"><app-icone matMenuItemIcon nome="lixeira" />Excluir</button>
+  </ng-template>
+</mat-menu>

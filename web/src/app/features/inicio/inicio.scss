@@ -1,3 +1,51 @@
+.inicio-contas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+  gap: var(--flux-espaco-4);
+}
+
+.inicio-contas__lista {
+  gap: 10px;
+}
+
+.inicio-contas__nota {
+  margin-top: -10px;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.inicio-conta {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-espaco-3);
+}
+
+.inicio-conta + .inicio-conta {
+  padding-top: 10px;
+  border-top: 1px solid var(--flux-borda);
+}
+
+.inicio-conta__selo {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--flux-cor, var(--flux-ouro)) 15%, transparent);
+  color: var(--flux-cor, var(--flux-ouro));
+}
+
+.inicio-conta__nome {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .em-breve {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -23,4 +71,12 @@
   color: var(--flux-texto-2);
   font-size: 13px;
   line-height: 20px;
+}
+
+// Abaixo de 1.280 px (a largura do quadro de desktop do mockup), o cartão dourado fica em
+// cima da lista, como no quadro do celular, para o saldo total caber.
+@media (max-width: 1279.98px) {
+  .inicio-contas {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
