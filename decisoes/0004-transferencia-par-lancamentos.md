@@ -1,6 +1,6 @@
 # ADR 0004 — Transferência como par de lançamentos
 
-- **Status:** Aceito
+- **Status:** Aceito; substituído em parte pelo [ADR 0013](0013-lancamentos-e-transferencias.md)
 - **Data:** 2026-11-06
 
 ## Contexto
