@@ -66,6 +66,7 @@ public class TratadorGlobalDeErros extends ResponseEntityExceptionHandler {
         if (ex.getCodigo() != null) {
             corpo.setProperty("codigo", ex.getCodigo());
         }
+        ex.getPropriedades().forEach(corpo::setProperty);
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(corpo);
     }
 

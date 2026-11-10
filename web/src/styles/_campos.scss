@@ -395,3 +395,41 @@
     opacity: 1;
   }
 }
+
+// Fatia 03b: segmentado de largura total (Despesa · Receita · Transferência), opção travada e
+// área de texto (observação).
+.flux-segmentado--largo {
+  align-self: stretch;
+  display: flex;
+}
+
+.flux-segmentado--largo label {
+  flex: 1 1 0;
+  justify-content: center;
+  padding: 0 var(--flux-espaco-2);
+}
+
+.flux-segmentado label.flux-segmentado__opcao--desligada {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.flux-entrada--area {
+  height: auto;
+  align-items: stretch;
+  padding: 10px 14px;
+}
+
+.flux-entrada--area > textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 52px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--flux-texto);
+  font: inherit;
+  font-size: 15px;
+  line-height: 21px;
+  resize: vertical;
+}

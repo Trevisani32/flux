@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { describe, expect, it } from 'vitest';
 
-import { camposDoErro, codigoDoErro, detalheDoErro } from './erros-http';
+import { camposDoErro, codigoDoErro, detalheDoErro, propriedadeDoErro } from './erros-http';
 
 describe('erros-http', () => {
   it('camposDoErro junta os campos de um 400, ficando com a primeira mensagem de cada um', () => {
@@ -23,5 +23,13 @@ describe('erros-http', () => {
     expect(codigoDoErro(erro)).toBe('NOME_EM_USO');
     expect(detalheDoErro(erro, 'padrão')).toBe('Já existe uma conta ativa com este nome.');
     expect(detalheDoErro(new HttpErrorResponse({ status: 500 }), 'padrão')).toBe('padrão');
+  });
+
+  it('propriedadeDoErro lê um texto do ProblemDetail', () => {
+    const erro = new HttpErrorResponse({ status: 422, error: { codigo: 'CONTA_EM_USO', uso: '2 lançamentos e 1 transferência', total: 3 } });
+    expect(propriedadeDoErro(erro, 'uso')).toBe('2 lançamentos e 1 transferência');
+    expect(propriedadeDoErro(erro, 'total')).toBeNull();
+    expect(propriedadeDoErro(erro, 'outra')).toBeNull();
+    expect(propriedadeDoErro(new Error('rede'), 'uso')).toBeNull();
   });
 });

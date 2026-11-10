@@ -62,6 +62,16 @@ export const ICONES = {
     'M10 12h4',
   ],
   reativar: ['M3.5 12a8.5 8.5 0 1 0 2.5-6L3 9', 'M3 4v5h5'],
+  // Fatia 03b (lançamentos): navegação entre meses, busca e o sentido do dinheiro.
+  anterior: ['m15 18-6-6 6-6'],
+  proximo: ['m9 18 6-6-6-6'],
+  calendario: [
+    'M5.5 4.5h13A2.5 2.5 0 0 1 21 7v11a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18V7a2.5 2.5 0 0 1 2.5-2.5z',
+    'M3 9.5h18M8 2.5v4M16 2.5v4',
+  ],
+  busca: ['M4 11a7 7 0 1 0 14 0a7 7 0 1 0-14 0', 'm20 20-3.5-3.5'],
+  entrada: ['M17 7 7 17', 'M17 17H7V7'],
+  saida: ['M7 17 17 7', 'M7 7h10v10'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type NomeIcone = keyof typeof ICONES;

@@ -4,7 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { Subject, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { abrirConfirmacao, DadosDaConfirmacao } from './confirmacao-dialogo';
+import { abrirConfirmacao, DadosDaConfirmacao, ResultadoDaConfirmacao } from './confirmacao-dialogo';
 
 describe('ConfirmacaoDialogo', () => {
   afterEach(() => TestBed.inject(MatDialog).closeAll());
@@ -24,7 +24,7 @@ describe('ConfirmacaoDialogo', () => {
   function abrir(dados: Partial<DadosDaConfirmacao> = {}) {
     const resposta = new Subject<void>();
     const acao = vi.fn(() => resposta.asObservable());
-    let resultado: boolean | undefined | null = null;
+    let resultado: ResultadoDaConfirmacao | null = null;
     abrirConfirmacao(TestBed.inject(MatDialog), {
       titulo: 'Arquivar Poupança?',
       icone: 'arquivar',
@@ -47,7 +47,7 @@ describe('ConfirmacaoDialogo', () => {
     expect(alerta?.getAttribute('role')).toBe('status');
     expect(alerta?.textContent).toContain('O saldo desta conta é');
     expect(alerta?.querySelector('app-valor')?.classList).toContain('flux-valor--negativo');
-    expect(alerta?.textContent).toContain('−R$ 120,00');
+    expect(alerta?.textContent).toContain('−R$\u00a0120,00');
     expect(painel().querySelector('.confirmacao__texto')?.textContent).toBe('A conta sai do Flux de vez. Não dá para desfazer.');
     expect(painel().querySelector('.confirmacao__texto b')?.textContent).toBe('Não dá para desfazer.');
     expect(painel().querySelector('.confirmacao__selo--perigo')).toBeNull();
@@ -111,6 +111,44 @@ describe('ConfirmacaoDialogo', () => {
     apertarEsc();
     TestBed.tick();
     await vi.waitFor(() => expect(resultado()).toBeUndefined());
+  });
+
+  it('com o código do bloqueio, troca para o bloqueio com o uso e fecha com a alternativa', async () => {
+    const { acao, resultado } = abrir({
+      perigo: true, icone: 'lixeira', alerta: undefined, titulo: 'Excluir Banco Horizonte?', confirmar: 'Excluir conta',
+      bloqueio: {
+        codigo: 'CONTA_EM_USO',
+        titulo: 'Esta conta não pode ser excluída',
+        paragrafo: (uso) => [{ forte: 'Banco Horizonte' }, ` tem ${uso}. Para tirá-la do saldo total e dos seletores sem perder o histórico, arquive a conta.`],
+        alternativa: 'Arquivar conta',
+      },
+    });
+    acao.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 422, error: { codigo: 'CONTA_EM_USO', uso: '34 lançamentos e 3 transferências', detail: 'Esta conta não pode ser excluída porque…' } })));
+    botao('Excluir conta')?.click();
+    TestBed.tick();
+    expect(painel().querySelector('h2')?.textContent).toBe('Esta conta não pode ser excluída');
+    expect(painel().querySelector('.confirmacao__texto')?.textContent)
+      .toBe('Banco Horizonte tem 34 lançamentos e 3 transferências. Para tirá-la do saldo total e dos seletores sem perder o histórico, arquive a conta.');
+    expect(painel().querySelector('.confirmacao__texto b')?.textContent).toBe('Banco Horizonte');
+    expect(painel().querySelector('.confirmacao__selo--perigo')).toBeNull();
+    expect(Array.from(painel().querySelectorAll('button')).map((item) => item.textContent?.trim())).toEqual(['Fechar', 'Arquivar conta']);
+    botao('Arquivar conta')?.click();
+    TestBed.tick();
+    await vi.waitFor(() => expect(resultado()).toBe('alternativa'));
+  });
+
+  it('sem alternativa, o bloqueio só fecha; outro código continua no alerta', async () => {
+    const bloqueio = { codigo: 'CONTA_EM_USO', titulo: 'Esta conta não pode ser excluída', paragrafo: (uso: string) => [`Conta salário tem ${uso}.`] };
+    const { acao } = abrir({ perigo: true, alerta: undefined, confirmar: 'Excluir conta', bloqueio });
+    acao.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 422, error: { codigo: 'OUTRO', detail: 'Outra recusa.' } })));
+    botao('Excluir conta')?.click();
+    TestBed.tick();
+    expect(painel().querySelector('[role="alert"]')?.textContent).toContain('Outra recusa.');
+    acao.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 422, error: { codigo: 'CONTA_EM_USO', uso: '1 lançamento' } })));
+    botao('Excluir conta')?.click();
+    TestBed.tick();
+    expect(painel().querySelector('.confirmacao__texto')?.textContent).toBe('Conta salário tem 1 lançamento.');
+    expect(Array.from(painel().querySelectorAll('button')).map((item) => item.textContent?.trim())).toEqual(['Fechar']);
   });
 
   it('Cancelar fecha sem chamar a ação', async () => {

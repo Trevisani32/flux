@@ -32,7 +32,7 @@ class CategoriasPadraoNaMigracaoIT {
                     + "values ('Confirmado', 'confirmado@teste.local', 'hash', now(), now(), now())");
             jdbc.update("insert into usuarios (nome, email, senha_hash, criado_em, atualizado_em) "
                     + "values ('Sem confirmar', 'sem-confirmar@teste.local', 'hash', now(), now())");
-            Flyway.configure().dataSource(dataSource).load().migrate();
+            Flyway.configure().dataSource(dataSource).target("3").load().migrate();
 
             assertThat(jdbc.queryForList("select version || ':' || success from flyway_schema_history "
                     + "order by installed_rank", String.class)).containsExactly("1:true", "2:true", "3:true");

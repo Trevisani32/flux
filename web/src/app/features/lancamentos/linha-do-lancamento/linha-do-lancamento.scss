@@ -1,0 +1,141 @@
+:host {
+  display: block;
+}
+
+.linha {
+  width: 100%;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px var(--flux-espaco-6);
+  border: 0;
+  background: transparent;
+  color: var(--flux-texto);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.linha:hover {
+  background: var(--flux-card-2);
+}
+
+.linha:focus-visible {
+  outline: 2px solid var(--flux-ouro);
+  outline-offset: -2px;
+}
+
+.linha__selo {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--flux-borda);
+  border-radius: 13px;
+  background: var(--flux-card-2);
+  color: var(--flux-texto-2);
+}
+
+.linha__selo--entrada {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--flux-positivo) 13%, transparent);
+  color: var(--flux-positivo);
+}
+
+.linha__textos {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.linha__titulo {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.linha__meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.linha__meta-texto {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.linha__pilula {
+  height: 20px;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 0 7px;
+  border: 1px solid var(--flux-borda-2);
+  border-radius: var(--flux-raio-pilula);
+  color: var(--flux-texto-2);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.linha__sem-categoria {
+  height: 20px;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding: 0 var(--flux-espaco-2);
+  border: 1px dashed rgba(var(--flux-ouro-rgb), 0.6);
+  border-radius: 6px;
+  color: var(--flux-ouro-texto);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.linha__valor {
+  flex: none;
+  font-size: 15px;
+}
+
+:host(.linha-do-lancamento--compacta) .linha {
+  min-height: 52px;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+:host(.linha-do-lancamento--compacta) .linha:hover {
+  background: transparent;
+}
+
+:host(.linha-do-lancamento--compacta) .linha__selo {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+@media (max-width: 959.98px) {
+  .linha {
+    gap: 12px;
+    padding: 10px var(--flux-espaco-4);
+  }
+
+  .linha__selo {
+    width: 40px;
+    height: 40px;
+  }
+
+  .linha__valor {
+    font-size: 14px;
+  }
+}

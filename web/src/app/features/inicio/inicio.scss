@@ -41,9 +41,80 @@
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
+  color: inherit;
   font-weight: 600;
+  text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.inicio-conta__nome:hover {
+  color: var(--flux-ouro-texto);
+  text-decoration: underline;
+}
+
+// Fatia 03b: o mês e os últimos lançamentos, lado a lado como o saldo e as contas.
+.inicio-movimento {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+  align-items: start;
+  gap: var(--flux-espaco-4);
+}
+
+// Sem lançamento no mês, o cartão do mês some, e "Últimos lançamentos" ocupa a linha toda.
+.inicio-movimento > :only-child {
+  grid-column: 1 / -1;
+}
+
+.inicio-mes {
+  gap: 12px;
+}
+
+.inicio-mes__nota {
+  margin-top: -10px;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.inicio-mes__resultado {
+  font-size: 30px;
+  line-height: 36px;
+  letter-spacing: -1px;
+}
+
+.inicio-mes__par {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--flux-borda);
+  font-size: 16px;
+}
+
+.inicio-mes__rotulo {
+  display: block;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+}
+
+.inicio-ultimos {
+  gap: 4px;
+}
+
+.inicio-ultimos__item + .inicio-ultimos__item {
+  border-top: 1px solid var(--flux-borda);
+}
+
+.inicio-ultimos__vazio {
+  color: var(--flux-texto-2);
+  font-size: 14px;
+}
+
+.inicio-ultimos__novo {
+  align-self: flex-start;
 }
 
 .em-breve {
@@ -76,7 +147,8 @@
 // Abaixo de 1.280 px (a largura do quadro de desktop do mockup), o cartão dourado fica em
 // cima da lista, como no quadro do celular, para o saldo total caber.
 @media (max-width: 1279.98px) {
-  .inicio-contas {
+  .inicio-contas,
+  .inicio-movimento {
     grid-template-columns: minmax(0, 1fr);
   }
 }

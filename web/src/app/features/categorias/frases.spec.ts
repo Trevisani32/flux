@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { nomesEmNegrito, paragrafosDeArquivar, paragrafosDeExcluir, quantidadeDeSubcategorias } from './frases';
+import { nomesEmNegrito, paragrafoDoBloqueio, paragrafosDeArquivar, paragrafosDeExcluir, quantidadeDeSubcategorias } from './frases';
 
 describe('frases das categorias', () => {
   it('junta os nomes com vírgula e "e", em negrito', () => {
@@ -30,6 +30,13 @@ describe('frases das categorias', () => {
     ]);
     expect(paragrafosDeExcluir(['Ração'])[0]).toEqual(['A subcategoria também será excluída: ', { forte: 'Ração' }, '.']);
     expect(paragrafosDeExcluir([])).toEqual([['A categoria sai do Flux de vez. ', { forte: 'Não dá para desfazer.' }]]);
+  });
+
+  it('o bloqueio da exclusão: com subcategorias, sem elas e arquivada', () => {
+    expect(paragrafoDoBloqueio('Alimentação', true, '42 lançamentos', false)).toEqual([{ forte: 'Alimentação' }, ' e as subcategorias têm 42 lançamentos.',
+      ' Para tirá-la dos seletores sem perder o histórico, arquive a categoria.']);
+    expect(paragrafoDoBloqueio('Mercado', false, '1 lançamento', true)).toEqual([{ forte: 'Mercado' }, ' tem 1 lançamento.',
+      ' Ela continua arquivada, com os lançamentos nos relatórios.']);
   });
 
   it('conta as subcategorias no singular e no plural', () => {

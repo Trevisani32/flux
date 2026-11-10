@@ -82,6 +82,18 @@ public class ApiDeTeste {
         return "{\"nome\":\"" + nome + "\",\"categoriaMaeId\":" + maeId + "}";
     }
 
+    /** Corpo de POST/PUT /api/lancamentos, sem observação ({@code categoriaId} nulo = sem categoria). */
+    public static String lancamento(String tipo, String valor, String data, String descricao, long contaId, Long categoriaId) {
+        return "{\"tipo\":\"" + tipo + "\",\"valor\":" + valor + ",\"data\":\"" + data + "\",\"descricao\":\"" + descricao
+                + "\",\"contaId\":" + contaId + ",\"categoriaId\":" + categoriaId + ",\"observacao\":null}";
+    }
+
+    /** Corpo de POST/PUT /api/transferencias, sem observação ({@code descricao} nula = "Transferência"). */
+    public static String transferencia(String valor, String data, long origemId, long destinoId, String descricao) {
+        return "{\"valor\":" + valor + ",\"data\":\"" + data + "\",\"contaOrigemId\":" + origemId + ",\"contaDestinoId\":"
+                + destinoId + ",\"descricao\":" + (descricao == null ? "null" : "\"" + descricao + "\"") + ",\"observacao\":null}";
+    }
+
     /** Confere um 400 de validação com um campo só. */
     public static void assertCampo(MvcTestResult resposta, String campo, String mensagem) {
         assertThat(resposta).hasStatus(400).bodyJson().extractingPath("campos.length()").isEqualTo(1);

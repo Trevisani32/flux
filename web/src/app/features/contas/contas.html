@@ -76,6 +76,7 @@
 
 <mat-menu #menuDaConta="matMenu" class="flux-menu" xPosition="before">
   <ng-template matMenuContent let-conta="conta">
+    <button mat-menu-item type="button" (click)="verLancamentos(conta)"><app-icone matMenuItemIcon nome="lancamentos" />Ver lançamentos</button>
     <button mat-menu-item type="button" (click)="editar(conta)"><app-icone matMenuItemIcon nome="editar" />Editar</button>
     <button mat-menu-item type="button" (click)="arquivar(conta)"><app-icone matMenuItemIcon nome="arquivar" />Arquivar</button>
     <mat-divider />
@@ -85,6 +86,8 @@
 
 <mat-menu #menuDaArquivada="matMenu" class="flux-menu" xPosition="before">
   <ng-template matMenuContent let-conta="conta">
+    <button mat-menu-item type="button" (click)="verLancamentos(conta)"><app-icone matMenuItemIcon nome="lancamentos" />Ver lançamentos</button>
+    <mat-divider />
     <button mat-menu-item type="button" class="flux-menu__perigo" (click)="excluir(conta)"><app-icone matMenuItemIcon nome="lixeira" />Excluir</button>
   </ng-template>
 </mat-menu>

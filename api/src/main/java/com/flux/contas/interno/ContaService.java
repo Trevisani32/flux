@@ -153,8 +153,9 @@ public class ContaService implements SmartInitializingSingleton {
                 .flatMap(Optional::stream)
                 .toList();
         if (!emUso.isEmpty()) {
-            throw new RegraDeNegocioException("Esta conta não pode ser excluída porque tem " + juntar(emUso)
-                    + ". Arquive a conta para tirá-la do saldo total e dos seletores.", "CONTA_EM_USO");
+            String uso = juntar(emUso);
+            throw new RegraDeNegocioException("Esta conta não pode ser excluída porque tem " + uso
+                    + ". Arquive a conta para tirá-la do saldo total e dos seletores.", "CONTA_EM_USO").com("uso", uso);
         }
         repositorio.delete(conta);
     }

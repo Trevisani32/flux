@@ -37,6 +37,15 @@ export function camposDoErro(erro: unknown): Readonly<Record<string, string>> {
   return porCampo;
 }
 
+/** Uma propriedade de texto do ProblemDetail (ex.: "uso" no 422 de exclusão bloqueada), ou null. */
+export function propriedadeDoErro(erro: unknown, nome: string): string | null {
+  if (!(erro instanceof HttpErrorResponse) || typeof erro.error !== 'object' || erro.error === null) {
+    return null;
+  }
+  const valor: unknown = (erro.error as Record<string, unknown>)[nome];
+  return typeof valor === 'string' && valor !== '' ? valor : null;
+}
+
 /** Campo `detail` do ProblemDetail, ou o texto padrão. */
 export function detalheDoErro(erro: unknown, padrao: string): string {
   if (!(erro instanceof HttpErrorResponse) || typeof erro.error !== 'object' || erro.error === null) {

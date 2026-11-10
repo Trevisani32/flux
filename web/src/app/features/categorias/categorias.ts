@@ -17,7 +17,7 @@ import { Icone } from '../../shared/icone/icone';
 import { detalheDoErro, statusDoErro } from '../auth/erros-http';
 import { CategoriaDialogo, DadosDoDialogoDeCategoria } from './categoria-dialogo/categoria-dialogo';
 import { Categoria, CategoriasService, GrupoDeCategorias, ListaDeCategorias, Natureza } from './categorias.service';
-import { paragrafosDeArquivar, paragrafosDeExcluir, quantidadeDeSubcategorias } from './frases';
+import { paragrafoDoBloqueio, paragrafosDeArquivar, paragrafosDeExcluir, quantidadeDeSubcategorias } from './frases';
 
 @Component({
   selector: 'app-categorias',
@@ -124,6 +124,7 @@ export class Categorias {
     // Todas as subcategorias, ativas e arquivadas, vão junto (decisão 21).
     const subcategorias = categoria.categoriaMaeId !== null ? []
       : [...categoria.subcategorias, ...this.arquivadasDe(categoria)].map((sub) => sub.nome);
+    const arquivada = categoria.arquivadaEm !== null;
     abrirConfirmacao(this.dialogo, {
       titulo: `Excluir ${categoria.nome}?`,
       icone: 'lixeira',
@@ -132,9 +133,18 @@ export class Categorias {
       confirmar: 'Excluir categoria',
       falha: 'Não foi possível excluir a categoria. Tente novamente.',
       acao: () => this.servico.excluir(categoria.id),
-    }).subscribe((excluida) => {
-      if (excluida === true) {
+      // Decisão 33: com lançamentos, o mesmo diálogo vira o bloqueio, com o uso que veio no 422.
+      bloqueio: {
+        codigo: 'CATEGORIA_EM_USO',
+        titulo: 'Esta categoria não pode ser excluída',
+        paragrafo: (uso) => paragrafoDoBloqueio(categoria.nome, subcategorias.length > 0, uso, arquivada),
+        alternativa: arquivada ? undefined : 'Arquivar categoria',
+      },
+    }).subscribe((resultado) => {
+      if (resultado === true) {
         this.carregar();
+      } else if (resultado === 'alternativa') {
+        this.arquivar(categoria);
       }
     });
   }

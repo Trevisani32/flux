@@ -139,8 +139,9 @@ public class CategoriaService {
                 .toList();
         if (!emUso.isEmpty()) {
             String quem = subcategorias.isEmpty() ? "tem " : "ela e as subcategorias têm ";
-            throw new RegraDeNegocioException("Esta categoria não pode ser excluída porque " + quem + juntar(emUso)
-                    + ". Arquive a categoria para tirá-la dos seletores.", "CATEGORIA_EM_USO");
+            String uso = juntar(emUso);
+            throw new RegraDeNegocioException("Esta categoria não pode ser excluída porque " + quem + uso
+                    + ". Arquive a categoria para tirá-la dos seletores.", "CATEGORIA_EM_USO").com("uso", uso);
         }
         repositorio.deleteAll(subcategorias);
         repositorio.delete(categoria);

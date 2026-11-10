@@ -185,6 +185,20 @@ describe('Categorias', () => {
     expect(confirmacao(dialogo, 1)[1].data.paragrafos).toEqual([['A categoria sai do Flux de vez. ', { forte: 'Não dá para desfazer.' }]]);
   });
 
+  it('o bloqueio da exclusão diz de quem é o uso e oferece arquivar', () => {
+    const { componente, dialogo } = criar();
+    componente.excluir(transporte);
+    const bloqueio = confirmacao(dialogo)[1].data.bloqueio;
+    expect(bloqueio?.codigo).toBe('CATEGORIA_EM_USO');
+    expect(bloqueio?.titulo).toBe('Esta categoria não pode ser excluída');
+    expect(bloqueio?.alternativa).toBe('Arquivar categoria');
+    expect(bloqueio?.paragrafo('42 lançamentos')).toEqual([{ forte: 'Transporte' }, ' e as subcategorias têm 42 lançamentos.',
+      ' Para tirá-la dos seletores sem perder o histórico, arquive a categoria.']);
+    componente.excluir(lazer);
+    expect(confirmacao(dialogo, 1)[1].data.bloqueio?.paragrafo('1 lançamento')).toEqual([{ forte: 'Lazer' }, ' tem 1 lançamento.',
+      ' Para tirá-la dos seletores sem perder o histórico, arquive a categoria.']);
+  });
+
   it('mostra o erro de reativar nas arquivadas', () => {
     const { componente, elemento, atualizar, servico } = criar();
     servico.reativar.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 422, error: { codigo: 'MAE_ARQUIVADA', detail: 'Reative antes a categoria Transporte.' } })));

@@ -182,8 +182,7 @@ O que isso exige do produto:
   até 13 dígitos antes da vírgula.
 - **Saldo atual** = saldo inicial + soma dos lançamentos efetivados da conta com
   data até hoje ([ADR 0003](decisoes/0003-saldo-derivado.md)). Um lançamento com
-  data futura só entra no saldo quando a data chegar. Até a Fatia 03b, que traz os
-  lançamentos, o saldo atual é o saldo inicial.
+  data futura só entra no saldo quando a data chegar.
 - Um lançamento com data anterior à data do saldo inicial é recusado. O saldo inicial
   e a data podem ser editados, mas a data não pode passar do lançamento mais antigo da
   conta.
@@ -197,7 +196,8 @@ O que isso exige do produto:
   zero, arquiva direto e oferece "Desfazer".
 - **Reativar:** a conta arquivada volta pela seção "Arquivadas". Se já houver uma conta
   ativa com o mesmo nome, a reativação é recusada. Conta arquivada não se edita.
-- **Excluir:** só é permitido em conta sem lançamentos.
+- **Excluir:** só é permitido em conta sem lançamentos e sem transferências. Com eles, o
+  sistema diz quantos são e oferece arquivar.
 - As contas aparecem em ordem alfabética. Cada usuário pode ter até 50 contas,
   contando as arquivadas.
 - Cartão de crédito não é conta. Ele tem módulo próprio.
@@ -223,36 +223,60 @@ O que isso exige do produto:
   as subcategorias ativas; reativar a principal traz de volta as que foram arquivadas
   com ela. A subcategoria de uma principal arquivada não se reativa sozinha.
 - **Excluir:** só se a categoria não tiver lançamentos, regras nem orçamentos. Excluir a
-  principal exclui as subcategorias junto.
+  principal exclui as subcategorias junto. Com lançamentos, o sistema diz quantos são e
+  oferece arquivar.
 - As categorias não têm ícone nem cor. Aparecem em ordem alfabética, e cada usuário
   pode ter até 200, contando as arquivadas.
 ### 4. Lançamentos — Fatia 03b
 
 - Receita ou despesa numa conta. Na Fatia 05 passam a existir também lançamentos
   em fatura de cartão.
-- Campos: data, descrição, valor, tipo (`RECEITA` ou `DESPESA`), categoria
-  (opcional), conta e observação.
+- Campos: data, descrição (até 255 caracteres), valor, tipo (`RECEITA` ou `DESPESA`),
+  categoria (opcional), conta e observação (opcional, até 1.000 caracteres).
 - O usuário sempre digita o valor positivo. O sistema guarda com sinal: entrada
   positiva, saída negativa ([ADR 0002](decisoes/0002-representacao-dinheiro.md)).
-- Valor zero não é permitido.
+- Valor zero não é permitido. O valor tem até 2 casas decimais e até 13 dígitos antes
+  da vírgula.
 - A categoria precisa ter a mesma natureza do lançamento. Uma despesa com
-  categoria de receita é recusada.
+  categoria de receita é recusada. A categoria principal também recebe lançamentos.
+- **Data:** a partir da data do saldo inicial da conta e até 12 meses depois de hoje.
+  Um lançamento com data futura aparece na lista como "Futuro" e só entra no saldo
+  quando a data chegar.
+- **Conta arquivada:** não recebe lançamento novo, e os lançamentos dela ficam só para
+  leitura até a conta ser reativada.
+- **Categoria arquivada:** não pode ser escolhida, mas o lançamento que já a tem
+  continua com ela e pode ser editado.
+- Ao editar, despesa e receita trocam entre si; um lançamento não vira transferência,
+  nem o contrário.
 - A origem é `MANUAL` ou `IMPORTADO` (Fatia 04).
-- A listagem mostra um mês por vez, começando no mês atual. Há filtros por conta,
-  categoria, tipo e texto da descrição, e os totais do filtro (entradas, saídas e
-  resultado).
-- Lançamentos manuais podem ser editados e excluídos livremente. As regras dos
-  importados estão no módulo de importação.
+- **Lista:** um mês por vez, começando no mês atual e indo até 12 meses à frente,
+  agrupada por dia, com o mais recente primeiro (no mesmo dia, o último cadastrado em
+  cima). Há filtros por conta, categoria (a principal inclui as subcategorias, e há
+  "Sem categoria"), tipo (receitas, despesas ou transferências) e texto da descrição,
+  sem diferenciar maiúsculas e acentos. O mês e os filtros ficam no endereço da página.
+- **Totais do filtro:** entradas, saídas e resultado, só de receitas e despesas. Os
+  lançamentos futuros do mês entram.
+- Com o filtro de uma conta, cada dia mostra o saldo da conta no fim do dia.
+- Cada usuário pode ter até 1.000 lançamentos com data no mesmo mês e 100.000 no total;
+  a transferência conta dois.
+- Lançamentos manuais podem ser editados e excluídos, com confirmação, menos os de conta
+  arquivada. As regras dos importados estão no módulo de importação.
 
 ### 5. Transferências — Fatia 03b
 
 - Movem dinheiro entre duas contas do usuário e não são receita nem despesa
-  ([ADR 0004](decisoes/0004-transferencia-par-lancamentos.md)).
-- Cada transferência gera dois lançamentos ligados, com a mesma data e o mesmo
-  valor: saída na origem e entrada no destino.
-- Editar ou excluir uma transferência altera os dois lançamentos juntos.
+  ([ADR 0004](decisoes/0004-transferencia-par-lancamentos.md) e
+  [ADR 0013](decisoes/0013-lancamentos-e-transferencias.md)).
+- Cada transferência gera dois lançamentos ligados, com a mesma data e o mesmo valor:
+  saída na origem e entrada no destino.
+- Não têm categoria. A descrição é opcional: vazia, fica "Transferência".
+- A data precisa ser a partir da data do saldo inicial das duas contas.
+- Editar ou excluir uma transferência altera os dois lançamentos juntos, e a edição
+  pode trocar as contas. Com uma das contas arquivada, a transferência fica só para
+  leitura.
 - A conta de origem precisa ser diferente da de destino.
-- Transferências ficam fora dos totais de receita e despesa e dos gastos por categoria.
+- Na lista, cada transferência é uma linha, sem sinal e em cor neutra. Ficam fora dos
+  totais de receita e despesa e dos gastos por categoria, mas entram no saldo das contas.
 
 ### 6. Importação de extratos — Fatia 04
 
@@ -429,7 +453,7 @@ Ver [ADR 0005](decisoes/0005-cartao-fatura-parcelas.md).
 | 01 | Base visual: tema escuro com dourado, componentes base, menu lateral responsivo e e2e no CI | Concluída |
 | 02 | Conta de usuário: cadastro, confirmação de e-mail, esqueci a senha, perfil, exclusão da conta, termos e limite de tentativas | Concluída |
 | 03a | Contas e categorias: cadastro, arquivamento, categorias padrão e telas | Implementada, aguardando publicação |
-| 03b | Lançamentos manuais, transferências e saldo pelos lançamentos | — |
+| 03b | Lançamentos manuais, transferências e saldo pelos lançamentos | Implementada, aguardando publicação |
 | 04 | Importação OFX/CSV e regras de categorização | — |
 | 05 | Cartão de crédito: faturas e parcelamento | — |
 | 06 | Dashboard, relatórios e exportação dos dados | — |

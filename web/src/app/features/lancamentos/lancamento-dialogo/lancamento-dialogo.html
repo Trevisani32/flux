@@ -1,0 +1,180 @@
+@if (somenteLeitura && item !== null) {
+  <div class="lancamento-dialogo">
+    <div class="lancamento-dialogo__cabecalho">
+      <span class="lancamento-dialogo__selo" aria-hidden="true"><app-icone [nome]="item.tipo === 'TRANSFERENCIA' ? 'lancamentos' : item.tipo === 'RECEITA' ? 'entrada' : 'saida'" /></span>
+      <h2 mat-dialog-title class="lancamento-dialogo__titulo">{{ titulo() }}</h2>
+    </div>
+    <div class="flux-alerta flux-alerta--info" role="status">
+      <app-icone nome="arquivar" />
+      <div class="flux-alerta__corpo">
+        <strong class="flux-alerta__titulo">{{ contaArquivada }} está arquivada</strong>
+        <p class="flux-alerta__texto">Reative a conta em Contas, na seção "Arquivadas", para editar ou excluir {{ item.tipo === 'TRANSFERENCIA' ? 'esta transferência' : 'este lançamento' }}.</p>
+      </div>
+    </div>
+    <dl class="lancamento-dialogo__ficha">
+      <dt>Valor</dt>
+      <dd><app-valor [valor]="item.valor" [tipo]="item.tipo === 'TRANSFERENCIA' ? 'neutro' : 'sinal'" /></dd>
+      <dt>Data</dt>
+      <dd>{{ item.data.slice(8, 10) }}/{{ item.data.slice(5, 7) }}/{{ item.data.slice(0, 4) }}</dd>
+      @if (item.tipo === 'TRANSFERENCIA') {
+        <dt>De</dt>
+        <dd>{{ item.contaNome }}</dd>
+        <dt>Para</dt>
+        <dd>{{ item.contaDestinoNome }}</dd>
+      } @else {
+        <dt>Conta</dt>
+        <dd>{{ item.contaNome }}</dd>
+        <dt>Categoria</dt>
+        <dd>{{ item.categoriaNome === null ? 'Sem categoria' : item.categoriaMaeNome === null ? item.categoriaNome : item.categoriaMaeNome + ' › ' + item.categoriaNome }}</dd>
+      }
+      <dt>Observação</dt>
+      <dd>{{ item.observacao ?? '—' }}</dd>
+    </dl>
+    <div class="lancamento-dialogo__acoes">
+      <button mat-stroked-button type="button" (click)="cancelar()">Fechar</button>
+    </div>
+  </div>
+} @else {
+  <form class="lancamento-dialogo" [formGroup]="formulario" (ngSubmit)="salvar(false)">
+    <h2 mat-dialog-title class="lancamento-dialogo__titulo">{{ titulo() }}</h2>
+
+    <fieldset class="flux-grupo" [attr.aria-describedby]="editando ? 'lancamento-tipo-dica' : null">
+      <legend class="flux-visualmente-oculto">Tipo</legend>
+      <div class="flux-segmentado flux-segmentado--largo">
+        <label [class.flux-segmentado__opcao--desligada]="tipoTravado('DESPESA')"><input type="radio" name="tipo" formControlName="tipo" value="DESPESA" [attr.disabled]="tipoTravado('DESPESA') ? '' : null" />Despesa</label>
+        <label [class.flux-segmentado__opcao--desligada]="tipoTravado('RECEITA')"><input type="radio" name="tipo" formControlName="tipo" value="RECEITA" [attr.disabled]="tipoTravado('RECEITA') ? '' : null" />Receita</label>
+        <label [class.flux-segmentado__opcao--desligada]="tipoTravado('TRANSFERENCIA')"><input type="radio" name="tipo" formControlName="tipo" value="TRANSFERENCIA" [attr.disabled]="tipoTravado('TRANSFERENCIA') ? '' : null" />Transferência</label>
+      </div>
+      @if (editando) {
+        <p id="lancamento-tipo-dica" class="flux-dica">{{ transferencia() ? 'Para virar receita ou despesa, exclua a transferência e crie o lançamento.' : 'Para virar transferência, exclua o lançamento e crie a transferência.' }}</p>
+      }
+    </fieldset>
+
+    <div class="lancamento-dialogo__duas">
+      <div class="flux-campo">
+        <label for="lancamento-valor">Valor</label>
+        <div class="flux-entrada" [class.flux-entrada--invalida]="erro('valor') !== null">
+          <span class="flux-entrada__prefixo" aria-hidden="true">R$</span>
+          <input id="lancamento-valor" type="text" inputmode="decimal" formControlName="valor" placeholder="0,00" autocomplete="off" (blur)="formatarValor()" [attr.aria-invalid]="erro('valor') !== null ? 'true' : null" [attr.aria-describedby]="erro('valor') !== null ? 'lancamento-valor-erro' : null" />
+        </div>
+        @if (erro('valor'); as mensagem) {
+          <p id="lancamento-valor-erro" class="flux-campo__erro">{{ mensagem }}</p>
+        }
+      </div>
+      <div class="flux-campo">
+        <label for="lancamento-data">Data</label>
+        <div class="flux-entrada" [class.flux-entrada--invalida]="erro('data') !== null">
+          <input id="lancamento-data" type="date" formControlName="data" [max]="limite" [attr.aria-invalid]="erro('data') !== null ? 'true' : null" [attr.aria-describedby]="erro('data') !== null ? 'lancamento-data-erro' : dicaDaData() !== null ? 'lancamento-data-dica' : null" />
+        </div>
+        @if (erro('data'); as mensagem) {
+          <p id="lancamento-data-erro" class="flux-campo__erro">{{ mensagem }}</p>
+        } @else if (dicaDaData(); as dica) {
+          <p id="lancamento-data-dica" class="flux-dica">{{ dica }}</p>
+        }
+      </div>
+    </div>
+
+    <div class="flux-campo">
+      <label for="lancamento-descricao">Descrição @if (transferencia()) {<span class="flux-grupo__opcional">(opcional)</span>}</label>
+      <div class="flux-entrada" [class.flux-entrada--invalida]="erro('descricao') !== null">
+        <input id="lancamento-descricao" type="text" formControlName="descricao" maxlength="255" autocomplete="off" [placeholder]="transferencia() ? 'Transferência' : ''" [attr.aria-invalid]="erro('descricao') !== null ? 'true' : null" [attr.aria-describedby]="erro('descricao') !== null ? 'lancamento-descricao-erro' : null" />
+      </div>
+      @if (erro('descricao'); as mensagem) {
+        <p id="lancamento-descricao-erro" class="flux-campo__erro">{{ mensagem }}</p>
+      }
+    </div>
+
+    @if (transferencia()) {
+      <div class="lancamento-dialogo__duas">
+        <div class="flux-campo">
+          <label for="lancamento-origem">De</label>
+          <div class="flux-entrada" [class.flux-entrada--invalida]="erro('origem') !== null">
+            <select id="lancamento-origem" formControlName="origem" [attr.aria-invalid]="erro('origem') !== null ? 'true' : null" [attr.aria-describedby]="erro('origem') !== null ? 'lancamento-origem-erro' : null">
+              <option [ngValue]="null" disabled>Escolha</option>
+              @for (conta of contasAtivas; track conta.id) {
+                <option [ngValue]="conta.id">{{ conta.nome }}</option>
+              }
+            </select>
+            <app-icone class="flux-entrada__seta" nome="baixo" />
+          </div>
+          @if (erro('origem'); as mensagem) {
+            <p id="lancamento-origem-erro" class="flux-campo__erro">{{ mensagem }}</p>
+          }
+        </div>
+        <div class="flux-campo">
+          <label for="lancamento-destino">Para</label>
+          <div class="flux-entrada" [class.flux-entrada--invalida]="erro('destino') !== null">
+            <select id="lancamento-destino" formControlName="destino" [attr.aria-invalid]="erro('destino') !== null ? 'true' : null" [attr.aria-describedby]="erro('destino') !== null ? 'lancamento-destino-erro' : null">
+              <option [ngValue]="null" disabled>Escolha</option>
+              @for (conta of contasAtivas; track conta.id) {
+                <option [ngValue]="conta.id">{{ conta.nome }}</option>
+              }
+            </select>
+            <app-icone class="flux-entrada__seta" nome="baixo" />
+          </div>
+          @if (erro('destino'); as mensagem) {
+            <p id="lancamento-destino-erro" class="flux-campo__erro">{{ mensagem }}</p>
+          }
+        </div>
+      </div>
+    } @else {
+      <div class="lancamento-dialogo__duas">
+        <div class="flux-campo">
+          <label for="lancamento-conta">Conta</label>
+          <div class="flux-entrada" [class.flux-entrada--invalida]="erro('conta') !== null">
+            <select id="lancamento-conta" formControlName="conta" [attr.aria-invalid]="erro('conta') !== null ? 'true' : null" [attr.aria-describedby]="erro('conta') !== null ? 'lancamento-conta-erro' : null">
+              <option [ngValue]="null" disabled>Escolha</option>
+              @for (conta of contasAtivas; track conta.id) {
+                <option [ngValue]="conta.id">{{ conta.nome }}</option>
+              }
+            </select>
+            <app-icone class="flux-entrada__seta" nome="baixo" />
+          </div>
+          @if (erro('conta'); as mensagem) {
+            <p id="lancamento-conta-erro" class="flux-campo__erro">{{ mensagem }}</p>
+          }
+        </div>
+        <div class="flux-campo">
+          <label for="lancamento-categoria">Categoria <span class="flux-grupo__opcional">(opcional)</span></label>
+          <div class="flux-entrada" [class.flux-entrada--invalida]="erro('categoria') !== null">
+            <select id="lancamento-categoria" formControlName="categoria" [attr.aria-invalid]="erro('categoria') !== null ? 'true' : null" [attr.aria-describedby]="erro('categoria') !== null ? 'lancamento-categoria-erro' : null">
+              <option [ngValue]="null">Sem categoria</option>
+              @for (opcao of categorias(); track opcao.id) {
+                <option [ngValue]="opcao.id">{{ opcao.rotulo }}</option>
+              }
+            </select>
+            <app-icone class="flux-entrada__seta" nome="baixo" />
+          </div>
+          @if (erro('categoria'); as mensagem) {
+            <p id="lancamento-categoria-erro" class="flux-campo__erro">{{ mensagem }}</p>
+          }
+        </div>
+      </div>
+    }
+
+    <div class="flux-campo">
+      <label for="lancamento-observacao">Observação <span class="flux-grupo__opcional">(opcional)</span></label>
+      <div class="flux-entrada flux-entrada--area" [class.flux-entrada--invalida]="erro('observacao') !== null">
+        <textarea id="lancamento-observacao" formControlName="observacao" rows="2" maxlength="1000" [attr.aria-invalid]="erro('observacao') !== null ? 'true' : null" [attr.aria-describedby]="erro('observacao') !== null ? 'lancamento-observacao-erro' : null"></textarea>
+      </div>
+      @if (erro('observacao'); as mensagem) {
+        <p id="lancamento-observacao-erro" class="flux-campo__erro">{{ mensagem }}</p>
+      }
+    </div>
+
+    @if (erroGeral(); as mensagem) {
+      <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem" />
+    }
+
+    <div class="lancamento-dialogo__acoes">
+      @if (editando) {
+        <button mat-button type="button" class="lancamento-dialogo__excluir" [disabled]="enviando()" (click)="excluir()"><app-icone nome="lixeira" [tamanho]="18" />Excluir</button>
+      }
+      <button mat-stroked-button type="button" [disabled]="enviando()" (click)="cancelar()">Cancelar</button>
+      @if (!editando) {
+        <button mat-stroked-button type="button" [disabled]="enviando()" (click)="salvar(true)">{{ textoDoSalvarEOutro() }}</button>
+      }
+      <button mat-flat-button type="submit" [disabled]="enviando()">{{ textoDoSalvar() }}</button>
+    </div>
+  </form>
+}
