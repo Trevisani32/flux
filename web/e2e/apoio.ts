@@ -98,3 +98,30 @@ export function tokenDoEmail(recebido: EmailRecebido): string {
   expect(encontrado, `o e-mail "${recebido.assunto}" não tem link com token`).not.toBeNull();
   return encontrado?.[1] ?? '';
 }
+export interface UsuarioDaJornada {
+  readonly nome: string;
+  readonly email: string;
+  readonly senha: string;
+}
+
+/**
+ * Cria e confirma um usuário pela API (cadastro + link do Mailpit), para jornadas que
+ * começam sem contas. Cada chamada conta 1 no limite de cadastros por IP (10 por hora).
+ */
+export async function criarUsuarioConfirmado(request: APIRequestContext, prefixo: string, nomeDoUsuario: string): Promise<UsuarioDaJornada> {
+  const usuario: UsuarioDaJornada = { nome: nomeDoUsuario, email: emailUnico(prefixo), senha: 'senha-da-jornada-123' };
+  const cadastro = await request.post('/api/auth/cadastrar', { data: { ...usuario, aceiteDosTermos: true } });
+  expect(cadastro.status()).toBe(202);
+  const [recebido] = await esperarEmails(request, usuario.email, 'Confirme seu e-mail no Flux');
+  const confirmacao = await request.post('/api/auth/confirmar-email', { data: { token: tokenDoEmail(recebido) } });
+  expect(confirmacao.status()).toBe(200);
+  return usuario;
+}
+
+/** Navega pelo menu principal; no celular, abre a gaveta antes. */
+export async function irPeloMenu(page: Page, item: 'Início' | 'Contas' | 'Categorias'): Promise<void> {
+  if (!ehDesktop(page)) {
+    await page.getByRole('button', { name: 'Abrir menu' }).click();
+  }
+  await page.getByRole('navigation', { name: 'Menu principal' }).getByRole('link', { name: item, exact: true }).click();
+}
