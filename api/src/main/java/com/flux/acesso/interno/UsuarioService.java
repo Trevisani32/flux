@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
 
+import com.flux.acesso.UsuarioCriado;
 import com.flux.acesso.interno.dto.ContaResponse;
 import com.flux.acesso.interno.dto.EntrarRequest;
 import com.flux.acesso.interno.dto.UsuarioResponse;
@@ -76,7 +77,10 @@ public class UsuarioService {
         Instant agora = Instant.now(clock);
         Usuario usuario = new Usuario(nomeNormalizado, emailNormalizado, passwordEncoder.encode(senha), agora);
         usuario.confirmarEmail(agora);
-        return usuarioRepository.save(usuario);
+        usuarioRepository.save(usuario);
+        // Os ouvintes síncronos (categorias padrão) gravam nesta mesma transação.
+        eventos.publishEvent(new UsuarioCriado(usuario.getId()));
+        return usuario;
     }
 
     public boolean existeEmail(String email) {
