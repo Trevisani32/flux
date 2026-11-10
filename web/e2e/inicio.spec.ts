@@ -8,8 +8,8 @@ test('início mostra a saudação, a data, o estado das contas e os cards Em bre
   // O usuário de dev pode ou não ter contas: um dos dois estados aparece (a jornada de
   // financas.spec.ts confere os dois com um usuário novo).
   await expect(page.getByRole('heading', { name: 'Comece pelas suas contas', level: 2 }).or(page.getByText('Saldo total', { exact: true }))).toBeVisible();
-  for (const titulo of ['Lançamentos e transferências', 'Importação de extratos', 'Cartões de crédito']) {
+  for (const titulo of ['Importação de extratos', 'Cartões de crédito']) {
     await expect(page.getByRole('heading', { name: titulo, level: 3 })).toBeVisible();
   }
-  await expect(page.getByText('Em breve', { exact: true })).toHaveCount(3);
+  await expect(page.getByText('Em breve', { exact: true })).toHaveCount(2);
 });
