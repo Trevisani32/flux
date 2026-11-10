@@ -1,4 +1,8 @@
-<app-cabecalho-pagina [titulo]="titulo()" [subtitulo]="hoje" />
+<app-cabecalho-pagina [titulo]="titulo()" [subtitulo]="hoje">
+  @if (temContaAtiva()) {
+    <button mat-flat-button type="button" (click)="abrir(null)"><app-icone nome="mais" [tamanho]="18" [traco]="2.2" />Novo lançamento</button>
+  }
+</app-cabecalho-pagina>
 <div class="flux-conteudo">
   @if (falhaAoCarregar()) {
     <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível carregar o saldo das contas." />
@@ -18,12 +22,42 @@
             @for (conta of lista.ativas; track conta.id) {
               <li class="inicio-conta">
                 <span class="inicio-conta__selo" [style.--flux-cor]="corDaConta(conta.cor)" aria-hidden="true"><app-icone [nome]="tipoDaConta(conta.tipo).icone" [tamanho]="17" /></span>
-                <span class="inicio-conta__nome">{{ conta.nome }}</span>
+                <a class="inicio-conta__nome" routerLink="/lancamentos" [queryParams]="{ conta: conta.id }">{{ conta.nome }}</a>
                 <app-valor [valor]="conta.saldoAtual" tipo="saldo" />
               </li>
             }
           </ul>
         </app-card>
+      </div>
+      <div class="inicio-movimento">
+        @if (mesComLancamentos(); as mes) {
+          <app-card class="inicio-mes" [titulo]="nomeDoMesSemAno(mes.mes)">
+            <a acao class="flux-link" routerLink="/lancamentos">Ver lançamentos</a>
+            <p class="inicio-mes__nota">Resultado, sem transferências</p>
+            <app-valor class="inicio-mes__resultado" [valor]="mes.totais.resultado" />
+            <div class="inicio-mes__par">
+              <div><span class="inicio-mes__rotulo">Entradas · {{ mes.totais.quantidadeEntradas }}</span><app-valor [valor]="mes.totais.entradas" /></div>
+              <div><span class="inicio-mes__rotulo">Saídas · {{ mes.totais.quantidadeSaidas }}</span><app-valor [valor]="mes.totais.saidas" /></div>
+            </div>
+          </app-card>
+        }
+        @if (ultimos(); as itens) {
+          <app-card class="inicio-ultimos" titulo="Últimos lançamentos">
+            @if (itens.length > 0) {
+              <a acao class="flux-link" routerLink="/lancamentos">Ver todos</a>
+            }
+            @if (itens.length > 0) {
+              <ul class="flux-lista">
+                @for (item of itens; track item.tipo + item.id) {
+                  <li class="inicio-ultimos__item"><app-linha-do-lancamento [item]="item" [hojeNaMeta]="hojeIso" [compacta]="true" (abrir)="abrir($event)" /></li>
+                }
+              </ul>
+            } @else {
+              <p class="inicio-ultimos__vazio">Nenhum lançamento ainda.</p>
+              <button mat-stroked-button type="button" class="inicio-ultimos__novo" (click)="abrir(null)">Novo lançamento</button>
+            }
+          </app-card>
+        }
       </div>
     } @else {
       <app-estado-vazio icone="contas" titulo="Comece pelas suas contas" texto="Cadastre a conta corrente, a poupança, a carteira ou os investimentos. As categorias padrão já estão prontas para usar.">

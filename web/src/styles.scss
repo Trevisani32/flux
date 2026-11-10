@@ -11,6 +11,7 @@
 @use 'styles/documentos';
 @use 'styles/dialogo';
 @use 'styles/listas';
+@use 'styles/lancamentos';
 
 html {
   @include mat.theme(

@@ -78,6 +78,11 @@ export class Contas {
     this.abrirDialogo(conta);
   }
 
+  /** A lista de lançamentos do mês atual, filtrada pela conta (decisão 31). */
+  verLancamentos(conta: Conta): void {
+    void this.router.navigate(['/lancamentos'], { queryParams: { conta: conta.id } });
+  }
+
   arquivar(conta: Conta): void {
     if (conta.saldoAtual === 0) {
       this.servico.arquivar(conta.id).subscribe({
@@ -123,6 +128,7 @@ export class Contas {
   }
 
   excluir(conta: Conta): void {
+    const arquivada = conta.arquivadaEm !== null;
     abrirConfirmacao(this.dialogo, {
       titulo: `Excluir ${conta.nome}?`,
       icone: 'lixeira',
@@ -131,9 +137,20 @@ export class Contas {
       confirmar: 'Excluir conta',
       falha: 'Não foi possível excluir a conta. Tente novamente.',
       acao: () => this.servico.excluir(conta.id),
-    }).subscribe((excluida) => {
-      if (excluida === true) {
+      // Decisão 33: com lançamentos, o mesmo diálogo vira o bloqueio, com o uso que veio no 422.
+      bloqueio: {
+        codigo: 'CONTA_EM_USO',
+        titulo: 'Esta conta não pode ser excluída',
+        paragrafo: (uso) => arquivada
+          ? [{ forte: conta.nome }, ` tem ${uso}. Ela continua arquivada, com o histórico nos relatórios.`]
+          : [{ forte: conta.nome }, ` tem ${uso}. Para tirá-la do saldo total e dos seletores sem perder o histórico, arquive a conta.`],
+        alternativa: arquivada ? undefined : 'Arquivar conta',
+      },
+    }).subscribe((resultado) => {
+      if (resultado === true) {
         this.carregar();
+      } else if (resultado === 'alternativa') {
+        this.arquivar(conta);
       }
     });
   }

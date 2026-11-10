@@ -3,7 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { Observable } from 'rxjs';
 
-import { detalheDoErro, statusDoErro } from '../../features/auth/erros-http';
+import { codigoDoErro, detalheDoErro, propriedadeDoErro, statusDoErro } from '../../features/auth/erros-http';
 import { Alerta } from '../alerta/alerta';
 import { Icone } from '../icone/icone';
 import { NomeIcone } from '../icone/icones';
@@ -11,6 +11,20 @@ import { Valor } from '../valor/valor';
 
 /** Um trecho de parágrafo: texto simples ou em negrito. */
 export type TrechoDeTexto = string | { readonly forte: string };
+
+/**
+ * O diálogo troca para o bloqueio quando a API responde 422 com este código (decisão 33):
+ * "Esta conta não pode ser excluída", com o uso que veio no campo "uso" do erro.
+ */
+export interface BloqueioDaConfirmacao {
+  /** Código do 422 (ex.: "CONTA_EM_USO"). */
+  readonly codigo: string;
+  readonly titulo: string;
+  /** O parágrafo, montado com o uso ("34 lançamentos e 3 transferências"). */
+  readonly paragrafo: (uso: string) => readonly TrechoDeTexto[];
+  /** Botão que fecha com "alternativa" (ex.: "Arquivar conta"); sem ele, só "Fechar". */
+  readonly alternativa?: string;
+}
 
 export interface DadosDaConfirmacao {
   readonly titulo: string;
@@ -26,7 +40,11 @@ export interface DadosDaConfirmacao {
   readonly falha: string;
   /** Chamada à API. O diálogo fecha com true quando ela termina bem. */
   readonly acao: () => Observable<unknown>;
+  readonly bloqueio?: BloqueioDaConfirmacao;
 }
+
+/** true: a ação terminou bem; "alternativa": o botão do bloqueio; undefined: fechou sem fazer nada. */
+export type ResultadoDaConfirmacao = boolean | 'alternativa' | undefined;
 
 /** Confirmação de arquivar ou excluir: chama a API e só fecha quando ela responde bem. */
 @Component({
@@ -36,11 +54,13 @@ export interface DadosDaConfirmacao {
   styleUrl: './confirmacao-dialogo.scss',
 })
 export class ConfirmacaoDialogo {
-  private readonly referencia = inject<MatDialogRef<ConfirmacaoDialogo, boolean>>(MatDialogRef);
+  private readonly referencia = inject<MatDialogRef<ConfirmacaoDialogo, ResultadoDaConfirmacao>>(MatDialogRef);
 
   readonly dados = inject<DadosDaConfirmacao>(MAT_DIALOG_DATA);
   readonly enviando = signal(false);
   readonly erro = signal<string | null>(null);
+  /** O parágrafo do bloqueio, quando a API recusou com o código dele. */
+  readonly bloqueado = signal<readonly TrechoDeTexto[] | null>(null);
 
   confirmar(): void {
     if (this.enviando()) {
@@ -54,7 +74,13 @@ export class ConfirmacaoDialogo {
       next: () => this.referencia.close(true),
       error: (erro: unknown) => {
         const status = statusDoErro(erro);
-        this.erro.set(status === 404 || status === 422 ? detalheDoErro(erro, this.dados.falha) : this.dados.falha);
+        const bloqueio = this.dados.bloqueio;
+        const uso = propriedadeDoErro(erro, 'uso');
+        if (status === 422 && bloqueio !== undefined && codigoDoErro(erro) === bloqueio.codigo && uso !== null) {
+          this.bloqueado.set(bloqueio.paragrafo(uso));
+        } else {
+          this.erro.set(status === 404 || status === 422 ? detalheDoErro(erro, this.dados.falha) : this.dados.falha);
+        }
         this.enviando.set(false);
         this.referencia.disableClose = false;
       },
@@ -66,6 +92,11 @@ export class ConfirmacaoDialogo {
     this.referencia.close();
   }
 
+  /** O botão do bloqueio ("Arquivar conta"): quem abriu decide o que fazer. */
+  escolherAlternativa(): void {
+    this.referencia.close('alternativa');
+  }
+
   forte(trecho: TrechoDeTexto): string | null {
     return typeof trecho === 'string' ? null : trecho.forte;
   }
@@ -75,9 +106,9 @@ export class ConfirmacaoDialogo {
   }
 }
 
-/** Abre a confirmação com o painel certo; o Observable emite true quando a ação terminou bem. */
-export function abrirConfirmacao(dialogo: MatDialog, dados: DadosDaConfirmacao): Observable<boolean | undefined> {
-  return dialogo.open<ConfirmacaoDialogo, DadosDaConfirmacao, boolean>(ConfirmacaoDialogo, {
+/** Abre a confirmação com o painel certo; o Observable emite o resultado ao fechar. */
+export function abrirConfirmacao(dialogo: MatDialog, dados: DadosDaConfirmacao): Observable<ResultadoDaConfirmacao> {
+  return dialogo.open<ConfirmacaoDialogo, DadosDaConfirmacao, ResultadoDaConfirmacao>(ConfirmacaoDialogo, {
     data: dados,
     panelClass: dados.perigo ? 'flux-dialogo-perigo' : 'flux-dialogo',
     width: '460px',

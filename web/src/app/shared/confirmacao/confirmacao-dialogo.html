@@ -1,25 +1,41 @@
-<div class="confirmacao">
-  <div class="confirmacao__cabecalho">
-    <span class="confirmacao__selo" [class.confirmacao__selo--perigo]="dados.perigo" aria-hidden="true"><app-icone [nome]="dados.icone" /></span>
-    <h2 mat-dialog-title class="confirmacao__titulo">{{ dados.titulo }}</h2>
-  </div>
-  @if (dados.alerta; as alerta) {
-    <div class="flux-alerta flux-alerta--info" role="status">
-      <app-icone nome="alerta" />
-      <div class="flux-alerta__corpo">
-        <strong class="flux-alerta__titulo">{{ alerta.titulo }} <app-valor [valor]="alerta.valor" tipo="saldo" /></strong>
-        <p class="flux-alerta__texto">{{ alerta.texto }}</p>
-      </div>
+@if (bloqueado(); as paragrafo) {
+  <div class="confirmacao">
+    <div class="confirmacao__cabecalho">
+      <span class="confirmacao__selo" aria-hidden="true"><app-icone nome="info" /></span>
+      <h2 mat-dialog-title class="confirmacao__titulo">{{ dados.bloqueio?.titulo }}</h2>
     </div>
-  }
-  @for (paragrafo of dados.paragrafos; track $index) {
-    <p class="confirmacao__texto">@for (trecho of paragrafo; track $index) {@if (forte(trecho); as texto) {<b>{{ texto }}</b>} @else {{{ simples(trecho) }}}}</p>
-  }
-  @if (erro(); as mensagem) {
-    <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem" />
-  }
-  <div class="confirmacao__acoes">
-    <button mat-stroked-button type="button" [disabled]="enviando()" (click)="cancelar()">Cancelar</button>
-    <button mat-flat-button type="button" [class.flux-botao-perigo-cheio]="dados.perigo" [disabled]="enviando()" (click)="confirmar()">{{ dados.confirmar }}</button>
+    <p class="confirmacao__texto" role="status">@for (trecho of paragrafo; track $index) {@if (forte(trecho); as texto) {<b>{{ texto }}</b>} @else {{{ simples(trecho) }}}}</p>
+    <div class="confirmacao__acoes">
+      <button mat-stroked-button type="button" (click)="cancelar()">Fechar</button>
+      @if (dados.bloqueio?.alternativa; as alternativa) {
+        <button mat-flat-button type="button" (click)="escolherAlternativa()">{{ alternativa }}</button>
+      }
+    </div>
   </div>
-</div>
+} @else {
+  <div class="confirmacao">
+    <div class="confirmacao__cabecalho">
+      <span class="confirmacao__selo" [class.confirmacao__selo--perigo]="dados.perigo" aria-hidden="true"><app-icone [nome]="dados.icone" /></span>
+      <h2 mat-dialog-title class="confirmacao__titulo">{{ dados.titulo }}</h2>
+    </div>
+    @if (dados.alerta; as alerta) {
+      <div class="flux-alerta flux-alerta--info" role="status">
+        <app-icone nome="alerta" />
+        <div class="flux-alerta__corpo">
+          <strong class="flux-alerta__titulo">{{ alerta.titulo }} <app-valor [valor]="alerta.valor" tipo="saldo" /></strong>
+          <p class="flux-alerta__texto">{{ alerta.texto }}</p>
+        </div>
+      </div>
+    }
+    @for (paragrafo of dados.paragrafos; track $index) {
+      <p class="confirmacao__texto">@for (trecho of paragrafo; track $index) {@if (forte(trecho); as texto) {<b>{{ texto }}</b>} @else {{{ simples(trecho) }}}}</p>
+    }
+    @if (erro(); as mensagem) {
+      <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem" />
+    }
+    <div class="confirmacao__acoes">
+      <button mat-stroked-button type="button" [disabled]="enviando()" (click)="cancelar()">Cancelar</button>
+      <button mat-flat-button type="button" [class.flux-botao-perigo-cheio]="dados.perigo" [disabled]="enviando()" (click)="confirmar()">{{ dados.confirmar }}</button>
+    </div>
+  </div>
+}

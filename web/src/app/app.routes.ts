@@ -45,6 +45,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/inicio/inicio').then((m) => m.Inicio),
       },
       {
+        path: 'lancamentos', title: 'Lançamentos | Flux',
+        loadComponent: () => import('./features/lancamentos/lancamentos').then((m) => m.Lancamentos),
+      },
+      {
         path: 'contas', title: 'Contas | Flux',
         loadComponent: () => import('./features/contas/contas').then((m) => m.Contas),
       },

@@ -43,3 +43,13 @@ export function paragrafosDeExcluir(subcategorias: readonly string[]): TrechoDeT
 export function quantidadeDeSubcategorias(quantidade: number): string {
   return quantidade === 1 ? '1 subcategoria' : `${quantidade} subcategorias`;
 }
+
+/**
+ * O parágrafo de "Esta categoria não pode ser excluída" (decisão 33): "Alimentação e as
+ * subcategorias têm 42 lançamentos." ou "Mercado tem 9 lançamentos.", com o que fazer.
+ */
+export function paragrafoDoBloqueio(nome: string, temSubcategorias: boolean, uso: string, arquivada: boolean): TrechoDeTexto[] {
+  const quem: TrechoDeTexto[] = temSubcategorias ? [{ forte: nome }, ` e as subcategorias têm ${uso}.`] : [{ forte: nome }, ` tem ${uso}.`];
+  return [...quem, arquivada ? ' Ela continua arquivada, com os lançamentos nos relatórios.'
+    : ' Para tirá-la dos seletores sem perder o histórico, arquive a categoria.'];
+}

@@ -4,6 +4,7 @@
     @if (subtitulo(); as texto) {
       <p class="cabecalho__subtitulo">{{ texto }}</p>
     }
+    <ng-content select="[complemento]" />
   </div>
   <div class="cabecalho__acoes"><ng-content /></div>
 </header>

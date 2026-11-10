@@ -6,6 +6,9 @@
       <a class="navegacao__link" routerLink="/" routerLinkActive="navegacao__link--ativo" ariaCurrentWhenActive="page" [routerLinkActiveOptions]="{ exact: true }" (click)="navegou.emit()"><app-icone nome="inicio" />Início</a>
     </li>
     <li>
+      <a class="navegacao__link" routerLink="/lancamentos" routerLinkActive="navegacao__link--ativo" ariaCurrentWhenActive="page" (click)="navegou.emit()"><app-icone nome="lancamentos" />Lançamentos</a>
+    </li>
+    <li>
       <a class="navegacao__link" routerLink="/contas" routerLinkActive="navegacao__link--ativo" ariaCurrentWhenActive="page" (click)="navegou.emit()"><app-icone nome="contas" />Contas</a>
     </li>
   </ul>

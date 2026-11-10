@@ -69,12 +69,12 @@ describe('Contas', () => {
   it('mostra o saldo total, as duas partes e as contas na ordem da API', () => {
     const { elemento } = criar();
     expect(elemento.querySelector('h1')?.textContent).toBe('Contas');
-    expect(elemento.querySelector('app-saldo-em-destaque .flux-cartao-destaque__valor .valor__texto')?.textContent).toBe('R$ 19.278,40');
+    expect(elemento.querySelector('app-saldo-em-destaque .flux-cartao-destaque__valor .valor__texto')?.textContent).toBe('R$\u00a019.278,40');
     expect(elemento.querySelector('app-saldo-em-destaque .flux-cartao-destaque__rodape')?.textContent).toContain('4 contas ativas');
     expect(elemento.querySelector('app-saldo-em-destaque .flux-cartao-destaque__pilula .flux-so-desktop')?.textContent).toBe('09/11/2026');
     expect(elemento.querySelector('app-saldo-em-destaque .flux-cartao-destaque__pilula .flux-so-celular')?.textContent).toBe('09/11');
     expect(textos(elemento, '.contas-resumo__rotulo')).toEqual(['Disponível', 'Investimentos']);
-    expect(textos(elemento, '.contas-resumo__valor')).toEqual(['R$ 4.278,40', 'R$ 15.000,00']);
+    expect(textos(elemento, '.contas-resumo__valor')).toEqual(['R$\u00a04.278,40', 'R$\u00a015.000,00']);
     expect(textos(elemento, '.flux-lista-card .conta__nome')).toEqual(['Banco Horizonte', 'Carteira', 'Conta conjunta', 'Reserva de emergência']);
     expect(textos(elemento, '.flux-lista-card .conta__meta')[0]).toBe('Conta corrente · desde 01/10/2026');
     expect(textos(elemento, '.flux-lista-card .conta__meta')[3]).toBe('Investimento · desde 01/10/2026');
@@ -84,7 +84,7 @@ describe('Contas', () => {
     const { elemento } = criar();
     const conjunta = elemento.querySelectorAll('.flux-lista-card .conta')[2];
     expect(conjunta.querySelector('app-valor')?.classList).toContain('flux-valor--negativo');
-    expect(conjunta.querySelector('app-valor')?.textContent).toContain('−R$ 120,00');
+    expect(conjunta.querySelector('app-valor')?.textContent).toContain('−R$\u00a0120,00');
     expect(conjunta.querySelector<HTMLElement>('.conta__selo')?.style.getPropertyValue('--flux-cor')).toBe('var(--flux-cor-conta-rosa)');
     const carteira = elemento.querySelectorAll('.flux-lista-card .conta')[1];
     expect(carteira.querySelector<HTMLElement>('.conta__selo')?.style.getPropertyValue('--flux-cor')).toBe('');
@@ -159,6 +159,30 @@ describe('Contas', () => {
     expect(configuracao.data.paragrafos).toEqual([['A conta sai do Flux de vez. ', { forte: 'Não dá para desfazer.' }]]);
     configuracao.data.acao().subscribe();
     expect(servico.excluir).toHaveBeenCalledWith(1);
+  });
+
+  it('Ver lançamentos abre a lista do mês filtrada pela conta', () => {
+    const { componente, navegar } = criar();
+    componente.verLancamentos(lista.ativas[2]);
+    expect(navegar).toHaveBeenCalledWith(['/lancamentos'], { queryParams: { conta: 3 } });
+  });
+
+  it('o bloqueio da exclusão leva a arquivar a conta; na arquivada, só fecha', () => {
+    const { componente, dialogo, fechamentos } = criar();
+    componente.excluir(lista.ativas[0]);
+    const bloqueio = (dialogo.open.mock.calls[0] as unknown as [unknown, { data: DadosDaConfirmacao }])[1].data.bloqueio;
+    expect(bloqueio?.codigo).toBe('CONTA_EM_USO');
+    expect(bloqueio?.titulo).toBe('Esta conta não pode ser excluída');
+    expect(bloqueio?.alternativa).toBe('Arquivar conta');
+    expect(bloqueio?.paragrafo('34 lançamentos e 3 transferências')).toEqual([{ forte: 'Banco Horizonte' },
+      ' tem 34 lançamentos e 3 transferências. Para tirá-la do saldo total e dos seletores sem perder o histórico, arquive a conta.']);
+    fechamentos[0].next('alternativa');
+    expect((dialogo.open.mock.calls[1] as unknown as [unknown, { data: DadosDaConfirmacao }])[1].data.titulo).toBe('Arquivar Banco Horizonte?');
+
+    componente.excluir(lista.arquivadas[0]);
+    const daArquivada = (dialogo.open.mock.calls[2] as unknown as [unknown, { data: DadosDaConfirmacao }])[1].data.bloqueio;
+    expect(daArquivada?.alternativa).toBeUndefined();
+    expect(daArquivada?.paragrafo('1 lançamento')).toEqual([{ forte: 'Conta salário' }, ' tem 1 lançamento. Ela continua arquivada, com o histórico nos relatórios.']);
   });
 
   it('mostra o erro de reativar dentro das arquivadas e as abre', () => {
