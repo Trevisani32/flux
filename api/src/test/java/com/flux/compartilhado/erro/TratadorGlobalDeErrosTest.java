@@ -87,6 +87,14 @@ class TratadorGlobalDeErrosTest {
     }
 
     @Test
+    void regraDeNegocioLevaAsPropriedadesNoCorpo() {
+        org.springframework.test.web.servlet.assertj.MvcTestResult resultado = mvc.get().uri("/teste/regra-com-propriedade").exchange();
+        assertThat(resultado).hasStatus(422).bodyJson().extractingPath("codigo").isEqualTo("CONTA_EM_USO");
+        assertThat(resultado).bodyJson().extractingPath("uso").isEqualTo("2 lançamentos e 1 transferência");
+        assertThat(resultado).bodyJson().extractingPath("detail").isEqualTo("Em uso.");
+    }
+
+    @Test
     void campoInvalidoViraOMesmo400DaValidacao() {
         org.springframework.test.web.servlet.assertj.MvcTestResult resultado = mvc.get().uri("/teste/campo").exchange();
         assertThat(resultado).hasStatus(400).hasContentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON)
@@ -156,6 +164,11 @@ class TratadorGlobalDeErrosTest {
         @GetMapping("/regra-com-codigo")
         public void regraComCodigo() {
             throw new RegraDeNegocioException("Nome em uso.", "NOME_EM_USO");
+        }
+
+        @GetMapping("/regra-com-propriedade")
+        public void regraComPropriedade() {
+            throw new RegraDeNegocioException("Em uso.", "CONTA_EM_USO").com("uso", "2 lançamentos e 1 transferência");
         }
 
         @GetMapping("/campo")
