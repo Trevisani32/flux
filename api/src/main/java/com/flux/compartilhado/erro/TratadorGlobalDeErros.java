@@ -61,7 +61,20 @@ public class TratadorGlobalDeErros extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(RegraDeNegocioException.class)
     public ResponseEntity<ProblemDetail> trataRegraDeNegocio(RegraDeNegocioException ex) {
-        return resposta(HttpStatus.UNPROCESSABLE_ENTITY, "Operação não permitida", ex.getMessage());
+        ProblemDetail corpo = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+        corpo.setTitle("Operação não permitida");
+        if (ex.getCodigo() != null) {
+            corpo.setProperty("codigo", ex.getCodigo());
+        }
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(corpo);
+    }
+
+    @ExceptionHandler(CampoInvalidoException.class)
+    public ResponseEntity<ProblemDetail> trataCampoInvalido(CampoInvalidoException ex) {
+        ProblemDetail corpo = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Um ou mais campos são inválidos.");
+        corpo.setTitle("Dados inválidos");
+        corpo.setProperty("campos", List.of(new CampoInvalido(ex.getCampo(), ex.getMessage())));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(corpo);
     }
 
     @ExceptionHandler(LimiteExcedidoException.class)
