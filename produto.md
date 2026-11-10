@@ -452,8 +452,8 @@ Ver [ADR 0005](decisoes/0005-cartao-fatura-parcelas.md).
 | 00 | Base: repositório, login, multiusuário, CI, Docker | Concluída |
 | 01 | Base visual: tema escuro com dourado, componentes base, menu lateral responsivo e e2e no CI | Concluída |
 | 02 | Conta de usuário: cadastro, confirmação de e-mail, esqueci a senha, perfil, exclusão da conta, termos e limite de tentativas | Concluída |
-| 03a | Contas e categorias: cadastro, arquivamento, categorias padrão e telas | Implementada, aguardando publicação |
-| 03b | Lançamentos manuais, transferências e saldo pelos lançamentos | Implementada, aguardando publicação |
+| 03a | Contas e categorias: cadastro, arquivamento, categorias padrão e telas | Concluída |
+| 03b | Lançamentos manuais, transferências e saldo pelos lançamentos | Concluída |
 | 04 | Importação OFX/CSV e regras de categorização | — |
 | 05 | Cartão de crédito: faturas e parcelamento | — |
 | 06 | Dashboard, relatórios e exportação dos dados | — |
