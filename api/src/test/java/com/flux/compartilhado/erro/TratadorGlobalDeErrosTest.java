@@ -76,6 +76,28 @@ class TratadorGlobalDeErrosTest {
     }
 
     @Test
+    void regraDeNegocioLevaOCodigoSoQuandoExiste() throws Exception {
+        org.springframework.test.web.servlet.assertj.MvcTestResult comCodigo = mvc.get().uri("/teste/regra-com-codigo").exchange();
+        assertThat(comCodigo).hasStatus(422).bodyJson().extractingPath("codigo").isEqualTo("NOME_EM_USO");
+        assertThat(comCodigo).bodyJson().extractingPath("detail").isEqualTo("Nome em uso.");
+        assertThat(comCodigo).bodyJson().extractingPath("title").isEqualTo("Operação não permitida");
+        org.springframework.test.web.servlet.assertj.MvcTestResult semCodigo = mvc.get().uri("/teste/regra").exchange();
+        assertThat(semCodigo).hasStatus(422);
+        assertThat(semCodigo.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8)).doesNotContain("codigo");
+    }
+
+    @Test
+    void campoInvalidoViraOMesmo400DaValidacao() {
+        org.springframework.test.web.servlet.assertj.MvcTestResult resultado = mvc.get().uri("/teste/campo").exchange();
+        assertThat(resultado).hasStatus(400).hasContentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON)
+                .bodyJson().extractingPath("title").isEqualTo("Dados inválidos");
+        assertThat(resultado).bodyJson().extractingPath("detail").isEqualTo("Um ou mais campos são inválidos.");
+        assertThat(resultado).bodyJson().extractingPath("campos.length()").isEqualTo(1);
+        assertThat(resultado).bodyJson().extractingPath("campos[0].campo").isEqualTo("dataSaldoInicial");
+        assertThat(resultado).bodyJson().extractingPath("campos[0].mensagem").isEqualTo("A data não pode ser depois de hoje.");
+    }
+
+    @Test
     void traduzErrosDoFramework() {
         assertThat(mvc.get().uri("/teste/validar")).hasStatus(405)
                 .bodyJson().extractingPath("title").isEqualTo("Método não permitido");
@@ -129,6 +151,16 @@ class TratadorGlobalDeErrosTest {
         @GetMapping("/regra")
         public void regra() {
             throw new RegraDeNegocioException("Regra inválida.");
+        }
+
+        @GetMapping("/regra-com-codigo")
+        public void regraComCodigo() {
+            throw new RegraDeNegocioException("Nome em uso.", "NOME_EM_USO");
+        }
+
+        @GetMapping("/campo")
+        public void campo() {
+            throw new CampoInvalidoException("dataSaldoInicial", "A data não pode ser depois de hoje.");
         }
 
         @GetMapping("/erro")

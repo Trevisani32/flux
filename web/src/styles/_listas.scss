@@ -1,0 +1,176 @@
+// Listas da Fatia 03a (contas e categorias): card de lista, botão "⋯", seção recolhível
+// "Arquivadas", contador e abas por link.
+.flux-lista-card {
+  gap: 0;
+  padding: 6px 0 10px;
+}
+
+.flux-lista-card__cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--flux-espaco-2) var(--flux-espaco-3);
+  padding: var(--flux-espaco-4) var(--flux-espaco-6) var(--flux-espaco-2);
+}
+
+.flux-lista-card__titulo {
+  font: var(--flux-fonte-titulo-card);
+  letter-spacing: -0.2px;
+}
+
+.flux-lista-card__nota {
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.flux-lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.flux-botao-acoes {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--flux-texto-3);
+  cursor: pointer;
+}
+
+.flux-botao-acoes:hover,
+.flux-botao-acoes[aria-expanded='true'] {
+  background: var(--flux-card-2);
+  color: var(--flux-texto);
+}
+
+.flux-contador {
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--flux-espaco-2);
+  border-radius: var(--flux-raio-pilula);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--flux-texto-2);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.flux-arquivadas {
+  gap: 0;
+  padding: 0;
+}
+
+.flux-arquivadas__alternar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: var(--flux-espaco-4) var(--flux-espaco-5) var(--flux-espaco-4) var(--flux-espaco-6);
+  border: 0;
+  border-radius: var(--flux-raio-card);
+  background: transparent;
+  color: var(--flux-texto);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.flux-arquivadas__seta {
+  margin-left: auto;
+  color: var(--flux-texto-3);
+  transition: transform 0.2s ease;
+}
+
+.flux-arquivadas__alternar[aria-expanded='true'] .flux-arquivadas__seta {
+  transform: rotate(180deg);
+}
+
+.flux-arquivadas__corpo {
+  padding-bottom: 6px;
+  border-top: 1px solid var(--flux-borda);
+}
+
+.flux-arquivadas__erro {
+  padding: var(--flux-espaco-3) var(--flux-espaco-4) 0;
+}
+
+.flux-arquivadas__explica {
+  padding: var(--flux-espaco-3) var(--flux-espaco-6) var(--flux-espaco-1);
+  color: var(--flux-texto-3);
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.flux-abas {
+  align-self: flex-start;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--flux-borda);
+  border-radius: var(--flux-raio-controle);
+  background: var(--flux-card);
+}
+
+.flux-abas__aba {
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--flux-espaco-2);
+  padding: 0 14px;
+  border-radius: 9px;
+  color: var(--flux-texto-2);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.flux-abas__aba[aria-current='page'] {
+  background: rgba(var(--flux-ouro-rgb), 0.15);
+  color: var(--flux-ouro-texto);
+}
+
+.flux-abas__aba[aria-current='page'] .flux-contador {
+  background: rgba(var(--flux-ouro-rgb), 0.18);
+  color: var(--flux-ouro-texto);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flux-arquivadas__seta {
+    transition: none;
+  }
+}
+
+@media (max-width: 959.98px) {
+  .flux-lista-card {
+    padding: var(--flux-espaco-1) 0 var(--flux-espaco-2);
+  }
+
+  .flux-lista-card__cabecalho {
+    padding: 14px var(--flux-espaco-4) 6px;
+  }
+
+  .flux-arquivadas__alternar {
+    padding: 14px var(--flux-espaco-3) 14px var(--flux-espaco-4);
+  }
+
+  .flux-arquivadas__explica {
+    padding: 10px var(--flux-espaco-4) var(--flux-espaco-1);
+  }
+
+  .flux-abas {
+    align-self: stretch;
+  }
+
+  .flux-abas__aba {
+    flex: 1 1 0;
+  }
+}

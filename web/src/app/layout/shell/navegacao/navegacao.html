@@ -5,5 +5,14 @@
     <li>
       <a class="navegacao__link" routerLink="/" routerLinkActive="navegacao__link--ativo" ariaCurrentWhenActive="page" [routerLinkActiveOptions]="{ exact: true }" (click)="navegou.emit()"><app-icone nome="inicio" />Início</a>
     </li>
+    <li>
+      <a class="navegacao__link" routerLink="/contas" routerLinkActive="navegacao__link--ativo" ariaCurrentWhenActive="page" (click)="navegou.emit()"><app-icone nome="contas" />Contas</a>
+    </li>
+  </ul>
+  <p class="navegacao__grupo navegacao__grupo--seguinte" id="navegacao-organizacao">Organização</p>
+  <ul class="navegacao__lista" aria-labelledby="navegacao-organizacao">
+    <li>
+      <a class="navegacao__link" routerLink="/categorias" routerLinkActive="navegacao__link--ativo" ariaCurrentWhenActive="page" (click)="navegou.emit()"><app-icone nome="etiqueta" />Categorias</a>
+    </li>
   </ul>
 </nav>

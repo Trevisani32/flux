@@ -1,6 +1,36 @@
 <app-cabecalho-pagina [titulo]="titulo()" [subtitulo]="hoje" />
 <div class="flux-conteudo">
-  <app-estado-vazio icone="carteira" titulo="Tudo pronto para começar" texto="A base do Flux está no ar. As próximas versões trazem contas, lançamentos, importação de extratos e cartões." />
+  @if (falhaAoCarregar()) {
+    <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível carregar o saldo das contas." />
+  } @else if (contas(); as lista) {
+    @if (lista.ativas.length > 0) {
+      <div class="inicio-contas">
+        <app-saldo-em-destaque rotulo="Saldo total" [valor]="lista.totais.geral">
+          <span>{{ quantidadeDeContasAtivas(lista.ativas.length) }}</span>
+          @if (temInvestimento()) {
+            <span class="flux-cartao-destaque__pilula">Investimentos: <app-valor [valor]="lista.totais.investimentos" tipo="saldo" /></span>
+          }
+        </app-saldo-em-destaque>
+        <app-card class="inicio-contas__lista" titulo="Contas">
+          <a acao class="flux-link" routerLink="/contas">Ver todas</a>
+          <p class="inicio-contas__nota">Saldo de hoje</p>
+          <ul class="flux-lista">
+            @for (conta of lista.ativas; track conta.id) {
+              <li class="inicio-conta">
+                <span class="inicio-conta__selo" [style.--flux-cor]="corDaConta(conta.cor)" aria-hidden="true"><app-icone [nome]="tipoDaConta(conta.tipo).icone" [tamanho]="17" /></span>
+                <span class="inicio-conta__nome">{{ conta.nome }}</span>
+                <app-valor [valor]="conta.saldoAtual" tipo="saldo" />
+              </li>
+            }
+          </ul>
+        </app-card>
+      </div>
+    } @else {
+      <app-estado-vazio icone="contas" titulo="Comece pelas suas contas" texto="Cadastre a conta corrente, a poupança, a carteira ou os investimentos. As categorias padrão já estão prontas para usar.">
+        <a mat-flat-button routerLink="/contas" [queryParams]="{ nova: 'conta' }">Cadastrar conta</a>
+      </app-estado-vazio>
+    }
+  }
   <section class="em-breve" aria-label="Em breve">
     @for (item of emBreve; track item.titulo) {
       <app-card>

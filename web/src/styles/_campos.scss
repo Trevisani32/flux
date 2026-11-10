@@ -149,3 +149,249 @@
     content: none;
   }
 }
+// Fatia 03a: select nativo, prefixo "R$", grupos de rádio (tipo da conta, cor e natureza).
+.flux-entrada > select {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--flux-texto);
+  font-size: 15px;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.flux-entrada > select option {
+  background: var(--flux-escuro-menu);
+  color: var(--flux-escuro-texto);
+}
+
+.flux-entrada > select:disabled {
+  color: var(--flux-texto-2);
+  cursor: not-allowed;
+}
+
+.flux-entrada--travada {
+  background: var(--flux-card-2);
+}
+
+.flux-entrada__seta {
+  margin-right: 10px;
+  color: var(--flux-texto-3);
+  pointer-events: none;
+}
+
+.flux-entrada__prefixo {
+  color: var(--flux-texto-3);
+  font-weight: 700;
+}
+
+.flux-entrada > input[type='date'] {
+  color-scheme: dark;
+  padding-right: var(--flux-espaco-2);
+}
+
+.flux-grupo {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--flux-espaco-2);
+}
+
+.flux-grupo > legend {
+  margin-bottom: var(--flux-espaco-2);
+  padding: 0;
+  color: var(--flux-texto-2);
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.flux-grupo__opcional {
+  color: var(--flux-texto-3);
+  font-weight: 600;
+}
+
+// Rádio escondido, mas focável: o rótulo inteiro é a área de clique.
+.flux-opcao-tipo > input,
+.flux-cor > input,
+.flux-segmentado input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+
+.flux-opcoes-tipo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.flux-opcao-tipo {
+  position: relative;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: var(--flux-espaco-3);
+  padding: 0 14px;
+  border: 1px solid var(--flux-borda-2);
+  border-radius: var(--flux-raio-controle);
+  background: var(--flux-card);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.flux-opcao-tipo__selo {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--flux-card-2);
+  color: var(--flux-texto-2);
+}
+
+.flux-opcao-tipo:has(input:checked) {
+  border-color: rgba(var(--flux-ouro-rgb), 0.85);
+  background: rgba(var(--flux-ouro-rgb), 0.08);
+}
+
+.flux-opcao-tipo:has(input:checked) .flux-opcao-tipo__selo {
+  background: rgba(var(--flux-ouro-rgb), 0.16);
+  color: var(--flux-ouro);
+}
+
+.flux-opcao-tipo:has(input:focus-visible) {
+  box-shadow: 0 0 0 3px rgba(var(--flux-ouro-rgb), 0.35);
+}
+
+.flux-cores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.flux-cor {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+.flux-cor__amostra {
+  width: 32px;
+  height: 32px;
+  display: block;
+  border-radius: 50%;
+}
+
+.flux-cor__amostra--sem {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--flux-borda-2);
+  background: var(--flux-card);
+}
+
+.flux-cor__amostra--sem::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  left: 50%;
+  border-left: 1.5px solid var(--flux-texto-3);
+  transform: rotate(45deg);
+}
+
+.flux-cor > input:checked + .flux-cor__amostra {
+  box-shadow: 0 0 0 2px var(--flux-escuro-menu), 0 0 0 4px var(--flux-texto);
+}
+
+.flux-cor > input:focus-visible + .flux-cor__amostra {
+  outline: 2px solid var(--flux-ouro);
+  outline-offset: 5px;
+}
+
+.flux-segmentado {
+  align-self: flex-start;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--flux-borda-2);
+  border-radius: var(--flux-raio-controle);
+  background: var(--flux-card);
+}
+
+.flux-segmentado label {
+  position: relative;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 18px;
+  border-radius: 9px;
+  color: var(--flux-texto-2);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.flux-segmentado label:has(input:checked) {
+  background: rgba(var(--flux-ouro-rgb), 0.15);
+  color: var(--flux-ouro-texto);
+}
+
+.flux-segmentado label:has(input:focus-visible) {
+  box-shadow: 0 0 0 2px rgba(var(--flux-ouro-rgb), 0.5);
+}
+
+.flux-segmentado--travado {
+  background: var(--flux-card-2);
+}
+
+.flux-segmentado--travado label {
+  cursor: not-allowed;
+}
+
+.flux-segmentado--travado label:not(:has(input:checked)) {
+  opacity: 0.45;
+}
+
+@media (max-width: 959.98px) {
+  .flux-opcoes-tipo {
+    gap: var(--flux-espaco-2);
+  }
+
+  .flux-opcao-tipo {
+    height: 52px;
+    gap: 10px;
+    padding: 0 10px;
+    font-size: 13px;
+    line-height: 16px;
+  }
+
+  .flux-cores {
+    gap: 6px;
+  }
+
+  .flux-cor__amostra {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+@media (forced-colors: active) {
+  .flux-opcao-tipo > input,
+  .flux-cor > input,
+  .flux-segmentado input {
+    position: static;
+    width: auto;
+    height: auto;
+    opacity: 1;
+  }
+}

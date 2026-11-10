@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.flux.acesso.UsuarioCriado;
 import com.flux.acesso.interno.dto.ConfirmacaoDeEmailResponse;
 import com.flux.compartilhado.erro.RegraDeNegocioException;
 import org.springframework.context.ApplicationEventPublisher;
@@ -66,6 +67,8 @@ public class CadastroService {
         Usuario usuario = new Usuario(nome, emailNormalizado, senhaHash, agora);
         usuario.aceitarTermos(Termos.VERSAO, agora);
         usuarioRepository.save(usuario);
+        // Os ouvintes síncronos (categorias padrão) gravam nesta mesma transação.
+        eventos.publishEvent(new UsuarioCriado(usuario.getId()));
         tokensDeEmail.criar(usuario.getId(), FinalidadeToken.CONFIRMACAO, null);
     }
 

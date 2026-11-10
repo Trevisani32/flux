@@ -18,3 +18,8 @@
   margin-right: var(--flux-espaco-3);
   color: var(--flux-escuro-texto-3);
 }
+// Ação de perigo nos menus "⋯" (Excluir).
+.flux-menu .mat-mdc-menu-item.flux-menu__perigo,
+.flux-menu .mat-mdc-menu-item.flux-menu__perigo .flux-icone {
+  color: var(--flux-negativo);
+}

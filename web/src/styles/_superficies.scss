@@ -160,3 +160,37 @@
     padding: var(--flux-espaco-4) var(--flux-margem) var(--flux-espaco-7);
   }
 }
+// Fatia 03a: valores (app-valor) dentro do cartão dourado herdam a fonte do cartão; o
+// negativo usa um vermelho escuro, legível sobre o ouro.
+.flux-cartao-destaque .flux-valor {
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+.flux-cartao-destaque .flux-valor.flux-valor--negativo {
+  color: var(--flux-negativo-sobre-ouro);
+}
+
+// Celular: o valor do cartão com 34/38 px, como no quadro do celular do mockup 03a
+// (".tela-celular .cartao-ouro .grande"); os centavos continuam com 22 px, como lá.
+@media (max-width: 959.98px) {
+  .flux-cartao-destaque__valor {
+    font-size: 34px;
+    line-height: 38px;
+  }
+}
+
+// Reserva para o celular estreito: abaixo de 370 px, o cartão tem menos de 290 px úteis, e
+// um total grande perto do limite seria cortado pelo overflow: hidden.
+@media (max-width: 369.98px) {
+  .flux-cartao-destaque__valor {
+    font-size: 30px;
+    line-height: 36px;
+    letter-spacing: -1.1px;
+  }
+
+  .flux-cartao-destaque__valor small {
+    font-size: 18px;
+    letter-spacing: -0.4px;
+  }
+}

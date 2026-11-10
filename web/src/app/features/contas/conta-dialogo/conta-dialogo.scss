@@ -1,0 +1,53 @@
+.conta-dialogo {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 26px 26px 22px;
+}
+
+.conta-dialogo__titulo {
+  margin: 0;
+  padding: 0;
+  color: var(--flux-texto);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+
+.conta-dialogo__titulo::before {
+  display: none;
+}
+
+.conta-dialogo__duas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.conta-dialogo__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+@media (max-width: 959.98px) {
+  .conta-dialogo {
+    gap: 14px;
+    padding: 22px 18px 18px;
+  }
+
+  .conta-dialogo__duas {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .conta-dialogo__acoes {
+    flex-direction: column-reverse;
+  }
+
+  .conta-dialogo__acoes button {
+    width: 100%;
+  }
+}

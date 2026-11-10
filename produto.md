@@ -167,39 +167,66 @@ O que isso exige do produto:
 **Fatia 06:** **exportar meus dados**, um arquivo com todos os dados do usuário
 (LGPD, direito de portabilidade).
 
-### 2. Contas — Fatia 03
-
+### 2. Contas — Fatia 03a
 - Tipos: `CORRENTE`, `POUPANCA`, `CARTEIRA` (dinheiro em espécie) e `INVESTIMENTO`
-  (só o saldo, sem cotação).
-- Campos: nome, tipo, saldo inicial, data do saldo inicial e cor (opcional, só visual).
-- O nome é único entre as contas ativas do usuário.
+  (só o saldo, sem cotação). O tipo pode mudar depois de criada a conta.
+- Campos: nome (até 60 caracteres), tipo, saldo inicial, data do saldo inicial e cor
+  (opcional, só visual).
+- **Nome:** único entre as contas ativas do usuário, sem diferenciar maiúsculas,
+  acentos e espaços nas pontas ("Poupança" e "poupanca " são o mesmo nome). Espaços
+  repetidos no meio viram um só: "Conta   conjunta" é gravada como "Conta conjunta".
+- **Saldo inicial:** é o saldo no começo do dia escolhido; os lançamentos desse dia
+  entram no saldo. Pode ser negativo (cheque especial). Padrão: R$ 0,00 na data de
+  hoje. A data não pode ser futura.
+- O campo de valor aceita "1.234,56", "1234,56" e "-120", com até 2 casas decimais e
+  até 13 dígitos antes da vírgula.
 - **Saldo atual** = saldo inicial + soma dos lançamentos efetivados da conta com
   data até hoje ([ADR 0003](decisoes/0003-saldo-derivado.md)). Um lançamento com
-  data futura só entra no saldo quando a data chegar.
-- Um lançamento com data anterior à data do saldo inicial é recusado.
-- O saldo pode ficar negativo (cheque especial). A interface mostra em vermelho.
+  data futura só entra no saldo quando a data chegar. Até a Fatia 03b, que traz os
+  lançamentos, o saldo atual é o saldo inicial.
+- Um lançamento com data anterior à data do saldo inicial é recusado. O saldo inicial
+  e a data podem ser editados, mas a data não pode passar do lançamento mais antigo da
+  conta.
+- O saldo pode ficar negativo (cheque especial). A interface mostra em vermelho, com "−".
+- **Saldo total:** soma das contas ativas, inclusive as de investimento. Ao lado
+  aparecem "Disponível" (corrente, poupança e carteira) e "Investimentos".
+- **Cor:** de uma paleta fixa de 8 (Ouro, Laranja, Rosa, Roxo, Índigo, Azul, Ciano e
+  Cinza), sem verde e vermelho, que indicam entrada e saída.
 - **Arquivar:** a conta some dos seletores e do saldo total, mas o histórico continua
-  nos relatórios. Se o saldo não for zero, o sistema avisa antes de arquivar.
+  nos relatórios. Se o saldo não for zero, o sistema avisa antes de arquivar; com saldo
+  zero, arquiva direto e oferece "Desfazer".
+- **Reativar:** a conta arquivada volta pela seção "Arquivadas". Se já houver uma conta
+  ativa com o mesmo nome, a reativação é recusada. Conta arquivada não se edita.
 - **Excluir:** só é permitido em conta sem lançamentos.
+- As contas aparecem em ordem alfabética. Cada usuário pode ter até 50 contas,
+  contando as arquivadas.
 - Cartão de crédito não é conta. Ele tem módulo próprio.
-
-### 3. Categorias — Fatia 03
-
-- Cada categoria tem natureza `RECEITA` ou `DESPESA`.
-- São dois níveis: categoria e subcategoria. A subcategoria herda a natureza da mãe.
-- Todo usuário novo recebe categorias padrão:
+### 3. Categorias — Fatia 03a
+- Cada categoria tem natureza `RECEITA` ou `DESPESA`, que nunca muda.
+- São dois níveis: categoria principal e subcategoria. A subcategoria herda a natureza
+  da principal. Uma subcategoria pode mudar de principal (na mesma natureza) ou virar
+  principal; uma principal sem subcategorias pode virar subcategoria.
+- Todo usuário novo recebe categorias padrão, gravadas junto com o usuário:
   - **Despesa:** Moradia (Aluguel, Condomínio, Contas da casa), Alimentação
     (Mercado, Restaurante, Delivery), Transporte (Combustível, App de transporte,
     Transporte público), Saúde, Educação, Lazer, Assinaturas, Compras,
     Impostos e taxas, Outras despesas.
   - **Receita:** Salário, Freelance, Rendimentos, Reembolsos, Outras receitas.
+- **Nome:** até 60 caracteres, único entre as irmãs ativas (mesma natureza e mesma
+  principal, ou entre as principais), com a mesma comparação das contas. Renomear é
+  livre.
 - Um lançamento pode ficar **sem categoria**, por exemplo um importado que nenhuma
   regra reconheceu. Nos relatórios, "Sem categoria" aparece como item próprio.
-- Renomear é livre.
-- Categoria em uso pode ser arquivada. Só pode ser excluída se não tiver
-  lançamentos, regras nem orçamentos.
-
-### 4. Lançamentos — Fatia 03
+- Uma categoria principal com subcategorias também recebe lançamentos. Nos relatórios,
+  o que foi lançado direto nela aparece como item próprio.
+- **Arquivar:** categoria em uso pode ser arquivada. Arquivar a principal arquiva junto
+  as subcategorias ativas; reativar a principal traz de volta as que foram arquivadas
+  com ela. A subcategoria de uma principal arquivada não se reativa sozinha.
+- **Excluir:** só se a categoria não tiver lançamentos, regras nem orçamentos. Excluir a
+  principal exclui as subcategorias junto.
+- As categorias não têm ícone nem cor. Aparecem em ordem alfabética, e cada usuário
+  pode ter até 200, contando as arquivadas.
+### 4. Lançamentos — Fatia 03b
 
 - Receita ou despesa numa conta. Na Fatia 05 passam a existir também lançamentos
   em fatura de cartão.
@@ -217,7 +244,7 @@ O que isso exige do produto:
 - Lançamentos manuais podem ser editados e excluídos livremente. As regras dos
   importados estão no módulo de importação.
 
-### 5. Transferências — Fatia 03
+### 5. Transferências — Fatia 03b
 
 - Movem dinheiro entre duas contas do usuário e não são receita nem despesa
   ([ADR 0004](decisoes/0004-transferencia-par-lancamentos.md)).
@@ -390,20 +417,19 @@ Ver [ADR 0005](decisoes/0005-cartao-fatura-parcelas.md).
 | Demo: conta compartilhada, usuário temporário por visitante ou cadastro com dados de exemplo | Fatia 08 |
 | Provedor de e-mail em produção (SMTP) | Fatia 08 |
 | Hospedagem e domínio | Fatia 08 |
-   | Desafio anti-robô (captcha) no cadastro, se aparecer abuso | Fatia 08 |
-   | Trechos da política de privacidade que dependem da publicação (hospedagem, envio de e-mail, cópias de segurança) | Fatia 08 |
-   | Servir a fonte Manrope pelo nginx, para a política deixar de citar o Google Fonts | Fatia 08 |
-
+| Desafio anti-robô (captcha) no cadastro, se aparecer abuso | Fatia 08 |
+| Trechos da política de privacidade que dependem da publicação (hospedagem, envio de e-mail, cópias de segurança) | Fatia 08 |
+| Servir a fonte Manrope pelo nginx, para a política deixar de citar o Google Fonts | Fatia 08 |
 
 ## Entregas
 
 | Fatia | Conteúdo | Situação |
 |---|---|---|
 | 00 | Base: repositório, login, multiusuário, CI, Docker | Concluída |
-   | 01 | Base visual: tema escuro com dourado, componentes base, menu lateral responsivo e e2e no CI | Concluída |
-   | 02 | Conta de usuário: cadastro, confirmação de e-mail, esqueci a senha, perfil, exclusão da conta, termos e limite de tentativas | Implementada, aguardando publicação |
-
-| 03 | Contas, categorias, lançamentos manuais e transferências | — |
+| 01 | Base visual: tema escuro com dourado, componentes base, menu lateral responsivo e e2e no CI | Concluída |
+| 02 | Conta de usuário: cadastro, confirmação de e-mail, esqueci a senha, perfil, exclusão da conta, termos e limite de tentativas | Concluída |
+| 03a | Contas e categorias: cadastro, arquivamento, categorias padrão e telas | Implementada, aguardando publicação |
+| 03b | Lançamentos manuais, transferências e saldo pelos lançamentos | — |
 | 04 | Importação OFX/CSV e regras de categorização | — |
 | 05 | Cartão de crédito: faturas e parcelamento | — |
 | 06 | Dashboard, relatórios e exportação dos dados | — |

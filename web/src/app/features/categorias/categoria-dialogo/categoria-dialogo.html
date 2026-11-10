@@ -1,0 +1,47 @@
+<form class="categoria-dialogo" [formGroup]="formulario" (ngSubmit)="salvar()">
+  <h2 mat-dialog-title class="categoria-dialogo__titulo">{{ editando ? 'Editar categoria' : 'Nova categoria' }}</h2>
+
+  <fieldset class="flux-grupo" [attr.aria-describedby]="editando ? 'categoria-natureza-dica' : null">
+    <legend>Natureza</legend>
+    <div class="flux-segmentado" [class.flux-segmentado--travado]="editando">
+      <label><input type="radio" name="natureza" formControlName="natureza" value="DESPESA" />Despesa</label>
+      <label><input type="radio" name="natureza" formControlName="natureza" value="RECEITA" />Receita</label>
+    </div>
+    @if (editando) {
+      <p id="categoria-natureza-dica" class="flux-dica">A natureza não muda depois de criada.</p>
+    }
+  </fieldset>
+
+  <div class="flux-campo">
+    <label for="categoria-nome">Nome</label>
+    <div class="flux-entrada" [class.flux-entrada--invalida]="erroDoNome() !== null">
+      <input id="categoria-nome" type="text" formControlName="nome" maxlength="60" autocomplete="off" [attr.aria-invalid]="erroDoNome() !== null ? 'true' : null" [attr.aria-describedby]="erroDoNome() !== null ? 'categoria-nome-erro' : null" />
+    </div>
+    @if (erroDoNome(); as mensagem) {
+      <p id="categoria-nome-erro" class="flux-campo__erro">{{ mensagem }}</p>
+    }
+  </div>
+
+  <div class="flux-campo">
+    <label for="categoria-mae">Dentro de</label>
+    <div class="flux-entrada" [class.flux-entrada--travada]="dados.temSubcategorias">
+      <select id="categoria-mae" formControlName="maeId" aria-describedby="categoria-mae-dica">
+        <option [ngValue]="null">Nenhuma (categoria principal)</option>
+        @for (principal of opcoes(); track principal.id) {
+          <option [ngValue]="principal.id">{{ principal.nome }}</option>
+        }
+      </select>
+      <app-icone class="flux-entrada__seta" nome="baixo" />
+    </div>
+    <p id="categoria-mae-dica" class="flux-dica">{{ dados.temSubcategorias ? 'Uma categoria com subcategorias não pode ficar dentro de outra.' : 'Escolha uma categoria para criar uma subcategoria.' }}</p>
+  </div>
+
+  @if (erroGeral(); as mensagem) {
+    <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem" />
+  }
+
+  <div class="categoria-dialogo__acoes">
+    <button mat-stroked-button type="button" [disabled]="enviando()" (click)="cancelar()">Cancelar</button>
+    <button mat-flat-button type="submit" [disabled]="enviando()">{{ editando ? 'Salvar' : 'Criar categoria' }}</button>
+  </div>
+</form>
