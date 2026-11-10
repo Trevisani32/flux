@@ -20,14 +20,16 @@ class ModularidadeTest {
     }
 
     /**
-     * Direção combinada na Fatia 03a: contas e categorias não dependem de lançamentos; a
-     * 03b implementa as interfaces deles (MovimentoDasContas, UsoDaConta, UsoDaCategoria).
+     * Direção combinada no ADR 0012: lançamentos depende de contas e categorias e implementa
+     * as interfaces deles (MovimentoDasContas, UsoDaConta, UsoDaCategoria); contas e
+     * categorias não dependem de lançamentos.
      */
     @Test
-    void contasECategoriasSoDependemDoQueFoiCombinado() {
+    void dependenciasSeguemADirecaoCombinada() {
         assertThat(dependenciasDiretas("contas")).containsExactlyInAnyOrder("compartilhado");
         assertThat(dependenciasDiretas("categorias")).containsExactlyInAnyOrder("compartilhado", "acesso");
-        assertThat(dependenciasDiretas("acesso")).doesNotContain("contas", "categorias");
+        assertThat(dependenciasDiretas("lancamentos")).containsExactlyInAnyOrder("compartilhado", "contas", "categorias");
+        assertThat(dependenciasDiretas("acesso")).doesNotContain("contas", "categorias", "lancamentos");
     }
 
     private Set<String> dependenciasDiretas(String modulo) {
