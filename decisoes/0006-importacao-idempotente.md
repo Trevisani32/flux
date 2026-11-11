@@ -1,6 +1,6 @@
 # ADR 0006 — Importação idempotente de extratos
 
-- **Status:** Proposto. Confirmar no planejamento da Fatia 04.
+- **Status:** Aceito, com os ajustes do [ADR 0014](0014-importacao-de-extratos.md)
 - **Data:** 2026-11-06
 
 ## Contexto

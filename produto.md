@@ -248,7 +248,7 @@ O que isso exige do produto:
   continua com ela e pode ser editado.
 - Ao editar, despesa e receita trocam entre si; um lançamento não vira transferência,
   nem o contrário.
-- A origem é `MANUAL` ou `IMPORTADO` (Fatia 04).
+- A origem é `MANUAL` ou `IMPORTADO` (Fatia 04a).
 - **Lista:** um mês por vez, começando no mês atual e indo até 12 meses à frente,
   agrupada por dia, com o mais recente primeiro (no mesmo dia, o último cadastrado em
   cima). Há filtros por conta, categoria (a principal inclui as subcategorias, e há
@@ -278,46 +278,76 @@ O que isso exige do produto:
 - Na lista, cada transferência é uma linha, sem sinal e em cor neutra. Ficam fora dos
   totais de receita e despesa e dos gastos por categoria, mas entram no saldo das contas.
 
-### 6. Importação de extratos — Fatia 04
+### 6. Importação de extratos — Fatia 04a
 
-- Formatos: OFX (versões 1.x em SGML e 2.x em XML) e CSV com mapeamento de colunas.
-- **Perfil de CSV**, salvo por conta, informa:
-  - o separador de colunas;
-  - a coluna de data e o formato da data;
+Ver [ADR 0006](decisoes/0006-importacao-idempotente.md) e [ADR 0014](decisoes/0014-importacao-de-extratos.md).
+
+- **Formatos:** OFX (versões 1.x em SGML e 2.x em XML) e CSV com perfil, reconhecidos pelo
+  conteúdo, não pela extensão. O arquivo pode ter no máximo 5 MB e 3.000 movimentações.
+  - Charset: o BOM decide; sem ele, UTF-8 e, se não for UTF-8 válido, windows-1252.
+  - Data do OFX: o dia do `DTPOSTED`, sem converter fuso. O valor aceita ponto ou vírgula decimal.
+  - Descrição: o `MEMO`, senão o `NAME`, senão "Sem descrição", cortada em 255 caracteres. A
+    descrição original do banco fica guardada.
+  - Fatura de cartão (OFX de cartão ou o CSV da fatura do Nubank) e extrato de mais de uma conta
+    são recusados. A importação de fatura entra na Fatia 05.
+- **Conta:** escolhida à mão, antes do arquivo; vem preenchida pelo atalho da conta ou pela última
+  usada na sessão. Se o mesmo extrato OFX já foi importado em outra conta ativa, a revisão avisa e
+  oferece trocar. Do OFX fica só um hash protegido por um segredo do servidor e os 4 últimos dígitos da conta,
+  nunca o número.
+- **Perfil de CSV**, salvo por conta, criado na primeira importação de CSV dela e editável na
+  revisão. Informa:
+  - o separador de colunas (vírgula, ponto e vírgula ou tabulação);
+  - quantas linhas de cabeçalho pular;
+  - a coluna de data e o formato da data (DD/MM/AAAA, DD/MM/AA ou AAAA-MM-DD);
   - a coluna de descrição e a de valor;
   - o separador decimal;
   - se as saídas vêm negativas ou numa coluna separada;
-  - quantas linhas de cabeçalho pular.
-- O fluxo tem duas etapas: **envio → pré-visualização → confirmação**. Nada é
-  gravado antes da confirmação.
-- A pré-visualização classifica cada linha:
-  - **nova**;
-  - **duplicada:** já importada antes, é descartada;
-  - **provável duplicada:** mesma data, valor e descrição de um lançamento já
-    existente, mas sem a mesma chave. Vem desmarcada e o usuário decide;
-  - **anterior ao saldo inicial da conta:** é ignorada.
+  - a coluna do identificador do banco, opcional.
 
-  Cada linha já vem com a categoria sugerida pelas regras. O usuário pode
-  desmarcar linhas e trocar categorias antes de confirmar.
-- Reimportar o mesmo arquivo, ou um arquivo com período sobreposto, não duplica
-  lançamentos ([ADR 0006](decisoes/0006-importacao-idempotente.md)).
-- O arquivo enviado não é guardado. Fica só um registro da importação: data,
-  conta, nome do arquivo, hash e quantidades. Se o mesmo arquivo for enviado de
-  novo, o sistema avisa quando ele foi importado.
-- Num lançamento importado o usuário pode editar categoria, descrição e
-  observação. Data e valor não mudam, porque vêm do banco.
-- Excluir um lançamento importado só o marca como **ignorado**. Assim ele não volta
-  numa reimportação.
-- **Desfazer importação** apaga todos os lançamentos daquela importação, depois de
-  uma confirmação.
-- **Transferência entre contas próprias** aparece nos dois extratos. Um lançamento
-  importado pode ser convertido em transferência, ligando-o a um lançamento da
-  outra conta com o mesmo valor e sinal oposto. Sem isso, a transferência contaria
-  como receita e como despesa.
-- O arquivo pode ter no máximo 5 MB.
+  O modelo pronto "Nubank (conta)" (`Data,Valor,Identificador,Descrição`) é sugerido quando o
+  cabeçalho do arquivo bate. Nas importações seguintes da conta, o perfil aparece resumido, com
+  "Editar perfil", antes da revisão.
+- O fluxo tem duas etapas: **envio → revisão → confirmação**. Nada é gravado antes da confirmação,
+  e nada da revisão fica guardado: na confirmação, o arquivo é enviado de novo e classificado outra
+  vez.
+- A revisão classifica cada linha, nesta ordem:
+  - **fica de fora:** linha ilegível, valor zero, linha de saldo ("SALDO ANTERIOR") ou data além de
+    12 meses depois de hoje;
+  - **já importada:** a chave já existe (inclusive num lançamento excluído). É descartada;
+  - **anterior ao saldo inicial da conta:** é descartada;
+  - **provável duplicada:** mesma data e valor de um lançamento existente, com a mesma descrição, ou
+    de qualquer descrição se ele foi lançado à mão. Vem desmarcada e diz com qual se parece;
+  - **nova.** Vem marcada, menos a de data futura (um agendamento do banco pode não acontecer).
+
+  Na 04a, a categoria de cada linha é escolhida à mão, com a opção de usar a mesma nas outras
+  linhas de mesma descrição; as regras (Fatia 04b) passam a sugerir. O usuário pode desmarcar
+  linhas antes de confirmar. A revisão conta as marcadas, sem somar valores.
+- Os limites de lançamentos (1.000 por mês e 100.000 no total) valem na confirmação, para todas as
+  linhas marcadas: ou entram todas, ou nenhuma.
+- Reimportar o mesmo arquivo, ou um arquivo com período sobreposto, não duplica lançamentos. Um
+  identificador do banco que mudou (o mesmo número com outra data ou outro valor) não é confiável:
+  a linha vira nova ou provável duplicada, e nunca some.
+- O arquivo enviado não é guardado. Fica só um registro da importação: data, conta, nome do
+  arquivo, hash, período e quantidades. Se o mesmo arquivo for enviado de novo, a revisão avisa
+  quando e em que conta ele foi importado, e deixa seguir.
+- O histórico das importações fica na tela de Importação, a mais recente primeiro.
+- Num lançamento importado o usuário pode editar categoria, descrição e observação. Tipo, data,
+  valor e conta não mudam, porque vêm do banco.
+- Excluir um lançamento importado só o marca como **ignorado**, e ele perde a categoria. Assim ele
+  não volta numa reimportação. O ignorado fica fora da lista, do saldo e dos totais, não conta
+  como uso da conta e conta nos limites. Ele pode ser restaurado: pelo "Desfazer" logo depois de
+  excluir (volta com a categoria) ou na lista de excluídos da importação (volta sem categoria).
+- **Desfazer importação** apaga todos os lançamentos daquela importação, inclusive os editados e os
+  ignorados, depois de uma confirmação que diz quantos são. Com a conta arquivada, é recusado. O
+  registro fica no histórico como desfeito.
+- O registro da importação e o perfil de CSV não impedem excluir a conta: saem junto com ela, como
+  os importados ignorados.
+- **Transferência entre contas próprias** aparece nos dois extratos. Na Fatia 04b, um lançamento
+  importado poderá ser convertido em transferência, ligando-o a um lançamento da outra conta com o
+  mesmo valor e sinal oposto. Até lá, ela entra como despesa numa conta e receita na outra.
 - A importação de fatura de cartão em CSV entra na Fatia 05.
 
-### 7. Regras de categorização — Fatia 04
+### 7. Regras de categorização — Fatia 04b
 
 - A condição é aplicada à descrição: **contém**, **começa com** ou **igual a**. A
   comparação ignora maiúsculas e acentos.
@@ -433,8 +463,6 @@ Ver [ADR 0005](decisoes/0005-cartao-fatura-parcelas.md).
 
 | Ponto | Decidir em |
 |---|---|
-| Formatos de CSV dos bancos usados | Fatia 04 |
-| Guardar a pré-visualização da importação no servidor ou reenviar o arquivo na confirmação | Fatia 04 |
 | Importar fatura de cartão que já lista as parcelas ("3/10") | Fatia 05 |
 | Biblioteca de gráficos | Fatia 06 |
 | Recorrência: gravar as ocorrências no banco ou calcular quando precisar | Fatia 07 |
@@ -454,7 +482,8 @@ Ver [ADR 0005](decisoes/0005-cartao-fatura-parcelas.md).
 | 02 | Conta de usuário: cadastro, confirmação de e-mail, esqueci a senha, perfil, exclusão da conta, termos e limite de tentativas | Concluída |
 | 03a | Contas e categorias: cadastro, arquivamento, categorias padrão e telas | Concluída |
 | 03b | Lançamentos manuais, transferências e saldo pelos lançamentos | Concluída |
-| 04 | Importação OFX/CSV e regras de categorização | — |
+| 04a | Importação de extratos OFX e CSV: revisão, histórico, ignorar e desfazer | Implementada, aguardando publicação |
+| 04b | Regras de categorização e conversão de importados em transferência | — |
 | 05 | Cartão de crédito: faturas e parcelamento | — |
 | 06 | Dashboard, relatórios e exportação dos dados | — |
 | 07 | Recorrências, orçamento e projeção de saldo | — |
