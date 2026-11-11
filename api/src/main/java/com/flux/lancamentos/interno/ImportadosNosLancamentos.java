@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-/** A API da importação sobre a tabela de lançamentos (ADR 0014). */
+/** A API da importação sobre a tabela de lançamentos (ADR 0014); a conversão em transferência fica no ConversaoService (ADR 0016). */
 @Component
 public class ImportadosNosLancamentos implements LancamentosImportados {
 
@@ -26,11 +26,14 @@ public class ImportadosNosLancamentos implements LancamentosImportados {
     private final LancamentoRepository repositorio;
     private final RegrasDosLancamentos regras;
     private final CategoriasConsulta categorias;
+    private final ConversaoService conversoes;
 
-    public ImportadosNosLancamentos(LancamentoRepository repositorio, RegrasDosLancamentos regras, CategoriasConsulta categorias) {
+    public ImportadosNosLancamentos(LancamentoRepository repositorio, RegrasDosLancamentos regras, CategoriasConsulta categorias,
+                                    ConversaoService conversoes) {
         this.repositorio = repositorio;
         this.regras = regras;
         this.categorias = categorias;
+        this.conversoes = conversoes;
     }
 
     @Override
@@ -61,9 +64,11 @@ public class ImportadosNosLancamentos implements LancamentosImportados {
         repositorio.saveAll(lancamentos);
     }
 
+    /** Primeiro as conversões (decisão 34 da 04c), depois os lançamentos: o DELETE em massa não passa pelo vínculo. */
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public int desfazer(Long usuarioId, Long importacaoId) {
+        conversoes.desfazerDaImportacao(usuarioId, importacaoId);
         return repositorio.apagarDaImportacao(usuarioId, importacaoId);
     }
 
@@ -83,6 +88,16 @@ public class ImportadosNosLancamentos implements LancamentosImportados {
                 .map(lancamento -> new Excluido(lancamento.getId(), lancamento.getData(), lancamento.getDescricao(),
                         lancamento.getValor(), lancamento.getIgnoradoEm()))
                 .toList();
+    }
+
+    @Override
+    public List<ParSugerido> paresSugeridos(Long usuarioId, Long importacaoId) {
+        return conversoes.paresSugeridos(usuarioId, importacaoId);
+    }
+
+    @Override
+    public List<Convertido> convertidos(Long usuarioId) {
+        return conversoes.convertidos(usuarioId);
     }
 
     /**

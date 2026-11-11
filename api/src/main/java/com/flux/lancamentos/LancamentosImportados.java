@@ -9,7 +9,8 @@ import java.util.List;
 /**
  * O que a importação de extratos (Fatia 04a) pede aos lançamentos: os que já existem na conta,
  * para classificar as linhas do arquivo, e gravar, desfazer e contar os importados (ADR 0006 e
- * ADR 0014). Só lançamentos grava na tabela de lançamentos.
+ * ADR 0014). Desde a Fatia 04c, também os pares de transferência que o resultado sugere e os
+ * importados convertidos em transferência (ADR 0016). Só lançamentos grava na tabela de lançamentos.
  */
 public interface LancamentosImportados {
 
@@ -26,7 +27,12 @@ public interface LancamentosImportados {
      */
     void gravar(Long usuarioId, Long contaId, Long importacaoId, List<Novo> novos);
 
-    /** Apaga todos os lançamentos da importação, inclusive os editados e os ignorados. Exige transação. */
+    /**
+     * Apaga todos os lançamentos da importação, inclusive os editados e os ignorados. Antes, desfaz a
+     * conversão dos que estão numa transferência (Fatia 04c, decisão 34): o outro lado volta a ser
+     * receita ou despesa, sem categoria, e o 422 recusa tudo se ele está numa conta arquivada. Exige
+     * transação.
+     */
     int desfazer(Long usuarioId, Long importacaoId);
 
     /** Ignorados e editados de cada importação do usuário (só as que ainda têm lançamentos). */
@@ -34,6 +40,15 @@ public interface LancamentosImportados {
 
     /** Os ignorados da importação, o último excluído primeiro. */
     List<Excluido> excluidos(Long usuarioId, Long importacaoId);
+
+    /**
+     * Fatia 04c (decisão 35): as linhas da importação com um só par possível (decisão 27), para o
+     * resultado sugerir. Só lê: nada se converte sozinho.
+     */
+    List<ParSugerido> paresSugeridos(Long usuarioId, Long importacaoId);
+
+    /** Fatia 04c (decisão 34): os importados do usuário que estão numa transferência, de todas as importações. */
+    List<Convertido> convertidos(Long usuarioId);
 
     /**
      * Um lançamento que já existe. {@code importacaoId} e {@code chaveImportacao} só no importado;
@@ -66,5 +81,20 @@ public interface LancamentosImportados {
     }
 
     record Excluido(Long id, LocalDate data, String descricao, BigDecimal valor, Instant ignoradoEm) {
+    }
+
+    /** Uma linha da importação e o único par dela. */
+    record ParSugerido(LadoSugerido lancamento, LadoSugerido par) {
+    }
+
+    /** Um lado de um par sugerido; {@code valor} com sinal. */
+    record LadoSugerido(Long id, LocalDate data, String descricao, BigDecimal valor, Long contaId, String contaNome) {
+    }
+
+    /**
+     * Um importado numa transferência: a importação, a data dele, a conta do outro lado e o tipo que o
+     * outro lado volta a ter se a conversão for desfeita (RECEITA ou DESPESA).
+     */
+    record Convertido(Long importacaoId, LocalDate data, Long outraContaId, String tipoDoOutroLado) {
     }
 }

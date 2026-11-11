@@ -23,6 +23,18 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, Long> {
     /** Um importado ignorado, para restaurar. */
     Optional<Lancamento> findByIdAndUsuarioIdAndIgnoradoEmIsNotNull(Long id, Long usuarioId);
 
+    /** Conversão (Fatia 04c): o lançamento não ignorado do usuário, inclusive um lado de transferência. */
+    Optional<Lancamento> findByIdAndUsuarioIdAndIgnoradoEmIsNull(Long id, Long usuarioId);
+
+    /** Conversão (Fatia 04c): os lados de transferência que vieram de uma importação. */
+    List<Lancamento> findAllByUsuarioIdAndImportacaoIdAndTransferenciaIdIsNotNull(Long usuarioId, Long importacaoId);
+
+    /** Conversão (Fatia 04c): todos os importados que estão numa transferência, para o histórico. */
+    List<Lancamento> findAllByUsuarioIdAndImportacaoIdIsNotNullAndTransferenciaIdIsNotNull(Long usuarioId);
+
+    /** Conversão (Fatia 04c, decisão 35): as receitas e despesas de uma importação que continuam na lista. */
+    List<Lancamento> findAllByUsuarioIdAndImportacaoIdAndTransferenciaIdIsNullAndIgnoradoEmIsNull(Long usuarioId, Long importacaoId);
+
     List<Lancamento> findAllByUsuarioIdAndTransferenciaId(Long usuarioId, Long transferenciaId);
 
     List<Lancamento> findAllByUsuarioIdAndTransferenciaIdIn(Long usuarioId, Collection<Long> transferenciaIds);

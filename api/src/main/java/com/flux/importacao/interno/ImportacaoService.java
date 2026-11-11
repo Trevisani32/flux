@@ -155,9 +155,10 @@ public class ImportacaoService {
         }
         String mes = novos.stream().map(LancamentosImportados.Novo::data).max(Comparator.naturalOrder())
                 .map(data -> YearMonth.from(data).toString()).orElse(null);
+        List<LancamentosImportados.ParSugerido> pares = importacaoId == null ? List.of() : importados.paresSugeridos(usuarioId, importacaoId);
         return new ResultadoResponse(importacaoId, conta.id(), conta.nome(), novos.size(), quantidades.desmarcadas(),
                 quantidades.duplicadas() - entraramPorOutra, quantidades.anteriores() + quantidades.fora(), entraramPorOutra,
-                saldoDeHoje(usuarioId, conta), mes);
+                saldoDeHoje(usuarioId, conta), mes, pares);
     }
 
     @Transactional(readOnly = true)
@@ -166,14 +167,20 @@ public class ImportacaoService {
                 .collect(Collectors.toMap(ContaResumo::id, Function.identity()));
         Map<Long, LancamentosImportados.Contagem> contagens = importados.contagens(usuarioId).stream()
                 .collect(Collectors.toMap(LancamentosImportados.Contagem::importacaoId, Function.identity()));
+        Map<Long, List<ImportacaoResponse.Transferencia>> transferencias = importados.convertidos(usuarioId).stream()
+                .collect(Collectors.groupingBy(LancamentosImportados.Convertido::importacaoId, Collectors.mapping(
+                        convertido -> transferencia(convertido, doUsuario.get(convertido.outraContaId())), Collectors.toList())));
         return importacoes.findAllByUsuarioIdOrderByCriadaEmDescIdDesc(usuarioId).stream()
-                .map(importacao -> resposta(importacao, doUsuario.get(importacao.getContaId()), contagens.get(importacao.getId())))
+                .map(importacao -> resposta(importacao, doUsuario.get(importacao.getContaId()), contagens.get(importacao.getId()),
+                        transferencias.getOrDefault(importacao.getId(), List.of())))
                 .toList();
     }
 
     /**
      * Desfazer (decisão 32): apaga todos os lançamentos da importação, inclusive editados e
-     * ignorados, e marca o registro. Com a conta arquivada, é recusado.
+     * ignorados, e marca o registro. Com a conta arquivada, é recusado. Desde a Fatia 04c (decisão 34),
+     * as transferências convertidas de lançamentos dela são desfeitas junto, pela API de lançamentos,
+     * que recusa o desfazer se o outro lado está numa conta arquivada.
      */
     @Transactional
     public ImportacaoResponse desfazer(Long usuarioId, Long id) {
@@ -189,7 +196,7 @@ public class ImportacaoService {
         }
         importados.desfazer(usuarioId, id);
         importacao.desfazer(agora());
-        return resposta(importacao, conta, null);
+        return resposta(importacao, conta, null, List.of());
     }
 
     @Transactional(readOnly = true)
@@ -388,12 +395,20 @@ public class ImportacaoService {
         return conta.saldoInicial().add(soma).setScale(2);
     }
 
-    private static ImportacaoResponse resposta(Importacao importacao, ContaResumo conta, LancamentosImportados.Contagem contagem) {
+    private static ImportacaoResponse resposta(Importacao importacao, ContaResumo conta, LancamentosImportados.Contagem contagem,
+                                              List<ImportacaoResponse.Transferencia> transferencias) {
         return new ImportacaoResponse(importacao.getId(), importacao.getNomeArquivo(), importacao.getContaId(),
                 conta == null ? "" : conta.nome(), conta != null && conta.arquivada(), importacao.getCriadaEm(),
                 importacao.getDataInicio(), importacao.getDataFim(), importacao.getImportadas(), importacao.getDuplicadas(),
                 importacao.getDesmarcadas(), importacao.getAnteriores() + importacao.getFora(),
-                contagem == null ? 0 : contagem.editados(), contagem == null ? 0 : contagem.excluidos(), importacao.getDesfeitaEm());
+                contagem == null ? 0 : contagem.editados(), contagem == null ? 0 : contagem.excluidos(), importacao.getDesfeitaEm(),
+                transferencias);
+    }
+
+    /** Decisão 34 da 04c: o que o desfazer faz com o outro lado de uma transferência convertida. */
+    private static ImportacaoResponse.Transferencia transferencia(LancamentosImportados.Convertido convertido, ContaResumo outraConta) {
+        return new ImportacaoResponse.Transferencia(convertido.data(), convertido.outraContaId(), outraConta.nome(), outraConta.arquivada(),
+                convertido.tipoDoOutroLado());
     }
 
     /** O nome que o navegador mandou, sem pasta, até 255 caracteres. */
