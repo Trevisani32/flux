@@ -279,3 +279,127 @@ test('reimportar avisa e não duplica; excluir o importado o ignora, e desfazer 
     expect(await semRolagemHorizontal(page)).toBe(true);
   }
 });
+
+// Fatia 04b: as regras de categorização, com o mesmo usuário (decisão 42). O primeiro extrato foi
+// desfeito no teste anterior, então as linhas dele entram de novo; o segundo é outro arquivo do dia.
+function segundoExtratoDeHoje(): Buffer {
+  const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()).replaceAll('-', '');
+  const transacao = (fitid: string, valor: string, memo: string) =>
+    `<STMTTRN><TRNTYPE>OTHER<DTPOSTED>${hoje}000000[-3:BRT]<TRNAMT>${valor}<FITID>${fitid}<MEMO>${memo}</STMTTRN>\n`;
+  return Buffer.from('OFXHEADER:100\nDATA:OFXSGML\nVERSION:102\nCHARSET:1252\n\n<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><CURDEF>BRL\n'
+    + '<BANKACCTFROM><BANKID>0341<ACCTID>00000-0<ACCTTYPE>CHECKING</BANKACCTFROM>\n<BANKTRANLIST>\n'
+    + transacao('e2e-4', '-7.50', 'CAFE DA ESQUINA') + transacao('e2e-5', '80.00', 'PIX RECEBIDO JOAO')
+    + '</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>\n', 'utf8');
+}
+
+/** O diálogo (a raiz dele: `.regra-dialogo` ou `.aplicar`), em tela cheia no celular, não rola para o lado. */
+async function dialogoDasRegrasSemRolagemHorizontal(page: Page, raiz: string): Promise<boolean> {
+  return page.evaluate((seletorDaRaiz) => {
+    const pecas = Array.from(document.querySelectorAll(`.cdk-overlay-pane, .mat-mdc-dialog-surface, ${seletorDaRaiz}`));
+    return pecas.length >= 3 && pecas.every((peca) => {
+      const caixa = peca.getBoundingClientRect();
+      return peca.scrollWidth <= peca.clientWidth && caixa.left >= 0 && caixa.right <= window.innerWidth;
+    });
+  }, raiz);
+}
+
+test('o resultado da importação sugere a regra das escolhas à mão, e ela aparece em Regras (Fatia 04b)', async ({ page }) => {
+  await entrar(page);
+  await escolherOExtrato(page);
+  await expect(page.getByRole('heading', { name: 'Revisar importação', level: 1 })).toBeVisible();
+  await page.getByRole('button', { name: 'Categoria de CAFE DA ESQUINA: Sem categoria' }).first().click();
+  const seletor = page.getByRole('dialog');
+  await seletor.getByLabel('Restaurante', { exact: true }).check();
+  await seletor.getByRole('button', { name: 'Aplicar' }).click();
+  await expect(seletor).toBeHidden();
+  await page.getByRole('button', { name: 'Importar 3 lançamentos' }).click();
+
+  await expect(page.getByRole('heading', { name: '3 lançamentos importados em Conta Itaú', level: 2 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Criar regras com as suas escolhas', level: 2 })).toBeVisible();
+  await page.getByRole('button', { name: 'Criar regra para CAFE DA ESQUINA' }).click();
+  const dialogo = page.getByRole('dialog');
+  await expect(dialogo.getByRole('heading', { name: 'Nova regra' })).toBeVisible();
+  await expect(dialogo.getByLabel('Texto', { exact: true })).toHaveValue('CAFE DA ESQUINA');
+  await expect(dialogo.locator('.regra-dialogo__texto')).toHaveText('Sugerida a partir de CAFE DA ESQUINA, que você pôs em Alimentação › Restaurante.');
+  await expect(dialogo.locator('.regra-dialogo__posicao')).toHaveText('Entra em 1º lugar. Dá para mudar a ordem na lista.');
+  await expect(dialogo.locator('.regra-dialogo__titulo-previa')).toHaveText('Casa com 2 lançamentos seus, 0 sem categoria');
+  if (!ehDesktop(page)) {
+    expect(await dialogoDasRegrasSemRolagemHorizontal(page, '.regra-dialogo')).toBe(true);
+  }
+  await dialogo.getByRole('button', { name: 'Criar regra' }).click();
+  await expect(dialogo).toBeHidden();
+  await expect(page.getByText('Regra criada.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Criar regra para CAFE DA ESQUINA' })).toHaveCount(0);
+
+  await irPeloMenu(page, 'Regras');
+  await expect(page.getByRole('heading', { name: 'Regras', level: 1 })).toBeVisible();
+  await expect(page.locator('.regras__condicao')).toHaveText(['1ª: Contém CAFE DA ESQUINA, categoria Alimentação › Restaurante']);
+});
+
+test('a revisão seguinte vem categorizada pelas regras, e "Aplicar regras" de Lançamentos pega o que faltou (Fatia 04b)', async ({ page }) => {
+  await entrar(page);
+  await irPeloMenu(page, 'Regras');
+  await page.getByRole('button', { name: 'Nova regra' }).click();
+  const dialogo = page.getByRole('dialog');
+  await expect(dialogo.locator('.regra-dialogo__posicao'))
+    .toHaveText('Entra em 1º lugar, antes de "contém CAFE DA ESQUINA". Dá para mudar a ordem na lista.');
+  await dialogo.getByLabel('Texto', { exact: true }).fill('pix recebido');
+  await dialogo.getByLabel('Categoria', { exact: true }).selectOption({ label: 'Outras receitas' });
+  await dialogo.getByLabel('Descrição legível (opcional)', { exact: true }).fill('Pix recebido');
+  await expect(dialogo.locator('.regra-dialogo__titulo-previa')).toHaveText('Casa com 1 lançamento seu, 1 sem categoria');
+  await dialogo.getByRole('button', { name: 'Criar regra' }).click();
+  await expect(dialogo).toBeHidden();
+  await expect(page.getByText('Regra criada. 1 lançamento sem categoria casa com ela.')).toBeVisible();
+  await expect(page.locator('.regras__posicao')).toHaveText(['1', '2']);
+  if (ehDesktop(page)) {
+    await page.getByRole('button', { name: 'Descer a regra contém "pix recebido"' }).click();
+  } else {
+    await page.getByRole('button', { name: 'Ações da regra contém "pix recebido"' }).click();
+    await page.getByRole('menuitem', { name: 'Descer para 2ª' }).click();
+    expect(await semRolagemHorizontal(page)).toBe(true);
+  }
+  await expect(page.locator('.regras__condicao')).toHaveText(['1ª: Contém CAFE DA ESQUINA, categoria Alimentação › Restaurante',
+    '2ª: Contém pix recebido, categoria Outras receitas']);
+
+  await irPeloMenu(page, 'Importação');
+  await page.getByLabel('Conta', { exact: true }).selectOption({ label: 'Conta Itaú' });
+  await page.locator('#importacao-arquivo').setInputFiles({ name: 'extrato-2.ofx', mimeType: 'application/x-ofx', buffer: segundoExtratoDeHoje() });
+  await expect(page.getByRole('heading', { name: 'Revisar importação', level: 1 })).toBeVisible();
+  await expect(page.locator('.revisao__descricao b')).toHaveText(['Pix recebido', 'CAFE DA ESQUINA']);
+  await expect(page.locator('.revisao__banco')).toHaveText(['No extrato: PIX RECEBIDO JOAO']);
+  await expect(page.locator('.revisao__categoria')).toHaveText(['Outras receitas', 'Alimentação › Restaurante']);
+  await expect(page.locator('.revisao__por')).toHaveText(['pela 2ª regra', 'pela 1ª regra']);
+  // A faixa conta as categorizadas por regras (decisão 14): "Categorizadas por regras" no desktop, "Por regras" no celular,
+  // onde "Ficam de fora" sai da faixa (continua na pílula); a condição da regra só aparece no desktop.
+  const colunaDasRegras = page.locator('.revisao__faixa-regras');
+  await expect(colunaDasRegras.locator('.revisao__numero')).toHaveText('2');
+  await expect(colunaDasRegras.getByText(ehDesktop(page) ? 'Categorizadas por regras' : 'Por regras', { exact: true })).toBeVisible();
+  await expect(page.locator('.revisao__faixa-fora')).toBeVisible({ visible: ehDesktop(page) });
+  await expect(page.locator('.revisao__condicao-regra').first()).toBeVisible({ visible: ehDesktop(page) });
+  if (ehDesktop(page)) {
+    await expect(page.locator('.revisao__condicao-regra')).toHaveText(['contém "pix recebido"', 'contém "CAFE DA ESQUINA"']);
+  } else {
+    expect(await semRolagemHorizontal(page)).toBe(true);
+  }
+  await page.getByRole('button', { name: 'Importar 2 lançamentos' }).click();
+  await expect(page.getByRole('heading', { name: '2 lançamentos importados em Conta Itaú', level: 2 })).toBeVisible();
+  await expect(page.locator('.importacao__texto-pronto').first()).toContainText('2 categorizados por regras');
+  await expect(page.getByRole('heading', { name: 'Criar regras com as suas escolhas', level: 2 })).toHaveCount(0);
+
+  await irPeloMenu(page, 'Lançamentos');
+  await page.locator('.lancamentos__filtro select').nth(1).selectOption({ label: 'Sem categoria' });
+  await expect(linha(page, 'PIX RECEBIDO MARIA')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Aplicar regras' }).click();
+  const aplicar = page.getByRole('dialog');
+  await expect(aplicar.locator('.aplicar__regra')).toHaveText(['2ª · Contém pix recebido → Outras receitas']);
+  if (!ehDesktop(page)) {
+    expect(await dialogoDasRegrasSemRolagemHorizontal(page, '.aplicar')).toBe(true);
+  }
+  await aplicar.getByRole('button', { name: 'Aplicar a 1 lançamento' }).click();
+  await expect(aplicar).toBeHidden();
+  await expect(page.getByText('1 lançamento categorizado.')).toBeVisible();
+  await expect(linha(page, 'PIX RECEBIDO MARIA')).toHaveCount(0);
+  await page.locator('.lancamentos__filtro select').nth(1).selectOption({ label: 'Todas as categorias' });
+  await expect(linha(page, 'Pix recebido')).toHaveCount(2);
+});
+

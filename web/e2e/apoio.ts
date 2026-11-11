@@ -119,7 +119,7 @@ export async function criarUsuarioConfirmado(request: APIRequestContext, prefixo
 }
 
 /** Navega pelo menu principal; no celular, abre a gaveta antes. */
-export async function irPeloMenu(page: Page, item: 'Início' | 'Lançamentos' | 'Importação' | 'Contas' | 'Categorias'): Promise<void> {
+export async function irPeloMenu(page: Page, item: 'Início' | 'Lançamentos' | 'Importação' | 'Contas' | 'Categorias' | 'Regras'): Promise<void> {
   if (!ehDesktop(page)) {
     await page.getByRole('button', { name: 'Abrir menu' }).click();
   }
