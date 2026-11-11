@@ -18,7 +18,7 @@ class MigracaoDaImportacaoIT extends IntegracaoBase {
     @Test
     void chavesEstrangeirasChecksEIndicesDaV5() {
         assertThat(jdbc.queryForList("select version || ':' || success from flyway_schema_history order by installed_rank",
-                String.class)).endsWith("5:true");
+                String.class)).contains("5:true");
         // confdeltype: r = RESTRICT, c = CASCADE.
         assertThat(jdbc.queryForList("select conname || ':' || confdeltype::text from pg_constraint where contype = 'f' "
                 + "and conrelid in ('importacoes'::regclass, 'perfis_csv'::regclass) order by conname", String.class))

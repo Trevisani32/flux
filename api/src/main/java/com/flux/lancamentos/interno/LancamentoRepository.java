@@ -83,4 +83,12 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, Long> {
 
     List<Lancamento> findAllByUsuarioIdAndImportacaoIdAndIgnoradoEmIsNotNullOrderByIgnoradoEmDescIdDesc(Long usuarioId,
                                                                                                     Long importacaoId);
+
+    /** Regras (Fatia 04b): as receitas e despesas não ignoradas, só com as colunas que as regras usam. */
+    @Query("select new com.flux.lancamentos.interno.ParaAsRegras(l.id, l.contaId, l.data, l.valor, l.descricao, l.descricaoBanco, "
+            + "l.categoriaId) from Lancamento l where l.usuarioId = :usuarioId and l.tipo <> :transferencia and l.ignoradoEm is null "
+            + "order by l.data desc, l.id desc")
+    List<ParaAsRegras> paraAsRegras(@Param("usuarioId") Long usuarioId, @Param("transferencia") TipoLancamento transferencia);
+
+    List<Lancamento> findAllByUsuarioIdAndIdIn(Long usuarioId, Collection<Long> ids);
 }

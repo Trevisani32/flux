@@ -109,18 +109,28 @@ public class Lancamento {
 
     /**
      * Linha de extrato confirmada na importação: receita se o valor é positivo, despesa se é
-     * negativo (ADR 0002). A descrição do banco é a mesma descrição, já sem espaços sobrando.
+     * negativo (ADR 0002). {@code descricaoBanco} é a do extrato, já sem espaços sobrando;
+     * {@code descricao} é a que a revisão mostrou (a legível da regra, Fatia 04b) ou a mesma do extrato.
      */
     public static Lancamento importado(Long usuarioId, Long contaId, Long importacaoId, LocalDate data, BigDecimal valor,
-                                       String descricao, String chave, Long categoriaId, Instant agora) {
+                                       String descricao, String descricaoBanco, String chave, Long categoriaId, Instant agora) {
         Lancamento lancamento = new Lancamento(usuarioId, null, agora);
         lancamento.origem = OrigemLancamento.IMPORTADO;
         lancamento.importacaoId = importacaoId;
         lancamento.chaveImportacao = chave;
-        lancamento.descricaoBanco = descricao;
+        lancamento.descricaoBanco = descricaoBanco;
         lancamento.alterar(valor.signum() > 0 ? TipoLancamento.RECEITA : TipoLancamento.DESPESA, contaId, data, descricao, valor,
                 categoriaId, null, agora);
         return lancamento;
+    }
+
+    /**
+     * Uma regra categorizou (Fatia 04b, decisão 18): põe a categoria e, no importado cuja descrição
+     * ainda é a do extrato, a descrição legível da regra, se houver. Muda {@code atualizado_em}.
+     */
+    public void categorizarPorRegra(Long categoriaId, String descricaoLegivel, Instant agora) {
+        String novaDescricao = descricaoLegivel != null && importado() && descricao.equals(descricaoBanco) ? descricaoLegivel : descricao;
+        alterar(tipo, contaId, data, novaDescricao, valor, categoriaId, observacao, agora);
     }
 
     /**

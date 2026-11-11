@@ -53,8 +53,13 @@ public interface LancamentosImportados {
         }
     }
 
-    /** Uma linha do arquivo para gravar; o sinal do valor dá o tipo. {@code linha} vai no 422 da categoria. */
-    record Novo(int linha, LocalDate data, BigDecimal valor, String descricao, String chave, Long categoriaId) {
+    /**
+     * Uma linha do arquivo para gravar; o sinal do valor dá o tipo. {@code linha} vai no 422 da
+     * categoria. {@code descricao} é a que a revisão mostrou (a legível da regra, Fatia 04b, ou a do
+     * extrato); {@code descricaoBanco}, a do extrato.
+     */
+    record Novo(int linha, LocalDate data, BigDecimal valor, String descricao, String descricaoBanco, String chave,
+                Long categoriaId) {
     }
 
     record Contagem(Long importacaoId, long editados, long excluidos) {
