@@ -9,9 +9,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AGORA } from '../../core/tempo/agora';
 import { ListaDeCategorias } from '../categorias/categorias.service';
 import { Conta, ListaDeContas } from '../contas/contas.service';
+import { ItemDaLista } from '../lancamentos/lancamentos.service';
 import { NUBANK_CONTA } from './apresentacao';
 import { Importacao } from './importacao';
-import { Importacao as ItemDoHistorico, Previa, Resultado } from './importacao.service';
+import { Importacao as ItemDoHistorico, LadoSugerido, Previa, Resultado } from './importacao.service';
 import { FluxoDeRegras } from '../regras/fluxo-de-regras';
 import { Regra, SugestaoDeRegra } from '../regras/regras.service';
 
@@ -43,9 +44,15 @@ const historico: ItemDoHistorico[] = [{
 describe('Importacao', () => {
   let httpTesting: HttpTestingController;
 
+  // Mesmo quando o verify acusa um pedido pendente, o diálogo fecha e o TestBed volta ao zero: um afterEach que lança
+  // pula a limpeza do Angular, e o diálogo e o módulo velhos derrubariam os casos (e os arquivos) seguintes.
   afterEach(() => {
-    httpTesting.verify();
-    TestBed.inject(MatDialog).closeAll();
+    try {
+      httpTesting.verify();
+    } finally {
+      TestBed.inject(MatDialog).closeAll();
+      TestBed.resetTestingModule();
+    }
   });
 
   function criar(conta: string | null = null) {
@@ -371,6 +378,91 @@ describe('Importacao', () => {
     TestBed.tick();
     const aviso = document.querySelector('app-confirmacao-dialogo') as HTMLElement;
     expect(aviso.querySelector('h2')?.textContent).toBe('Esta importação não pode ser desfeita agora');
+    expect(Array.from(aviso.querySelectorAll('button')).map((item) => item.textContent?.trim())).toEqual(['Fechar', 'Ir para Contas']);
+    httpTesting.expectNone({ method: 'POST', url: '/api/importacoes/12/desfazer' });
+  });
+
+  it('o resultado sugere os pares de transferência; "Converter" abre a conversão com o par escolhido e tira a linha (Fatia 04c)', async () => {
+    const { fixture, componente, elemento } = criar('1');
+    componente.escolherArquivo(lista(new File(['OFXHEADER:100'], 'extrato.ofx')));
+    httpTesting.expectOne('/api/importacoes/previa').flush(previa);
+    componente.importar({ escolhas: [{ linha: 2, categoriaId: null, descricao: null }], aMao: [], porRegras: 0 });
+    const ted: LadoSugerido = { id: 70, data: '2026-11-05', descricao: 'TED 341.0001DEV FICTICIO', valor: -1000, contaId: 1, contaNome: 'Banco Horizonte' };
+    const recebida: LadoSugerido = { id: 71, data: '2026-11-06', descricao: 'Transferência recebida', valor: 1000, contaId: 2,
+      contaNome: 'Conta conjunta' };
+    httpTesting.expectOne({ method: 'POST', url: '/api/importacoes' }).flush({ importacaoId: 13, contaId: 1, contaNome: 'Banco Horizonte',
+      importadas: 1, desmarcadas: 1, jaImportadas: 0, deFora: 0, entraramPorOutra: 0, saldoDeHoje: 0, mesDaUltimaLinha: '2026-11',
+      pares: [{ lancamento: ted, par: recebida }] });
+    httpTesting.expectOne({ method: 'GET', url: '/api/importacoes' }).flush(historico);
+    fixture.detectChanges();
+
+    expect(Array.from(elemento.querySelectorAll('#importacao-pares span')).map((span) => span.textContent))
+      .toEqual(['Parecem transferências entre suas contas', 'Parecem transferências']);
+    expect(Array.from(elemento.querySelectorAll('.importacao__lado-do-par b')).map((b) => b.textContent))
+      .toEqual(['TED 341.0001DEV FICTICIO', 'Transferência recebida']);
+    expect(Array.from(elemento.querySelectorAll('.importacao__lado-do-par .valor__texto')).map((valor) => valor.textContent?.replace(/\s/g, ' ')))
+      .toEqual(['−R$ 1.000,00', '+R$ 1.000,00']);
+
+    (elemento.querySelector('button[aria-label="Converter TED 341.0001DEV FICTICIO em transferência"]') as HTMLButtonElement).click();
+    TestBed.tick();
+    const fixo = { tipo: 'DESPESA', id: 70, data: '2026-11-05', descricao: 'TED 341.0001DEV FICTICIO', valor: -1000, observacao: null, contaId: 1,
+      contaNome: 'Banco Horizonte', categoriaId: null, categoriaNome: null, categoriaMaeNome: null, categoriaArquivada: false, contaDestinoId: null,
+      contaDestinoNome: null, direcao: null, futuro: false, somenteLeitura: false, origem: 'IMPORTADO', descricaoBanco: 'TED 341.0001DEV FICTICIO',
+      lados: null } satisfies ItemDaLista;
+    httpTesting.expectOne({ method: 'GET', url: '/api/lancamentos/70/pares' }).flush({ lancamento: fixo, inicio: '2026-10-31', fim: '2026-11-10',
+      pares: [{ ...recebida, origem: 'IMPORTADO' }, { ...recebida, id: 72, descricao: 'Outra entrada', origem: 'MANUAL' }] });
+    TestBed.tick();
+    const conversao = document.querySelector('app-conversao-dialogo') as HTMLElement;
+    expect(Array.from(conversao.querySelectorAll<HTMLInputElement>('input[type="radio"]')).map((radio) => radio.checked))
+      .toEqual([true, false, false]);
+    (Array.from(conversao.querySelectorAll<HTMLButtonElement>('button')).find((botao) => botao.textContent?.trim() === 'Converter') as HTMLButtonElement)
+      .click();
+    TestBed.tick();
+    const pedido = httpTesting.expectOne({ method: 'POST', url: '/api/lancamentos/70/converter' });
+    expect(pedido.request.body).toEqual({ parId: 71, contaId: null, descricao: null });
+    pedido.flush({ ...fixo, tipo: 'TRANSFERENCIA', id: 40 });
+    await vi.waitFor(() => httpTesting.expectOne({ method: 'GET', url: '/api/importacoes' }).flush(historico));
+    fixture.detectChanges();
+    expect(elemento.querySelector('#importacao-pares')).toBeNull();
+  });
+
+  it('desfazer com lançamentos em transferências diz o que acontece com o outro lado (Fatia 04c, decisão 34)', async () => {
+    const { componente } = criar();
+    const conjunta = { data: '2026-11-02', contaId: 2, contaNome: 'Conta conjunta', contaArquivada: false, tipo: 'RECEITA' } as const;
+    componente.desfazer({ ...historico[0], transferencias: [conjunta] });
+    TestBed.tick();
+    let confirmacao = document.querySelector('app-confirmacao-dialogo') as HTMLElement;
+    expect(confirmacao.querySelector('h2')?.textContent).toBe('Desfazer a importação de extrato-outubro.ofx?');
+    expect(confirmacao.querySelector('.flux-alerta--atencao .flux-alerta__titulo')?.textContent).toBe('1 deles está numa transferência');
+    expect(confirmacao.querySelector('.flux-alerta--atencao .flux-alerta__texto')?.textContent).toBe('A transferência de 02/11 com Conta conjunta é '
+      + 'desfeita, e o lançamento de Conta conjunta volta a ser uma receita, sem categoria.');
+    TestBed.inject(MatDialog).closeAll();
+    await vi.waitFor(() => expect(document.querySelector('app-confirmacao-dialogo')).toBeNull());
+
+    componente.desfazer({ ...historico[0], transferencias: [conjunta, { ...conjunta, data: '2026-11-03', tipo: 'DESPESA' },
+      { ...conjunta, contaId: 3, contaNome: 'Carteira' }] });
+    TestBed.tick();
+    confirmacao = document.querySelector('app-confirmacao-dialogo') as HTMLElement;
+    expect(confirmacao.querySelector('.flux-alerta--atencao .flux-alerta__titulo')?.textContent).toBe('3 deles estão em transferências');
+    expect(confirmacao.querySelector('.flux-alerta--atencao .flux-alerta__texto')?.textContent).toBe('As transferências são desfeitas, e os '
+      + 'lançamentos de Conta conjunta e Carteira voltam a ser receitas ou despesas, sem categoria.');
+    TestBed.inject(MatDialog).closeAll();
+    await vi.waitFor(() => expect(document.querySelector('app-confirmacao-dialogo')).toBeNull());
+
+    componente.desfazer(historico[0]);
+    TestBed.tick();
+    expect(document.querySelector('app-confirmacao-dialogo .flux-alerta--atencao')).toBeNull();
+  });
+
+  it('com o outro lado de uma transferência numa conta arquivada, desfazer só avisa, sem chamar a API (Fatia 04c)', () => {
+    const { componente } = criar();
+    componente.desfazer({ ...historico[0], transferencias: [{ data: '2026-11-02', contaId: 2, contaNome: 'Conta conjunta', contaArquivada: true,
+      tipo: 'RECEITA' }] });
+    TestBed.tick();
+    const aviso = document.querySelector('app-confirmacao-dialogo') as HTMLElement;
+    expect(aviso.querySelector('h2')?.textContent).toBe('Esta importação não pode ser desfeita agora');
+    expect(aviso.querySelector('.confirmacao__texto')?.textContent).toBe('A transferência de 02/11 liga esta importação a Conta conjunta, que está '
+      + 'arquivada. Reative a conta para desfazer esta importação.');
     expect(Array.from(aviso.querySelectorAll('button')).map((item) => item.textContent?.trim())).toEqual(['Fechar', 'Ir para Contas']);
     httpTesting.expectNone({ method: 'POST', url: '/api/importacoes/12/desfazer' });
   });

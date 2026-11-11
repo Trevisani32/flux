@@ -8,7 +8,7 @@
       <app-icone nome="arquivar" />
       <div class="flux-alerta__corpo">
         <strong class="flux-alerta__titulo">{{ contaArquivada }} está arquivada</strong>
-        <p class="flux-alerta__texto">Reative a conta em Contas, na seção "Arquivadas", para editar ou excluir {{ item.tipo === 'TRANSFERENCIA' ? 'esta transferência' : 'este lançamento' }}.</p>
+        <p class="flux-alerta__texto">Reative a conta em Contas, na seção "Arquivadas", para {{ acaoDaSoLeitura }}.</p>
       </div>
     </div>
     <dl class="lancamento-dialogo__ficha">
@@ -38,7 +38,7 @@
   <form class="lancamento-dialogo" [formGroup]="formulario" (ngSubmit)="salvar(false)">
     <h2 mat-dialog-title class="lancamento-dialogo__titulo">{{ titulo() }}</h2>
     @if (importado) {
-      <app-alerta tipo="info" icone="importar" titulo="Lançamento importado"><p class="flux-alerta__texto">Tipo, valor, data e conta vêm do extrato e não mudam.</p></app-alerta>
+      <app-alerta tipo="info" icone="importar" titulo="Lançamento importado"><p class="flux-alerta__texto">Tipo, valor, data e conta vêm do extrato e não mudam. {{ textoDaConversao }}</p><button type="button" class="lancamento-dialogo__converter" [disabled]="enviando()" (click)="converter()">Converter em transferência</button></app-alerta>
     }
 
     <fieldset class="flux-grupo" [attr.aria-describedby]="editando && !importado ? 'lancamento-tipo-dica' : null">

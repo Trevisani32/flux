@@ -19,6 +19,8 @@ import { Valor } from '../../shared/valor/valor';
 import { detalheDoErro, propriedadeDoErro, statusDoErro } from '../auth/erros-http';
 import { CategoriasService, ListaDeCategorias } from '../categorias/categorias.service';
 import { ContasService, ListaDeContas } from '../contas/contas.service';
+import { diaEMes } from '../lancamentos/conversao';
+import { abrirConversao } from '../lancamentos/conversao-dialogo/conversao-dialogo';
 import { mesDe, parametrosDaUrl } from '../lancamentos/filtros';
 import { contaPadrao } from '../lancamentos/lancamento-dialogo/lancamento-dialogo';
 import { nomeDaCategoria } from '../regras/apresentacao';
@@ -29,7 +31,9 @@ import {
   resumoDoHistorico, resumoDoPerfil, tamanhoDoArquivo,
 } from './apresentacao';
 import { abrirExcluidos } from './excluidos-dialogo/excluidos-dialogo';
-import { Amostra, Importacao as ItemDoHistorico, ImportacaoService, Previa, Resultado } from './importacao.service';
+import {
+  Amostra, Importacao as ItemDoHistorico, ImportacaoService, ParSugerido, Previa, Resultado, TransferenciaDaImportacao,
+} from './importacao.service';
 import { PerfilCsv } from './perfil-csv/perfil-csv';
 import { ConfirmacaoDaRevisao, Revisao } from './revisao/revisao';
 
@@ -39,7 +43,9 @@ import { ConfirmacaoDaRevisao, Revisao } from './revisao/revisao';
  * resultado, com o indicador de passos do mockup. O CSV com perfil salvo mostra o resumo do perfil
  * e "Revisar" (decisão 12); o OFX vai direto para a revisão. O arquivo só existe aqui, no
  * navegador: recarregar volta ao começo. Na Fatia 04b, o resultado oferece criar regras com as
- * categorias escolhidas à mão na revisão (decisão 20).
+ * categorias escolhidas à mão na revisão (decisão 20). Na Fatia 04c, o resultado sugere os pares de
+ * transferência (decisão 35), e desfazer uma importação com lançamento convertido diz o que acontece
+ * com o outro lado (decisão 34).
  */
 @Component({
   selector: 'app-importacao',
@@ -90,6 +96,9 @@ export class Importacao {
   readonly detalheDasSugestoes = signal<string | null>(null);
   /** Quantas linhas a revisão mandou com a categoria da regra (Fatia 04b): o texto do resultado conta. */
   private readonly porRegras = signal(0);
+  /** Fatia 04c (decisão 35): "Parecem transferências entre suas contas"; sai a que foi convertida. */
+  readonly paresSugeridos = signal<readonly ParSugerido[]>([]);
+  readonly diaEMes = diaEMes;
   readonly nomeDaCategoria = nomeDaCategoria;
   readonly temContaAtiva = computed(() => (this.contas()?.ativas.length ?? 0) > 0);
   readonly nomeDaConta = computed(() => this.contas()?.ativas.find((conta) => conta.id === this.contaId())?.nome ?? '');
@@ -270,6 +279,7 @@ export class Importacao {
         this.enviando.set(false);
         this.porRegras.set(confirmacao.porRegras);
         this.resultado.set(resultado);
+        this.paresSugeridos.set(resultado.pares ?? []);
         this.passo.set('pronto');
         this.carregarHistorico();
         this.aMao = confirmacao.aMao;
@@ -308,6 +318,7 @@ export class Importacao {
     this.sugestoesDeRegra.set([]);
     this.falhaNasSugestoes.set(false);
     this.detalheDasSugestoes.set(null);
+    this.paresSugeridos.set([]);
   }
 
   /**
@@ -341,19 +352,44 @@ export class Importacao {
     });
   }
 
+  /**
+   * "Converter" (decisão 35): o diálogo da conversão com o par sugerido escolhido. Convertido (com esse
+   * par ou com outro lado), a linha sai do cartão, e o histórico recarrega (as transferências dele mudaram).
+   */
+  converterPar(sugestao: ParSugerido): void {
+    const contas = this.contas();
+    if (contas === null) {
+      return;
+    }
+    abrirConversao(this.dialogo, { lancamentoId: sugestao.lancamento.id, contas, parSugerido: sugestao.par.id }).subscribe((transferencia) => {
+      if (transferencia !== undefined) {
+        this.paresSugeridos.update((atuais) => atuais.filter((outra) => outra !== sugestao));
+        this.carregarHistorico();
+      }
+    });
+  }
+
   /** O histórico recarrega em qualquer fechamento: o Esc e o clique fora também fecham depois de restaurar. */
   verExcluidos(item: ItemDoHistorico): void {
     abrirExcluidos(this.dialogo, item).subscribe(() => this.carregarHistorico());
   }
 
-  /** Decisão 32: confirmação com o que sai; com a conta arquivada, só o aviso e o caminho para Contas. */
+  /**
+   * Decisão 32: confirmação com o que sai; com a conta arquivada, só o aviso e o caminho para Contas. Na
+   * Fatia 04c (decisão 34), a confirmação diz quantos lançamentos estão em transferências e o que acontece
+   * com o outro lado; com o outro lado numa conta arquivada, também só o aviso.
+   */
   desfazer(item: ItemDoHistorico): void {
-    if (item.contaArquivada) {
+    const transferencias = item.transferencias ?? [];
+    const presa = transferencias.find((transferencia) => transferencia.contaArquivada);
+    if (item.contaArquivada || presa !== undefined) {
       abrirConfirmacao(this.dialogo, {
         titulo: 'Esta importação não pode ser desfeita agora',
         icone: 'arquivar',
         perigo: false,
-        paragrafos: [[{ forte: item.contaNome }, ' está arquivada. Reative a conta para desfazer esta importação.']],
+        paragrafos: [presa === undefined ? [{ forte: item.contaNome }, ' está arquivada. Reative a conta para desfazer esta importação.']
+          : [`A transferência de ${diaEMes(presa.data)} liga esta importação a `, { forte: presa.contaNome },
+            ', que está arquivada. Reative a conta para desfazer esta importação.']],
         confirmar: 'Ir para Contas',
         cancelar: 'Fechar',
         falha: 'Não foi possível abrir Contas.',
@@ -379,6 +415,7 @@ export class Importacao {
       icone: 'reativar',
       perigo: true,
       paragrafos: [paragrafo, ['O registro fica no histórico. Para trazer as linhas de volta, importe o arquivo de novo.']],
+      aviso: transferencias.length === 0 ? undefined : avisoDasTransferencias(transferencias),
       confirmar: 'Desfazer importação',
       falha: 'Não foi possível desfazer. Tente novamente.',
       acao: () => this.servico.desfazer(item.id),
@@ -411,4 +448,22 @@ export class Importacao {
       },
     });
   }
+}
+
+/** Decisão 34 da 04c: o alerta da confirmação do desfazer quando lançamentos da importação estão em transferências. */
+function avisoDasTransferencias(transferencias: readonly TransferenciaDaImportacao[]): { readonly titulo: string; readonly texto: string } {
+  if (transferencias.length === 1) {
+    const [transferencia] = transferencias;
+    return {
+      titulo: '1 deles está numa transferência',
+      texto: `A transferência de ${diaEMes(transferencia.data)} com ${transferencia.contaNome} é desfeita, e o lançamento de `
+        + `${transferencia.contaNome} volta a ser uma ${transferencia.tipo === 'RECEITA' ? 'receita' : 'despesa'}, sem categoria.`,
+    };
+  }
+  const nomes = [...new Set(transferencias.map((transferencia) => transferencia.contaNome))];
+  const contas = nomes.length === 1 ? nomes[0] : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`;
+  return {
+    titulo: `${transferencias.length} deles estão em transferências`,
+    texto: `As transferências são desfeitas, e os lançamentos de ${contas} voltam a ser receitas ou despesas, sem categoria.`,
+  };
 }

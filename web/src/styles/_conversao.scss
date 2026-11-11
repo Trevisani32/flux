@@ -1,0 +1,369 @@
+// Fatia 04c: a conversão de importados em transferência. As regras são globais (Plano B da Fatia 01, o
+// orçamento de 4 kB por componente) e cada uma é prefixada pelo seletor do componente dono, para não
+// vazar. Aqui também ficam as peças que a 04c acrescenta ao diálogo do lançamento e ao resultado da
+// importação.
+
+// Diálogo "Converter em transferência"
+app-conversao-dialogo .conversao,
+app-convertida-dialogo .convertida {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 26px 26px 22px;
+}
+
+app-conversao-dialogo .conversao__cabecalho {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+app-conversao-dialogo .conversao__voltar {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--flux-borda);
+  border-radius: var(--flux-raio-controle);
+  background: var(--flux-card-2);
+  color: var(--flux-texto-2);
+  cursor: pointer;
+}
+
+app-conversao-dialogo .conversao__selo {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--flux-card-2);
+  color: var(--flux-texto-2);
+}
+
+app-conversao-dialogo .conversao__titulo,
+app-convertida-dialogo .convertida__titulo {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  color: var(--flux-texto);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+
+app-conversao-dialogo .conversao__titulo::before,
+app-convertida-dialogo .convertida__titulo::before {
+  display: none;
+}
+
+app-conversao-dialogo .conversao__fixo,
+app-conversao-dialogo .conversao__opcao {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--flux-borda);
+  border-radius: var(--flux-raio-controle);
+}
+
+app-conversao-dialogo .conversao__fixo {
+  background: var(--flux-card-2);
+}
+
+app-conversao-dialogo .conversao__selo-lado {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--flux-negativo) 13%, transparent);
+  color: var(--flux-negativo);
+}
+
+app-conversao-dialogo .conversao__selo-lado--entrada {
+  background: color-mix(in srgb, var(--flux-positivo) 13%, transparent);
+  color: var(--flux-positivo);
+}
+
+app-conversao-dialogo .conversao__textos {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+app-conversao-dialogo .conversao__textos b,
+app-convertida-dialogo .convertida__conta {
+  overflow-wrap: anywhere;
+}
+
+app-conversao-dialogo .conversao__meta,
+app-convertida-dialogo .convertida__meta {
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+}
+
+app-conversao-dialogo .conversao__opcoes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+app-conversao-dialogo .conversao__legenda {
+  margin-bottom: 4px;
+  padding: 0;
+  color: var(--flux-texto-2);
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+app-conversao-dialogo .conversao__sem-par {
+  margin: 0;
+}
+
+app-conversao-dialogo .conversao__opcao {
+  cursor: pointer;
+}
+
+app-conversao-dialogo .conversao__opcao:has(input:checked) {
+  border-color: rgba(var(--flux-ouro-rgb), 0.55);
+  background: rgba(var(--flux-ouro-rgb), 0.06);
+}
+
+app-conversao-dialogo .conversao__opcao input[type='radio'] {
+  flex: none;
+  margin: 0;
+  accent-color: var(--flux-ouro);
+}
+
+app-conversao-dialogo .conversao__opcao--nova {
+  flex-direction: column;
+  align-items: stretch;
+  cursor: default;
+}
+
+app-conversao-dialogo .conversao__rotulo-nova {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+// Nenhuma conta serve para o lado novo: a opção inteira parece desabilitada, não só o círculo.
+app-conversao-dialogo .conversao__rotulo-nova:has(input:disabled) {
+  cursor: not-allowed;
+  color: var(--flux-texto-2);
+}
+
+app-conversao-dialogo .conversao__conta {
+  padding-left: 25px;
+}
+
+app-conversao-dialogo .conversao__nota {
+  margin-top: -6px;
+}
+
+app-conversao-dialogo .conversao__carregando {
+  margin: 0;
+  color: var(--flux-texto-3);
+}
+
+app-conversao-dialogo .conversao__acoes,
+app-convertida-dialogo .convertida__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+// Diálogo da transferência convertida
+app-convertida-dialogo .convertida__cadeado {
+  margin-right: 12px;
+  color: var(--flux-texto-3);
+}
+
+app-convertida-dialogo .convertida__lados {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+app-convertida-dialogo .convertida__lado {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--flux-borda);
+  border-radius: var(--flux-raio-controle);
+  background: var(--flux-card-2);
+}
+
+app-convertida-dialogo .convertida__rotulo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+app-convertida-dialogo .convertida__desfazer {
+  margin-right: auto;
+  color: var(--flux-ouro-texto);
+}
+
+// O atalho no alerta "Lançamento importado" (decisão 26)
+app-lancamento-dialogo .lancamento-dialogo__converter {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--flux-ouro-texto);
+  font-size: 13px;
+  line-height: 19px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+app-lancamento-dialogo .lancamento-dialogo__converter:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+// Resultado da importação: "Parecem transferências entre suas contas" (decisão 35)
+app-importacao .importacao__cartoes {
+  display: grid;
+  align-items: start;
+  gap: 20px;
+}
+
+app-importacao .importacao__pares {
+  gap: 6px;
+}
+
+app-importacao .importacao__lista-pares {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+app-importacao .importacao__par {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+}
+
+app-importacao .importacao__par + .importacao__par {
+  border-top: 1px solid var(--flux-borda);
+}
+
+app-importacao .importacao__lados-do-par {
+  display: grid;
+  flex: 1 1 0;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+app-importacao .importacao__lado-do-par {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+app-importacao .importacao__lado-do-par b {
+  overflow-wrap: anywhere;
+}
+
+app-importacao .importacao__lado-do-par span {
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+}
+
+app-importacao .importacao__seta-do-par {
+  color: var(--flux-texto-3);
+}
+
+@media (min-width: 960px) {
+  app-importacao .importacao__cartoes:has(> :nth-child(2)) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  }
+}
+
+@media (max-width: 959.98px) {
+  app-convertida-dialogo .convertida {
+    gap: 14px;
+    padding: 22px 18px 18px;
+  }
+
+  app-convertida-dialogo .convertida__lados {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  app-convertida-dialogo .convertida__acoes {
+    flex-direction: column-reverse;
+  }
+
+  app-convertida-dialogo .convertida__acoes button {
+    width: 100%;
+  }
+
+  app-convertida-dialogo .convertida__desfazer {
+    margin-right: 0;
+  }
+
+  app-importacao .importacao__par {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  app-importacao .importacao__lados-do-par {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  app-importacao .importacao__seta-do-par {
+    transform: rotate(90deg);
+  }
+}
+
+// O diálogo da conversão ocupa a tela no celular, como o seletor de categoria (.flux-dialogo--cheio-no-celular).
+@media (max-width: 599.98px) {
+  app-conversao-dialogo .conversao {
+    min-height: 100%;
+    gap: 14px;
+    padding: 18px 16px 16px;
+  }
+
+  app-conversao-dialogo .conversao__acoes {
+    flex-direction: column-reverse;
+    margin-top: auto;
+  }
+
+  app-conversao-dialogo .conversao__acoes button {
+    width: 100%;
+  }
+}

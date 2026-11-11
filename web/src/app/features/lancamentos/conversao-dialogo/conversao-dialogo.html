@@ -1,0 +1,95 @@
+<form class="conversao" [formGroup]="formulario" (ngSubmit)="converter()">
+  <div class="conversao__cabecalho">
+    <button type="button" class="conversao__voltar flux-so-celular" aria-label="Voltar" [disabled]="enviando()" (click)="cancelar()"><app-icone nome="esquerda" /></button>
+    <span class="conversao__selo flux-so-desktop" aria-hidden="true"><app-icone nome="lancamentos" /></span>
+    <h2 mat-dialog-title class="conversao__titulo">Converter em transferência</h2>
+  </div>
+
+  @if (falhaAoCarregar()) {
+    <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível carregar os pares.">
+      @if (detalheAoCarregar(); as detalhe) {
+        <p class="flux-alerta__texto">{{ detalhe }}</p>
+      } @else {
+        <div class="flux-alerta__acoes"><button mat-stroked-button type="button" (click)="carregar()">Tentar de novo</button></div>
+      }
+    </app-alerta>
+  } @else if (estado(); as atual) {
+    <div class="conversao__fixo">
+      <span class="conversao__selo-lado" [class.conversao__selo-lado--entrada]="!saida()" aria-hidden="true"><app-icone [nome]="saida() ? 'saida' : 'entrada'" /></span>
+      <span class="conversao__textos"><b>{{ atual.lancamento.descricao }}</b><span class="conversao__meta">{{ metaDoFixo() }}</span></span>
+      <app-valor [valor]="atual.lancamento.valor" />
+    </div>
+
+    <fieldset class="conversao__opcoes" [attr.aria-describedby]="erro('outroLado') !== null ? 'conversao-outro-lado-erro' : null">
+      <legend class="conversao__legenda">{{ legenda() }}</legend>
+      @if (atual.pares.length === 0) {
+        <p class="flux-dica conversao__sem-par">{{ textoSemPar() }}</p>
+      }
+      @for (par of atual.pares; track par.id) {
+        <label class="conversao__opcao">
+          <input type="radio" name="outroLado" formControlName="outroLado" [value]="valorDoPar(par)" />
+          <span class="conversao__textos"><b>{{ par.descricao }}</b><span class="conversao__meta">{{ metaDoPar(par) }}</span></span>
+          <app-valor [valor]="par.valor" />
+        </label>
+      }
+      <div class="conversao__opcao conversao__opcao--nova">
+        <label class="conversao__rotulo-nova">
+          <input type="radio" name="outroLado" formControlName="outroLado" [value]="nova" [attr.disabled]="contasQueServem().length === 0 ? '' : null" />
+          <span class="conversao__textos"><b>{{ textoDaNova() }}</b><span class="conversao__meta">{{ metaDaNova() }}</span></span>
+        </label>
+        @if (outroLado() === nova) {
+          <div class="flux-campo conversao__conta">
+            <label class="flux-visualmente-oculto" for="conversao-conta">{{ rotuloDoSelect() }}</label>
+            <div class="flux-entrada" [class.flux-entrada--invalida]="erro('conta') !== null">
+              <select id="conversao-conta" formControlName="conta" [attr.aria-invalid]="erro('conta') !== null ? 'true' : null" [attr.aria-describedby]="erro('conta') !== null ? 'conversao-conta-erro' : null">
+                <option [ngValue]="null" disabled>Escolha a conta</option>
+                @for (conta of contasDaNova(); track conta.id) {
+                  <option [ngValue]="conta.id" [disabled]="comecaDepois(conta)">{{ rotuloDaConta(conta) }}</option>
+                }
+              </select>
+              <app-icone class="flux-entrada__seta" nome="baixo" />
+            </div>
+            @if (erro('conta'); as mensagem) {
+              <p id="conversao-conta-erro" class="flux-campo__erro">{{ mensagem }}</p>
+            }
+          </div>
+        }
+      </div>
+      @if (erro('outroLado'); as mensagem) {
+        <p id="conversao-outro-lado-erro" class="flux-campo__erro">{{ mensagem }}</p>
+      }
+    </fieldset>
+
+    @if (!semSaida()) {
+      <div class="flux-campo">
+        <label for="conversao-descricao">Descrição <span class="flux-grupo__opcional">(opcional)</span></label>
+        <div class="flux-entrada" [class.flux-entrada--invalida]="erro('descricao') !== null">
+          <input id="conversao-descricao" type="text" formControlName="descricao" maxlength="255" autocomplete="off" placeholder="Transferência" [attr.aria-invalid]="erro('descricao') !== null ? 'true' : null" [attr.aria-describedby]="erro('descricao') !== null ? 'conversao-descricao-erro' : 'conversao-descricao-dica'" />
+        </div>
+        @if (erro('descricao'); as mensagem) {
+          <p id="conversao-descricao-erro" class="flux-campo__erro">{{ mensagem }}</p>
+        } @else {
+          <p id="conversao-descricao-dica" class="flux-dica">Vale para os dois lados. A descrição do extrato de cada um fica guardada.</p>
+        }
+      </div>
+      <p class="flux-dica conversao__nota">A categoria sai dos dois lados. Data, valor e conta não mudam, e reimportar o extrato continua reconhecendo os dois.</p>
+    }
+  } @else {
+    <p class="conversao__carregando" role="status">Carregando os pares…</p>
+  }
+
+  @if (erroGeral(); as mensagem) {
+    <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem">
+      @if (recarregada()) {
+        <p class="flux-alerta__texto">A lista foi atualizada. Confira o outro lado e converta de novo.</p>
+      }
+    </app-alerta>
+  }
+
+  <div class="conversao__acoes">
+    <button mat-stroked-button type="button" [disabled]="enviando()" (click)="cancelar()">Cancelar</button>
+    @if (estado() !== null && !semSaida()) {
+      <button mat-flat-button type="submit" [disabled]="enviando()">Converter</button>
+    }
+  </div>
+</form>

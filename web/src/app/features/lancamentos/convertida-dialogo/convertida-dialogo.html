@@ -1,0 +1,60 @@
+<form class="convertida" [formGroup]="formulario" (ngSubmit)="salvar()">
+  <h2 mat-dialog-title class="convertida__titulo">Editar transferência</h2>
+  <app-alerta tipo="info" icone="importar" [titulo]="tituloDoAlerta"><p class="flux-alerta__texto">{{ textoDoAlerta }}</p></app-alerta>
+
+  <div class="flux-campo">
+    <label for="convertida-valor">Valor</label>
+    <div class="flux-entrada flux-entrada--travada">
+      <span class="flux-entrada__prefixo" aria-hidden="true">R$</span>
+      <input id="convertida-valor" type="text" [value]="valor" disabled />
+      <app-icone class="convertida__cadeado" nome="cadeado" [tamanho]="16" />
+    </div>
+  </div>
+
+  <div class="convertida__lados">
+    @for (lado of lados; track $index) {
+      <div class="convertida__lado">
+        <span class="convertida__rotulo"><app-icone [nome]="$first ? 'saida' : 'entrada'" [tamanho]="14" />{{ $first ? 'De' : 'Para' }}</span>
+        <b class="convertida__conta">{{ lado.contaNome }}</b>
+        <span class="convertida__meta">{{ metaDoLado(lado) }}</span>
+        @if (lado.descricaoBanco; as doBanco) {
+          <span class="convertida__meta">No extrato: {{ doBanco }}</span>
+        }
+      </div>
+    }
+  </div>
+
+  <div class="flux-campo">
+    <label for="convertida-descricao">Descrição <span class="flux-grupo__opcional">(opcional)</span></label>
+    <div class="flux-entrada" [class.flux-entrada--invalida]="erro('descricao') !== null">
+      <input id="convertida-descricao" type="text" formControlName="descricao" maxlength="255" autocomplete="off" placeholder="Transferência" [attr.aria-invalid]="erro('descricao') !== null ? 'true' : null" [attr.aria-describedby]="erro('descricao') !== null ? 'convertida-descricao-erro' : null" />
+    </div>
+    @if (erro('descricao'); as mensagem) {
+      <p id="convertida-descricao-erro" class="flux-campo__erro">{{ mensagem }}</p>
+    }
+  </div>
+
+  <div class="flux-campo">
+    <label for="convertida-observacao">Observação <span class="flux-grupo__opcional">(opcional)</span></label>
+    <div class="flux-entrada flux-entrada--area" [class.flux-entrada--invalida]="erro('observacao') !== null">
+      <textarea id="convertida-observacao" formControlName="observacao" rows="2" maxlength="1000" [attr.aria-invalid]="erro('observacao') !== null ? 'true' : null" [attr.aria-describedby]="erro('observacao') !== null ? 'convertida-observacao-erro' : null"></textarea>
+    </div>
+    @if (erro('observacao'); as mensagem) {
+      <p id="convertida-observacao-erro" class="flux-campo__erro">{{ mensagem }}</p>
+    }
+  </div>
+
+  @if (erroGeral(); as mensagem) {
+    <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem" />
+  }
+
+  <div class="convertida__acoes">
+    @if (!desatualizada()) {
+      <button mat-button type="button" class="convertida__desfazer" [disabled]="enviando()" (click)="desfazer()"><app-icone nome="reativar" [tamanho]="18" />Desfazer transferência</button>
+    }
+    <button mat-stroked-button type="button" [disabled]="enviando()" (click)="cancelar()">{{ desatualizada() ? 'Fechar' : 'Cancelar' }}</button>
+    @if (!desatualizada()) {
+      <button mat-flat-button type="submit" [disabled]="enviando()">Salvar</button>
+    }
+  </div>
+</form>
