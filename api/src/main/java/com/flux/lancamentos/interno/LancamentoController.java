@@ -7,6 +7,7 @@ import java.util.List;
 import com.flux.compartilhado.seguranca.UsuarioAtual;
 import com.flux.lancamentos.interno.dto.ItemDaLista;
 import com.flux.lancamentos.interno.dto.ListaDoMesResponse;
+import com.flux.lancamentos.interno.dto.RestaurarRequest;
 import com.flux.lancamentos.interno.dto.SalvarLancamentoRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -65,9 +66,16 @@ public class LancamentoController {
         return lancamentoService.atualizar(usuarioAtual.id(), id, pedido);
     }
 
+    /** O manual sai de vez; o importado é ignorado (decisão 30). */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluir(@PathVariable Long id) {
         lancamentoService.excluir(usuarioAtual.id(), id);
         return ResponseEntity.noContent().build();
+    }
+
+    /** Volta um importado ignorado para a lista; o corpo ({"categoriaId": ...}) é opcional. */
+    @PostMapping("/{id}/restaurar")
+    public ItemDaLista restaurar(@PathVariable Long id, @RequestBody(required = false) RestaurarRequest pedido) {
+        return lancamentoService.restaurar(usuarioAtual.id(), id, pedido);
     }
 }

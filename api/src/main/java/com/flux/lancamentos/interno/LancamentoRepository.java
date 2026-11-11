@@ -7,43 +7,80 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * Os importados ignorados (decisão 30) ficam de fora da lista, do saldo, do lançamento mais
+ * antigo e do uso da conta, mas contam nos limites (decisão 24): os nomes dos métodos dizem.
+ */
 public interface LancamentoRepository extends JpaRepository<Lancamento, Long> {
 
-    /** Receita ou despesa do usuário; um lado de transferência fica de fora. */
-    Optional<Lancamento> findByIdAndUsuarioIdAndTransferenciaIdIsNull(Long id, Long usuarioId);
+    /** Receita ou despesa do usuário, não ignorada; um lado de transferência fica de fora. */
+    Optional<Lancamento> findByIdAndUsuarioIdAndTransferenciaIdIsNullAndIgnoradoEmIsNull(Long id, Long usuarioId);
+
+    /** Um importado ignorado, para restaurar. */
+    Optional<Lancamento> findByIdAndUsuarioIdAndIgnoradoEmIsNotNull(Long id, Long usuarioId);
 
     List<Lancamento> findAllByUsuarioIdAndTransferenciaId(Long usuarioId, Long transferenciaId);
 
     List<Lancamento> findAllByUsuarioIdAndTransferenciaIdIn(Long usuarioId, Collection<Long> transferenciaIds);
 
-    List<Lancamento> findAllByUsuarioIdAndDataBetween(Long usuarioId, LocalDate inicio, LocalDate fim);
+    List<Lancamento> findAllByUsuarioIdAndDataBetweenAndIgnoradoEmIsNull(Long usuarioId, LocalDate inicio, LocalDate fim);
 
     /** Os mais recentes até a data, para "Últimos lançamentos" (10 linhas dão ao menos 5 itens). */
-    List<Lancamento> findTop10ByUsuarioIdAndDataLessThanEqualOrderByDataDescIdDesc(Long usuarioId, LocalDate data);
+    List<Lancamento> findTop10ByUsuarioIdAndDataLessThanEqualAndIgnoradoEmIsNullOrderByDataDescIdDesc(Long usuarioId, LocalDate data);
 
+    /** Limite total: conta os ignorados, que são linhas guardadas (decisão 24). */
     long countByUsuarioId(Long usuarioId);
 
+    /** Limite do mês: conta os ignorados (decisão 24). */
     long countByUsuarioIdAndDataBetween(Long usuarioId, LocalDate inicio, LocalDate fim);
 
-    long countByUsuarioIdAndContaIdAndTipoNot(Long usuarioId, Long contaId, TipoLancamento tipo);
+    long countByUsuarioIdAndContaIdAndTipoNotAndIgnoradoEmIsNull(Long usuarioId, Long contaId, TipoLancamento tipo);
 
     long countByUsuarioIdAndContaIdAndTipo(Long usuarioId, Long contaId, TipoLancamento tipo);
 
     long countByUsuarioIdAndCategoriaIdIn(Long usuarioId, Collection<Long> categoriaIds);
 
-    /** ADR 0003: soma, por conta, de todos os tipos com data até {@code data}, inclusive. */
+    /** ADR 0003: soma, por conta, de todos os tipos com data até {@code data}, inclusive, sem os ignorados. */
     @Query("select new com.flux.lancamentos.interno.SomaDaConta(l.contaId, sum(l.valor)) from Lancamento l "
-            + "where l.usuarioId = :usuarioId and l.data <= :data group by l.contaId")
+            + "where l.usuarioId = :usuarioId and l.data <= :data and l.ignoradoEm is null group by l.contaId")
     List<SomaDaConta> somarPorContaAte(@Param("usuarioId") Long usuarioId, @Param("data") LocalDate data);
 
-    /** Soma da conta antes de {@code data} (exclusive); nulo se não há lançamento. */
-    @Query("select sum(l.valor) from Lancamento l where l.usuarioId = :usuarioId and l.contaId = :contaId and l.data < :data")
+    /** Soma da conta antes de {@code data} (exclusive), sem os ignorados; nulo se não há lançamento. */
+    @Query("select sum(l.valor) from Lancamento l where l.usuarioId = :usuarioId and l.contaId = :contaId "
+            + "and l.data < :data and l.ignoradoEm is null")
     BigDecimal somarDaContaAntesDe(@Param("usuarioId") Long usuarioId, @Param("contaId") Long contaId,
                                    @Param("data") LocalDate data);
 
-    @Query("select min(l.data) from Lancamento l where l.usuarioId = :usuarioId and l.contaId = :contaId")
+    /** O lançamento mais antigo da conta (limita a data do saldo inicial), sem os ignorados. */
+    @Query("select min(l.data) from Lancamento l where l.usuarioId = :usuarioId and l.contaId = :contaId and l.ignoradoEm is null")
     Optional<LocalDate> primeiraDataDaConta(@Param("usuarioId") Long usuarioId, @Param("contaId") Long contaId);
+
+    /** Para classificar a importação: a conta no período, mais as chaves (de qualquer data), com os ignorados. */
+    @Query("select l from Lancamento l where l.usuarioId = :usuarioId and l.contaId = :contaId "
+            + "and ((l.data between :inicio and :fim) or l.chaveImportacao in :chaves) order by l.data, l.id")
+    List<Lancamento> existentesParaImportar(@Param("usuarioId") Long usuarioId, @Param("contaId") Long contaId,
+                                            @Param("inicio") LocalDate inicio, @Param("fim") LocalDate fim,
+                                            @Param("chaves") Collection<String> chaves);
+
+    @Modifying
+    @Query("delete from Lancamento l where l.usuarioId = :usuarioId and l.importacaoId = :importacaoId")
+    int apagarDaImportacao(@Param("usuarioId") Long usuarioId, @Param("importacaoId") Long importacaoId);
+
+    @Modifying
+    @Query("delete from Lancamento l where l.usuarioId = :usuarioId and l.contaId = :contaId and l.ignoradoEm is not null")
+    int apagarIgnoradosDaConta(@Param("usuarioId") Long usuarioId, @Param("contaId") Long contaId);
+
+    /** Editado: mudou depois de criado (ignorar e restaurar não mexem em atualizado_em). */
+    @Query("select new com.flux.lancamentos.interno.QuantidadesDaImportacao(l.importacaoId, "
+            + "sum(case when l.ignoradoEm is null and l.atualizadoEm > l.criadoEm then 1L else 0L end), "
+            + "sum(case when l.ignoradoEm is not null then 1L else 0L end)) "
+            + "from Lancamento l where l.usuarioId = :usuarioId and l.importacaoId is not null group by l.importacaoId")
+    List<QuantidadesDaImportacao> quantidadesDasImportacoes(@Param("usuarioId") Long usuarioId);
+
+    List<Lancamento> findAllByUsuarioIdAndImportacaoIdAndIgnoradoEmIsNotNullOrderByIgnoradoEmDescIdDesc(Long usuarioId,
+                                                                                                    Long importacaoId);
 }

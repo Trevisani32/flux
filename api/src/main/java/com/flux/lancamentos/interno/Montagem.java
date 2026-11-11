@@ -38,7 +38,8 @@ final class Montagem {
                 lancamento.getValor(), lancamento.getObservacao(), conta.id(), conta.nome(),
                 categoria == null ? null : categoria.id(), categoria == null ? null : categoria.nome(),
                 categoria == null ? null : categoria.nomeDaMae(), categoria != null && categoria.arquivada(),
-                null, null, null, lancamento.getData().isAfter(hoje), conta.arquivada());
+                null, null, null, lancamento.getData().isAfter(hoje), conta.arquivada(), lancamento.getOrigem(),
+                lancamento.getDescricaoBanco());
     }
 
     /**
@@ -51,6 +52,6 @@ final class Montagem {
         return new ItemDaLista(TipoLancamento.TRANSFERENCIA, saida.getTransferenciaId(), referencia.getData(),
                 referencia.getDescricao(), entrada.getValor(), referencia.getObservacao(), origem.id(), origem.nome(),
                 null, null, null, false, destino.id(), destino.nome(), direcao, referencia.getData().isAfter(hoje),
-                origem.arquivada() || destino.arquivada());
+                origem.arquivada() || destino.arquivada(), referencia.getOrigem(), null);
     }
 }
