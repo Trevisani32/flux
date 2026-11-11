@@ -3,11 +3,11 @@ import { Component, computed, input } from '@angular/core';
 import { Icone } from '../icone/icone';
 import { NomeIcone } from '../icone/icones';
 
-export type TipoAlerta = 'info' | 'sucesso' | 'erro';
+export type TipoAlerta = 'info' | 'sucesso' | 'erro' | 'atencao';
 
 /**
  * Alerta com ícone, título e texto opcional (projetado). Erro usa role="alert";
- * informação e sucesso usam role="status", a menos que `papel` diga outra coisa.
+ * informação, sucesso e atenção usam role="status", a menos que `papel` diga outra coisa.
  */
 @Component({
   selector: 'app-alerta',

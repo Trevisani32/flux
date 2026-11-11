@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { RouterLink } from '@angular/router';
@@ -30,7 +31,7 @@ interface ItemEmBreve {
   readonly texto: string;
 }
 
-/** Saldo total, contas, o mês e os últimos lançamentos (decisão 32). */
+/** Saldo total, contas, o mês e os últimos lançamentos (decisão 32 da 03b); "Importar extrato" no topo (04a). */
 @Component({
   selector: 'app-inicio',
   imports: [MatButtonModule, RouterLink, Alerta, CabecalhoPagina, Card, EstadoVazio, Icone, LinhaDoLancamento, SaldoEmDestaque, Valor],
@@ -64,12 +65,13 @@ export class Inicio {
     return mes !== null && mes.quantidadeLancamentos + mes.quantidadeTransferencias > 0 ? mes : null;
   });
   readonly emBreve: readonly ItemEmBreve[] = [
-    { icone: 'importar', titulo: 'Importação de extratos', texto: 'OFX e CSV do banco, com categorização automática.' },
     { icone: 'cartao', titulo: 'Cartões de crédito', texto: 'Faturas, compras parceladas e limite disponível.' },
   ];
 
   constructor() {
     this.carregar();
+    // O "Desfazer" de um importado excluído volta depois que o diálogo fechou (Fatia 04a).
+    this.lancamentosService.restaurado$.pipe(takeUntilDestroyed()).subscribe(() => this.carregar());
     inject(CategoriasService).listar().subscribe({
       next: (categorias) => this.categorias.set(categorias),
       error: () => this.categorias.set(null),

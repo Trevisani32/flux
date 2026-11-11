@@ -1,0 +1,23 @@
+<div class="excluidos">
+  <h2 mat-dialog-title class="excluidos__titulo">Excluídos de {{ importacao.nomeArquivo }}</h2>
+  <p class="excluidos__texto">Eles ficam fora do saldo e não voltam numa reimportação. Restaurado, o lançamento volta para a lista, sem categoria.</p>
+  @if (excluidos(); as lista) {
+    @if (lista.length === 0) {
+      <p class="excluidos__texto">Nenhum lançamento excluído nesta importação.</p>
+    } @else {
+      <ul class="excluidos__lista">
+        @for (excluido of lista; track excluido.id) {
+          <li class="excluidos__item">
+            <span class="excluidos__textos"><b>{{ excluido.descricao }}</b><span>{{ dataCurta(excluido.data) }} · excluído em {{ dataCurtaDoInstante(excluido.ignoradoEm).slice(0, 5) }}</span></span>
+            <app-valor [valor]="excluido.valor" />
+            <button mat-stroked-button type="button" [disabled]="restaurando() !== null" (click)="restaurar(excluido)"><app-icone nome="reativar" [tamanho]="16" />Restaurar</button>
+          </li>
+        }
+      </ul>
+    }
+  }
+  @if (falha(); as mensagem) {
+    <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem" />
+  }
+  <div class="excluidos__acoes"><button mat-stroked-button type="button" (click)="fechar()">Fechar</button></div>
+</div>

@@ -28,7 +28,7 @@ const categorias: ListaDeCategorias = { despesas: { ativas: [], arquivadas: [] }
 const padaria: ItemDaLista = {
   tipo: 'DESPESA', id: 30, data: '2026-11-06', descricao: 'Padaria Central', valor: -18.5, observacao: null, contaId: 1,
   contaNome: 'Banco Horizonte', categoriaId: null, categoriaNome: null, categoriaMaeNome: null, categoriaArquivada: false,
-  contaDestinoId: null, contaDestinoNome: null, direcao: null, futuro: false, somenteLeitura: false,
+  contaDestinoId: null, contaDestinoNome: null, direcao: null, futuro: false, somenteLeitura: false, origem: 'MANUAL', descricaoBanco: null,
 };
 
 const novembro: ListaDoMes = {
@@ -43,7 +43,9 @@ const semNada: ListaDoMes = { ...novembro, quantidadeLancamentos: 0, quantidadeT
 describe('Inicio', () => {
   function criar(resposta: () => Observable<ListaDeContas>, mes: ListaDoMes = novembro, ultimos: ItemDaLista[] = [padaria]) {
     const auth = { usuario: signal<Usuario | null>({ id: 1, nome: 'Dev', email: 'dev@flux.local' }) };
-    const lancamentos = { listar: vi.fn(() => of(mes)), ultimos: vi.fn(() => of(ultimos)), ultimaConta: null };
+    const restaurado = new Subject<void>();
+    const lancamentos = { listar: vi.fn(() => of(mes)), ultimos: vi.fn(() => of(ultimos)), ultimaConta: null,
+      restaurado$: restaurado.asObservable() };
     const fechamento = new Subject<unknown>();
     const dialogo = { open: vi.fn(() => ({ afterClosed: () => fechamento.asObservable() })) };
     TestBed.configureTestingModule({
@@ -60,19 +62,20 @@ describe('Inicio', () => {
     });
     const fixture = TestBed.createComponent(Inicio);
     fixture.detectChanges();
-    return { elemento: fixture.nativeElement as HTMLElement, lancamentos, dialogo, fechamento };
+    return { elemento: fixture.nativeElement as HTMLElement, lancamentos, dialogo, fechamento, restaurado };
   }
 
   function textos(elemento: HTMLElement, seletor: string): string[] {
     return [...elemento.querySelectorAll(seletor)].map((no) => no.textContent?.trim().replace(/\s+/g, ' ') ?? '');
   }
 
-  it('mostra a saudação, a data e os dois itens em breve', () => {
+  it('mostra a saudação, a data e o item em breve (a importação saiu do em breve na 04a)', () => {
     const { elemento } = criar(() => of(comContas));
     expect(elemento.querySelector('h1')?.textContent).toBe('Olá, Dev');
     expect(elemento.querySelector('p.cabecalho__subtitulo')?.textContent).toBe('Sexta-feira, 6 de novembro de 2026');
-    expect(textos(elemento, '.em-breve h3')).toEqual(['Importação de extratos', 'Cartões de crédito']);
-    expect(textos(elemento, '.em-breve .flux-pilula')).toEqual(['Em breve', 'Em breve']);
+    expect(textos(elemento, '.em-breve h3')).toEqual(['Cartões de crédito']);
+    expect(textos(elemento, '.em-breve .flux-pilula')).toEqual(['Em breve']);
+    expect(elemento.querySelector('.cabecalho__acoes a[href="/importacao"]')?.textContent?.trim()).toBe('Importar extrato');
   });
 
   it('com contas, mostra o saldo total, os investimentos e a lista, com cada conta levando aos lançamentos dela', () => {
@@ -135,9 +138,17 @@ describe('Inicio', () => {
     expect(textos(elemento, '.cabecalho__acoes button')).toEqual([]);
   });
 
+  it('um importado restaurado pelo aviso curto recarrega o mês e os últimos (Fatia 04a)', () => {
+    const { lancamentos, restaurado } = criar(() => of(comContas));
+    expect(lancamentos.ultimos).toHaveBeenCalledTimes(1);
+    restaurado.next();
+    expect(lancamentos.listar).toHaveBeenCalledTimes(2);
+    expect(lancamentos.ultimos).toHaveBeenCalledTimes(2);
+  });
+
   it('se a lista de contas falhar, avisa e continua mostrando o resto', () => {
     const { elemento } = criar(() => throwError(() => new HttpErrorResponse({ status: 500 })));
     expect(elemento.querySelector('[role="alert"]')?.textContent).toContain('Não foi possível carregar o saldo das contas.');
-    expect(elemento.querySelectorAll('.em-breve h3')).toHaveLength(2);
+    expect(elemento.querySelectorAll('.em-breve h3')).toHaveLength(1);
   });
 });

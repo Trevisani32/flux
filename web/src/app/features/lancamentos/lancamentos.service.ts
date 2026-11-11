@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, Subject, map, tap } from 'rxjs';
 
 import { Filtros, parametrosDaApi } from './filtros';
 
@@ -30,6 +30,10 @@ export interface ItemDaLista {
   readonly direcao: 'SAIDA' | 'ENTRADA' | null;
   readonly futuro: boolean;
   readonly somenteLeitura: boolean;
+  /** IMPORTADO: tipo, valor, data e conta vêm do extrato e não mudam (Fatia 04a, decisão 29). */
+  readonly origem: 'MANUAL' | 'IMPORTADO';
+  /** Só no importado: a descrição que veio do extrato. */
+  readonly descricaoBanco: string | null;
 }
 
 /** Só receitas e despesas, prontas da API (o frontend não faz conta com dinheiro). */
@@ -83,8 +87,12 @@ export interface DadosDaTransferencia {
 export class LancamentosService {
   private readonly http = inject(HttpClient);
 
+  private readonly restaurados = new Subject<void>();
+
   /** Última conta usada num lançamento salvo, só em memória (decisão 16). */
   ultimaConta: number | null = null;
+  /** Avisa as telas que um importado voltou para a lista (o "Desfazer" do aviso curto). */
+  readonly restaurado$ = this.restaurados.asObservable();
 
   listar(filtros: Filtros): Observable<ListaDoMes> {
     return this.http.get<ListaDoMes>('/api/lancamentos', { params: parametrosDaApi(filtros) });
@@ -104,6 +112,11 @@ export class LancamentosService {
 
   excluirLancamento(id: number): Observable<void> {
     return this.http.delete(`/api/lancamentos/${id}`).pipe(map(() => undefined));
+  }
+
+  /** Volta um importado excluído (ignorado); a categoria só vale se ainda servir (decisão 31). */
+  restaurarLancamento(id: number, categoriaId: number | null): Observable<ItemDaLista> {
+    return this.http.post<ItemDaLista>(`/api/lancamentos/${id}/restaurar`, { categoriaId }).pipe(tap(() => this.restaurados.next()));
   }
 
   criarTransferencia(dados: DadosDaTransferencia): Observable<ItemDaLista> {

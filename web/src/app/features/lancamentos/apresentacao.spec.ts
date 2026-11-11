@@ -8,7 +8,7 @@ function item(parcial: Partial<ItemDaLista>): ItemDaLista {
   return {
     tipo: 'DESPESA', id: 1, data: '2026-11-06', descricao: 'Mercado Bom Preço', valor: -287.43, observacao: null,
     contaId: 1, contaNome: 'Banco Horizonte', categoriaId: 7, categoriaNome: 'Mercado', categoriaMaeNome: 'Alimentação',
-    categoriaArquivada: false, contaDestinoId: null, contaDestinoNome: null, direcao: null, futuro: false, somenteLeitura: false,
+    categoriaArquivada: false, contaDestinoId: null, contaDestinoNome: null, direcao: null, futuro: false, somenteLeitura: false, origem: 'MANUAL', descricaoBanco: null,
     ...parcial,
   };
 }

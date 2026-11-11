@@ -36,6 +36,8 @@ export interface DadosDaConfirmacao {
   readonly paragrafos: readonly (readonly TrechoDeTexto[])[];
   /** Texto do botão que confirma. */
   readonly confirmar: string;
+  /** Texto do botão que fecha sem confirmar; sem ele, "Cancelar" ("Fechar" num aviso que só leva a outra tela). */
+  readonly cancelar?: string;
   /** Mensagem quando a API falha sem um "detail" que sirva (rede, 500). */
   readonly falha: string;
   /** Chamada à API. O diálogo fecha com true quando ela termina bem. */

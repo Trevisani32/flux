@@ -63,6 +63,13 @@ app-alerta {
   color: var(--flux-ouro-texto);
 }
 
+// Fatia 04a: o aviso que pede conferência (extrato ou arquivo de outra conta), em laranja.
+.flux-alerta--atencao {
+  border-color: color-mix(in srgb, var(--flux-cor-conta-laranja) 45%, transparent);
+  background: color-mix(in srgb, var(--flux-cor-conta-laranja) 9%, transparent);
+  color: var(--flux-cor-conta-laranja);
+}
+
 .flux-alerta--sucesso {
   border-color: color-mix(in srgb, var(--flux-positivo) 38%, transparent);
   background: color-mix(in srgb, var(--flux-positivo) 9%, transparent);
