@@ -292,7 +292,7 @@ function segundoExtratoDeHoje(): Buffer {
     + '</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>\n', 'utf8');
 }
 
-/** O diálogo (a raiz dele: `.regra-dialogo` ou `.aplicar`), em tela cheia no celular, não rola para o lado. */
+/** O diálogo (a raiz dele: `.regra-dialogo`, `.aplicar` e, na 04c, `.conversao` e `.convertida`) não rola para o lado no celular. */
 async function dialogoDasRegrasSemRolagemHorizontal(page: Page, raiz: string): Promise<boolean> {
   return page.evaluate((seletorDaRaiz) => {
     const pecas = Array.from(document.querySelectorAll(`.cdk-overlay-pane, .mat-mdc-dialog-surface, ${seletorDaRaiz}`));
@@ -403,3 +403,124 @@ test('a revisão seguinte vem categorizada pelas regras, e "Aplicar regras" de L
   await expect(linha(page, 'Pix recebido')).toHaveCount(2);
 });
 
+// Fatia 04c: a conversão de importados em transferência, com o mesmo usuário (decisão 42 da 04b). A TED
+// sai da Conta Itaú, e a receita que ela casa, lançada à mão, entra na Poupança, no mesmo dia.
+function terceiroExtratoDeHoje(): Buffer {
+  const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()).replaceAll('-', '');
+  return Buffer.from('OFXHEADER:100\nDATA:OFXSGML\nVERSION:102\nCHARSET:1252\n\n<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><CURDEF>BRL\n'
+    + '<BANKACCTFROM><BANKID>0341<ACCTID>00000-0<ACCTTYPE>CHECKING</BANKACCTFROM>\n<BANKTRANLIST>\n'
+    + `<STMTTRN><TRNTYPE>OTHER<DTPOSTED>${hoje}000000[-3:BRT]<TRNAMT>-300.00<FITID>e2e-6<MEMO>TED 341.0001 RESERVA</STMTTRN>\n`
+    + '</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>\n', 'utf8');
+}
+
+/** Hoje como a tela escreve: "11/11/2026". */
+function hojeNoFormatoCurto(): string {
+  return new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date());
+}
+
+test('o resultado da importação sugere o par, "Converter" liga os dois, e a convertida é uma linha neutra (Fatia 04c)', async ({ page }) => {
+  await entrar(page);
+  await irPeloMenu(page, 'Lançamentos');
+  await page.getByRole('button', { name: 'Novo lançamento' }).first().click();
+  const novo = page.getByRole('dialog');
+  await escolherTipo(novo, 'Receita');
+  await novo.getByLabel('Valor', { exact: true }).fill('300');
+  await novo.getByLabel('Descrição', { exact: true }).fill('Reserva');
+  await novo.getByLabel('Conta', { exact: true }).selectOption({ label: 'Poupança' });
+  await novo.getByRole('button', { name: 'Criar lançamento' }).click();
+  await expect(novo).toBeHidden();
+
+  await irPeloMenu(page, 'Importação');
+  await page.getByLabel('Conta', { exact: true }).selectOption({ label: 'Conta Itaú' });
+  await page.locator('#importacao-arquivo').setInputFiles({ name: 'extrato-3.ofx', mimeType: 'application/x-ofx', buffer: terceiroExtratoDeHoje() });
+  await expect(page.getByRole('heading', { name: 'Revisar importação', level: 1 })).toBeVisible();
+  await page.getByRole('button', { name: 'Importar 1 lançamento' }).click();
+  await expect(page.getByRole('heading', { name: '1 lançamento importado em Conta Itaú', level: 2 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: ehDesktop(page) ? 'Parecem transferências entre suas contas' : 'Parecem transferências',
+    level: 2 })).toBeVisible();
+  await expect(page.locator('.importacao__lado-do-par b')).toHaveText(['TED 341.0001 RESERVA', 'Reserva']);
+  if (!ehDesktop(page)) {
+    expect(await semRolagemHorizontal(page)).toBe(true);
+  }
+  await page.getByRole('button', { name: 'Converter TED 341.0001 RESERVA em transferência' }).click();
+
+  const conversao = page.locator('app-conversao-dialogo');
+  await expect(conversao.getByRole('heading', { name: 'Converter em transferência' })).toBeVisible();
+  await expect(conversao.getByRole('radio', { name: /^Reserva/ })).toBeChecked();
+  await expect(conversao.locator('.conversao__fixo .conversao__meta')).toHaveText(/^Sai de Conta Itaú em \d{2}\/\d{2} · importado$/);
+  await conversao.getByLabel('Descrição (opcional)', { exact: true }).fill('Reserva da viagem');
+  if (!ehDesktop(page)) {
+    await expect(conversao.getByRole('button', { name: 'Voltar' })).toBeVisible();
+    expect(await dialogoDasRegrasSemRolagemHorizontal(page, '.conversao')).toBe(true);
+  }
+  await conversao.getByRole('button', { name: 'Converter', exact: true }).click();
+  await expect(conversao).toHaveCount(0);
+  await expect(page.getByText('Transferência criada.')).toBeVisible();
+  await expect(page.locator('#importacao-pares')).toHaveCount(0);
+
+  await irPeloMenu(page, 'Lançamentos');
+  const convertida = linha(page, 'Reserva da viagem');
+  await expect(convertida.locator('.valor__texto')).toHaveText('R$ 300,00');
+  await expect(convertida.locator('app-valor')).toHaveClass(/flux-valor--neutro/);
+  await expect(convertida.locator('.linha__meta-texto').filter({ visible: true })).toHaveText(
+    ehDesktop(page) ? 'Conta Itaú → Poupança · fora dos totais' : 'Conta Itaú → Poupança');
+  await expect(linha(page, 'Reserva')).toHaveCount(0);
+  await expect(linha(page, 'TED 341.0001 RESERVA')).toHaveCount(0);
+});
+
+test('a convertida muda só o texto; desfazer devolve a despesa e a receita, e desfazer a importação desfaz a conversão (Fatia 04c)', async ({ page }) => {
+  await entrar(page);
+  await irPeloMenu(page, 'Lançamentos');
+  await linha(page, 'Reserva da viagem').click();
+  const dialogo = page.getByRole('dialog');
+  await expect(dialogo.getByRole('heading', { name: 'Editar transferência' })).toBeVisible();
+  await expect(dialogo).toContainText('Convertida de um lançamento importado');
+  await expect(dialogo.getByLabel('Valor', { exact: true })).toBeDisabled();
+  await expect(dialogo.locator('.convertida__meta')).toHaveText([`${hojeNoFormatoCurto()} · importado`, 'No extrato: TED 341.0001 RESERVA',
+    `${hojeNoFormatoCurto()} · lançado à mão`]);
+  await expect(dialogo.getByRole('button', { name: 'Excluir' })).toHaveCount(0);
+  if (!ehDesktop(page)) {
+    expect(await dialogoDasRegrasSemRolagemHorizontal(page, '.convertida')).toBe(true);
+  }
+  await dialogo.getByLabel('Descrição (opcional)', { exact: true }).fill('Viagem');
+  await dialogo.getByRole('button', { name: 'Salvar' }).click();
+  await expect(dialogo).toBeHidden();
+  await expect(linha(page, 'Viagem')).toHaveCount(1);
+
+  await linha(page, 'Viagem').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Desfazer transferência' }).click();
+  const confirmacao = page.getByRole('dialog').filter({ hasText: 'Desfazer a transferência?' });
+  await expect(confirmacao).toContainText('Os dois lançamentos voltam a ser uma despesa em Conta Itaú e uma receita em Poupança, sem categoria.');
+  await confirmacao.getByRole('button', { name: 'Desfazer transferência' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByText('Transferência desfeita.')).toBeVisible();
+  await expect(linha(page, 'TED 341.0001 RESERVA').locator('.valor__texto')).toHaveText('−R$ 300,00');
+  await expect(linha(page, 'Viagem').locator('.valor__texto')).toHaveText('+R$ 300,00');
+
+  // Pelo atalho do diálogo do importado (decisão 26): o único par vem escolhido.
+  await linha(page, 'TED 341.0001 RESERVA').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Converter em transferência' }).click();
+  const conversao = page.locator('app-conversao-dialogo');
+  await expect(conversao.getByRole('radio', { name: /^Viagem/ })).toBeChecked();
+  await conversao.getByLabel('Descrição (opcional)', { exact: true }).fill('Reserva outra vez');
+  await conversao.getByRole('button', { name: 'Converter', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(linha(page, 'Reserva outra vez')).toHaveCount(1);
+
+  await irPeloMenu(page, 'Importação');
+  await page.getByRole('button', { name: 'Ações da importação extrato-3.ofx' }).click();
+  await page.getByRole('menuitem', { name: 'Desfazer importação' }).click();
+  const desfazer = page.getByRole('dialog').filter({ hasText: 'Desfazer a importação de extrato-3.ofx?' });
+  await expect(desfazer.locator('.flux-alerta--atencao .flux-alerta__titulo')).toHaveText('1 deles está numa transferência');
+  await expect(desfazer.locator('.flux-alerta--atencao .flux-alerta__texto')).toHaveText(`A transferência de ${hojeNoFormatoCurto().slice(0, 5)} `
+    + 'com Poupança é desfeita, e o lançamento de Poupança volta a ser uma receita, sem categoria.');
+  if (!ehDesktop(page)) {
+    expect(await semRolagemHorizontal(page)).toBe(true);
+  }
+  await desfazer.getByRole('button', { name: 'Desfazer importação' }).click();
+  await expect(page.locator('.importacao__item--desfeita').filter({ hasText: 'extrato-3.ofx' })).toHaveCount(1);
+
+  await irPeloMenu(page, 'Lançamentos');
+  await expect(linha(page, 'Reserva outra vez').locator('.valor__texto')).toHaveText('+R$ 300,00');
+  await expect(linha(page, 'TED 341.0001 RESERVA')).toHaveCount(0);
+});
