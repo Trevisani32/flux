@@ -482,7 +482,7 @@ Ver [ADR 0005](decisoes/0005-cartao-fatura-parcelas.md).
 | 02 | Conta de usuário: cadastro, confirmação de e-mail, esqueci a senha, perfil, exclusão da conta, termos e limite de tentativas | Concluída |
 | 03a | Contas e categorias: cadastro, arquivamento, categorias padrão e telas | Concluída |
 | 03b | Lançamentos manuais, transferências e saldo pelos lançamentos | Concluída |
-| 04a | Importação de extratos OFX e CSV: revisão, histórico, ignorar e desfazer | Implementada, aguardando publicação |
+| 04a | Importação de extratos OFX e CSV: revisão, histórico, ignorar e desfazer | Concluída |
 | 04b | Regras de categorização e conversão de importados em transferência | — |
 | 05 | Cartão de crédito: faturas e parcelamento | — |
 | 06 | Dashboard, relatórios e exportação dos dados | — |
