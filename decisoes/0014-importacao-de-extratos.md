@@ -1,6 +1,6 @@
 # ADR 0014 — Importação de extratos
 
-- **Status:** Aceito
+- **Status:** Aceito, com os ajustes do [ADR 0016](0016-conversao-de-importados-em-transferencia.md)
 - **Data:** 2026-11-10
 
 ## Contexto

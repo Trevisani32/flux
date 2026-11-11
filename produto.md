@@ -250,7 +250,7 @@ O que isso exige do produto:
 - **Categoria arquivada:** não pode ser escolhida, mas o lançamento que já a tem
   continua com ela e pode ser editado.
 - Ao editar, despesa e receita trocam entre si; um lançamento não vira transferência,
-  nem o contrário.
+  nem o contrário. Só o importado vira transferência, pela conversão (módulo 5).
 - A origem é `MANUAL` ou `IMPORTADO` (Fatia 04a).
 - **Lista:** um mês por vez, começando no mês atual e indo até 12 meses à frente,
   agrupada por dia, com o mais recente primeiro (no mesmo dia, o último cadastrado em
@@ -265,13 +265,13 @@ O que isso exige do produto:
 - Lançamentos manuais podem ser editados e excluídos, com confirmação, menos os de conta
   arquivada. As regras dos importados estão no módulo de importação.
 
-### 5. Transferências — Fatia 03b
+### 5. Transferências — Fatias 03b e 04c
 
 - Movem dinheiro entre duas contas do usuário e não são receita nem despesa
   ([ADR 0004](decisoes/0004-transferencia-par-lancamentos.md) e
   [ADR 0013](decisoes/0013-lancamentos-e-transferencias.md)).
-- Cada transferência gera dois lançamentos ligados, com a mesma data e o mesmo valor:
-  saída na origem e entrada no destino.
+- Cada transferência lançada à mão gera dois lançamentos ligados, com a mesma data e o mesmo
+  valor: saída na origem e entrada no destino.
 - Não têm categoria. A descrição é opcional: vazia, fica "Transferência".
 - A data precisa ser a partir da data do saldo inicial das duas contas.
 - Editar ou excluir uma transferência altera os dois lançamentos juntos, e a edição
@@ -280,6 +280,28 @@ O que isso exige do produto:
 - A conta de origem precisa ser diferente da de destino.
 - Na lista, cada transferência é uma linha, sem sinal e em cor neutra. Ficam fora dos
   totais de receita e despesa e dos gastos por categoria, mas entram no saldo das contas.
+- **Conversão de importados (Fatia 04c),** ver [ADR 0016](decisoes/0016-conversao-de-importados-em-transferencia.md):
+  - parte de um lançamento importado (receita ou despesa) que não foi excluído e está numa conta
+    ativa, pelo "Converter em transferência" do lançamento ou pelo "Converter" do resultado da
+    importação. Dois lançamentos lançados à mão não se convertem: exclua-os e crie a transferência;
+  - o outro lado é um par ou um lançamento novo. O par tem o mesmo valor com o sinal oposto, fica
+    em outra conta ativa, é receita ou despesa, lançada à mão ou importada, que não foi excluída nem
+    está numa transferência, e tem até 5 dias de diferença; o mais perto da data vem primeiro. Sem
+    par, "Lançar a entrada em outra conta" (ou a saída) cria o outro lado, à mão, com a mesma data e
+    o valor oposto, numa conta ativa que já existia nessa data; ele conta nos limites de lançamentos;
+  - os dois lados viram transferência e perdem a categoria. Cada um mantém a data, o valor, a conta,
+    a observação, a descrição do extrato e a identificação da importação: reimportar o extrato
+    continua dando "já importada". Uma descrição vale para os dois lados; vazia, fica "Transferência";
+  - na lista, a convertida é uma linha, como a lançada à mão: sem filtro de conta, na data da saída;
+    com o filtro de uma conta, na data do lado dela;
+  - nela, só mudam a descrição e a observação, nos dois lados. Ela não tem "Excluir": "Desfazer
+    transferência", com confirmação, volta os dois lados a despesa e receita, sem categoria; o
+    importado volta com a descrição do extrato, e o lançado à mão fica com a descrição que tem.
+    Nenhum lado é apagado. Com uma das contas arquivada, ela fica só para leitura e não se desfaz;
+  - um lado de transferência nunca fica excluído;
+  - o resultado da importação mostra "Parecem transferências entre suas contas": cada linha
+    importada com um só par possível, com "Converter". Nada é convertido sozinho;
+  - converter e desfazer contam como edição do importado no histórico da importação.
 
 ### 6. Importação de extratos — Fatia 04a
 
@@ -343,12 +365,15 @@ Ver [ADR 0006](decisoes/0006-importacao-idempotente.md) e [ADR 0014](decisoes/00
   excluir (volta com a categoria) ou na lista de excluídos da importação (volta sem categoria).
 - **Desfazer importação** apaga todos os lançamentos daquela importação, inclusive os editados e os
   ignorados, depois de uma confirmação que diz quantos são. Com a conta arquivada, é recusado. O
-  registro fica no histórico como desfeito.
+  registro fica no histórico como desfeito. Se um lançamento dela está numa transferência convertida
+  (módulo 5), a conversão é desfeita junto, e a confirmação diz o que acontece com o outro lado, que
+  volta a ser receita ou despesa, sem categoria; com o outro lado numa conta arquivada, o desfazer é
+  recusado.
 - O registro da importação e o perfil de CSV não impedem excluir a conta: saem junto com ela, como
   os importados ignorados.
-- **Transferência entre contas próprias** aparece nos dois extratos. Na Fatia 04c, um lançamento
-  importado poderá ser convertido em transferência, ligando-o a um lançamento da outra conta com o
-  mesmo valor e sinal oposto. Até lá, ela entra como despesa numa conta e receita na outra.
+- **Transferência entre contas próprias** aparece nos dois extratos e entra como despesa numa conta
+  e receita na outra. O lançamento importado pode ser convertido em transferência, ligado ao da outra
+  conta, com o mesmo valor e o sinal oposto (módulo 5).
 - A importação de fatura de cartão em CSV entra na Fatia 05.
 
 ### 7. Regras de categorização — Fatia 04b
@@ -513,9 +538,8 @@ Ver [ADR 0005](decisoes/0005-cartao-fatura-parcelas.md).
 | 03b | Lançamentos manuais, transferências e saldo pelos lançamentos | Concluída |
 | 04a | Importação de extratos OFX e CSV: revisão, histórico, ignorar e desfazer | Concluída |
 | 04b | Regras de categorização: cadastro, sugestão na revisão da importação, "Aplicar regras" e "Criar regra" | Concluída |
-| 04c | Conversão de importados em transferência | — |
+| 04c | Conversão de importados em transferência: pares, lado novo, desfazer e sugestão no resultado da importação | Implementada, aguardando publicação |
 | 05 | Cartão de crédito: faturas e parcelamento | — |
 | 06 | Dashboard, relatórios e exportação dos dados | — |
 | 07 | Recorrências, orçamento e projeção de saldo | — |
 | 08 | Deploy, demo pública e README completo | — |
-
