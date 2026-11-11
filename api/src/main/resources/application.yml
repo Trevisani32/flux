@@ -18,6 +18,13 @@ spring:
         # Os envios de e-mail rodam aqui e seguram uma conexão do banco durante o SMTP.
         # Com 2 threads, um SMTP lento ocupa no máximo 2 das 10 conexões do Hikari.
         core-size: 2
+  servlet:
+    multipart:
+      # Decisão 35: o extrato tem até 5 MB, e o pedido inteiro, até 6 MB. Com o limiar acima do
+      # pedido, o arquivo fica na memória e nunca vai para o disco (o padrão, 0B, grava tudo).
+      max-file-size: 5MB
+      max-request-size: 6MB
+      file-size-threshold: 6MB
   modulith:
     events:
       jdbc:
