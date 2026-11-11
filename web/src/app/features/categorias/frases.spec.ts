@@ -39,6 +39,24 @@ describe('frases das categorias', () => {
       ' Ela continua arquivada, com os lançamentos nos relatórios.']);
   });
 
+  it('o bloqueio com regras de categorização (Fatia 04b): arquivada, as regras ficam pausadas', () => {
+    expect(paragrafoDoBloqueio('Transporte', true, '42 lançamentos e 2 regras', false)).toEqual([{ forte: 'Transporte' },
+      ' e as subcategorias têm 42 lançamentos e 2 regras.', ' Para tirá-la dos seletores sem perder o histórico, arquive a categoria.',
+      ' Arquivada, as 2 regras dela ficam pausadas até você reativá-la.']);
+    expect(paragrafoDoBloqueio('Lazer', false, '1 regra', false)).toEqual([{ forte: 'Lazer' }, ' tem 1 regra.',
+      ' Para tirá-la dos seletores sem perder o histórico, arquive a categoria.', ' Arquivada, a regra dela fica pausada até você reativá-la.']);
+    expect(paragrafoDoBloqueio('Lazer', false, '3 lançamentos e 1 regra', true)).toEqual([{ forte: 'Lazer' }, ' tem 3 lançamentos e 1 regra.',
+      ' Ela continua arquivada, com os lançamentos nos relatórios.']);
+  });
+
+  it('o bloqueio com outro uso depois das regras (os orçamentos da Fatia 07): a frase das regras continua', () => {
+    expect(paragrafoDoBloqueio('Transporte', false, '2 regras e 1 orçamento', false)).toEqual([{ forte: 'Transporte' },
+      ' tem 2 regras e 1 orçamento.', ' Para tirá-la dos seletores sem perder o histórico, arquive a categoria.',
+      ' Arquivada, as 2 regras dela ficam pausadas até você reativá-la.']);
+    expect(paragrafoDoBloqueio('Lazer', true, '42 lançamentos, 1 regra e 3 orçamentos', false).at(-1))
+      .toBe(' Arquivada, a regra dela fica pausada até você reativá-la.');
+  });
+
   it('conta as subcategorias no singular e no plural', () => {
     expect(quantidadeDeSubcategorias(1)).toBe('1 subcategoria');
     expect(quantidadeDeSubcategorias(3)).toBe('3 subcategorias');

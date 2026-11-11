@@ -33,10 +33,18 @@ public record PreviaResponse(
      * {@code situacao}: NOVA, PROVAVEL, JA_IMPORTADA, ANTES_DO_SALDO_INICIAL ou FORA; {@code motivo}
      * só em FORA: ILEGIVEL, VALOR_ZERO, LINHA_DE_SALDO ou DATA_ALEM_DO_LIMITE. Na ilegível, data,
      * descrição e valor vêm nulos, e {@code erro} diz o que faltou. {@code parecido}: na provável,
-     * com quem ela se parece; na já importada, o lançamento dela.
+     * com quem ela se parece; na já importada, o lançamento dela. {@code sugestao}: só na linha para
+     * importar, a primeira regra que casa (Fatia 04b); nula sem regra.
      */
     public record Linha(int linha, LocalDate data, String descricao, BigDecimal valor, String situacao, String motivo,
-                        boolean marcada, boolean futuro, String erro, Parecido parecido) {
+                        boolean marcada, boolean futuro, String erro, Parecido parecido, Sugestao sugestao) {
+    }
+
+    /**
+     * A regra que categorizou a linha na revisão (decisão 14 da 04b): a posição e a condição para a tela
+     * dizer "pela 2ª regra", a categoria e a descrição legível (nula = fica a do extrato).
+     */
+    public record Sugestao(Long regraId, int posicao, String condicao, String texto, Long categoriaId, String descricao) {
     }
 
     /**

@@ -102,6 +102,29 @@
               <button mat-flat-button type="button" (click)="verLancamentos(atual.contaId, atual.mesDaUltimaLinha)">Ver lançamentos</button>
             </div>
           </section>
+          @if (falhaNasSugestoes()) {
+            <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível sugerir regras agora.">
+              @if (detalheDasSugestoes(); as detalhe) {
+                <p class="flux-alerta__texto">{{ detalhe }}</p>
+              }
+              <div class="flux-alerta__acoes"><button mat-stroked-button type="button" (click)="carregarSugestoes()">Tentar de novo</button></div>
+            </app-alerta>
+          } @else if (sugestoesDeRegra().length > 0) {
+            <section class="flux-card importacao__sugestoes" aria-labelledby="importacao-sugestoes">
+              <div class="importacao__cabecalho-historico">
+                <h2 class="importacao__titulo" id="importacao-sugestoes">Criar regras com as suas escolhas</h2>
+                <span class="flux-dica">Na próxima importação, estas descrições já vêm categorizadas.</span>
+              </div>
+              <ul class="importacao__lista-sugestoes">
+                @for (sugestao of sugestoesDeRegra(); track sugestao.texto + sugestao.natureza) {
+                  <li class="importacao__sugestao">
+                    <span class="importacao__texto-sugestao"><b>Contém "{{ sugestao.texto }}"</b><span>→ {{ nomeDaCategoria(sugestao.categoriaNome, sugestao.categoriaMaeNome) }} · de {{ sugestao.deDescricao }}</span></span>
+                    <button mat-stroked-button type="button" [attr.aria-label]="'Criar regra para ' + sugestao.texto" (click)="criarRegra(sugestao)">Criar regra</button>
+                  </li>
+                }
+              </ul>
+            </section>
+          }
         }
       }
     }

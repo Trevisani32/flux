@@ -56,7 +56,7 @@ public class ImportadosNosLancamentos implements LancamentosImportados {
         List<Lancamento> lancamentos = novos.stream().map(novo -> {
             exigirCategoria(doUsuario, novo);
             return Lancamento.importado(usuarioId, contaId, importacaoId, novo.data(), novo.valor(), novo.descricao(),
-                    novo.chave(), novo.categoriaId(), agora);
+                    novo.descricaoBanco(), novo.chave(), novo.categoriaId(), agora);
         }).toList();
         repositorio.saveAll(lancamentos);
     }

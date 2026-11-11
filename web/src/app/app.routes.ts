@@ -61,6 +61,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/categorias/categorias').then((m) => m.Categorias),
       },
       {
+        path: 'regras', title: 'Regras | Flux',
+        loadComponent: () => import('./features/regras/regras').then((m) => m.Regras),
+      },
+      {
         path: 'minha-conta', pathMatch: 'full', title: 'Minha conta | Flux',
         loadComponent: () => import('./features/minha-conta/minha-conta').then((m) => m.MinhaConta),
       },

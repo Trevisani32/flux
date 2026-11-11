@@ -11,6 +11,7 @@ import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -21,8 +22,10 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.flux.categorizacao.RegrasDeCategorizacao;
 import com.flux.compartilhado.erro.RecursoNaoEncontradoException;
 import com.flux.compartilhado.erro.RegraDeNegocioException;
+import com.flux.compartilhado.texto.TextoComparavel;
 import com.flux.contas.ContaResumo;
 import com.flux.contas.ContasConsulta;
 import com.flux.contas.MovimentoDasContas;
@@ -46,7 +49,9 @@ import org.springframework.web.multipart.MultipartFile;
 /**
  * Revisão, confirmação, histórico e desfazer (ADR 0006 e ADR 0014). A revisão não grava nada; a
  * confirmação recebe o arquivo de novo, pega a trava de contas, classifica outra vez e só então
- * grava, pela API de lançamentos (decisões 13 e 38).
+ * grava, pela API de lançamentos (decisões 13 e 38). Na revisão, as regras de categorização (Fatia 04b)
+ * sugerem a categoria e a descrição de cada linha para importar; a confirmação grava o que a revisão
+ * mostrou, sem rodar as regras de novo (decisões 14 e 15 da 04b).
  */
 @Service
 public class ImportacaoService {
@@ -59,18 +64,20 @@ public class ImportacaoService {
     private final LancamentosImportados importados;
     private final ContasConsulta contas;
     private final MovimentoDasContas movimento;
+    private final RegrasDeCategorizacao regras;
     private final Clock clock;
     /** A chave do HMAC do extrato (decisão 11), derivada do segredo do servidor com um rótulo próprio. */
     private final byte[] chaveDoExtrato;
 
     public ImportacaoService(ImportacaoRepository importacoes, PerfilCsvRepository perfis, LancamentosImportados importados,
-                             ContasConsulta contas, MovimentoDasContas movimento, Clock clock,
+                             ContasConsulta contas, MovimentoDasContas movimento, RegrasDeCategorizacao regras, Clock clock,
                              @Value("${app.jwt.segredo}") String segredo) {
         this.importacoes = importacoes;
         this.perfis = perfis;
         this.importados = importados;
         this.contas = contas;
         this.movimento = movimento;
+        this.regras = regras;
         this.clock = clock;
         this.chaveDoExtrato = Chaves.hmac(segredo.getBytes(StandardCharsets.UTF_8), "flux:importacao:extrato");
     }
@@ -82,10 +89,11 @@ public class ImportacaoService {
         ExtratoLido extrato = ler(usuarioId, conta.id(), bytes);
         String hash = Chaves.sha256(bytes);
         List<Classificada> classificadas = classificar(usuarioId, conta, extrato);
+        Map<Integer, RegrasDeCategorizacao.Sugestao> sugestoes = sugestoes(usuarioId, conta, classificadas);
         List<PreviaResponse.Linha> linhas = classificadas.stream()
                 .sorted(Comparator.comparing((Classificada c) -> c.linha().data(), Comparator.nullsFirst(Comparator.naturalOrder()))
                         .thenComparingInt(c -> c.linha().numero()).reversed())
-                .map(ImportacaoService::linhaDaPrevia)
+                .map(classificada -> linhaDaPrevia(classificada, sugestoes.get(classificada.linha().numero())))
                 .toList();
         List<LocalDate> datas = extrato.linhas().stream().filter(ExtratoLido.Linha::legivel).map(ExtratoLido.Linha::data).toList();
         return new PreviaResponse(hash, extrato.formato().name(), nomeDoArquivo(arquivo), conta.id(), conta.nome(),
@@ -124,7 +132,9 @@ public class ImportacaoService {
                 entraramPorOutra++;
             } else if (classificada.importavel()) {
                 ExtratoLido.Linha linha = classificada.linha();
-                novos.add(new LancamentosImportados.Novo(linha.numero(), linha.data(), linha.valor(), linha.descricao(),
+                String descricao = escolha.descricao() == null || escolha.descricao().isBlank() ? linha.descricao()
+                        : TextoComparavel.limparEspacos(escolha.descricao());
+                novos.add(new LancamentosImportados.Novo(linha.numero(), linha.data(), linha.valor(), descricao, linha.descricao(),
                         classificada.chave(), escolha.categoriaId()));
             }
         }
@@ -266,14 +276,36 @@ public class ImportacaoService {
         return Classificador.classificar(conta.id(), extrato.linhas(), existentes, conta.dataSaldoInicial(), LocalDate.now(clock));
     }
 
-    private static PreviaResponse.Linha linhaDaPrevia(Classificada classificada) {
+    /**
+     * Decisão 14 da 04b: só as linhas para importar (novas e prováveis, inclusive as futuras) recebem a
+     * sugestão da primeira regra que casa. Por número da linha; a linha sem regra não entra no mapa.
+     */
+    private Map<Integer, RegrasDeCategorizacao.Sugestao> sugestoes(Long usuarioId, ContaResumo conta, List<Classificada> classificadas) {
+        List<ExtratoLido.Linha> importaveis = classificadas.stream().filter(Classificada::importavel).map(Classificada::linha).toList();
+        if (importaveis.isEmpty()) {
+            return Map.of();
+        }
+        List<RegrasDeCategorizacao.Sugestao> doArquivo = regras.sugerir(usuarioId, conta.id(), importaveis.stream()
+                .map(linha -> new RegrasDeCategorizacao.Alvo(linha.descricao(), linha.valor())).toList());
+        Map<Integer, RegrasDeCategorizacao.Sugestao> porLinha = new HashMap<>();
+        for (int indice = 0; indice < importaveis.size(); indice++) {
+            if (doArquivo.get(indice) != null) {
+                porLinha.put(importaveis.get(indice).numero(), doArquivo.get(indice));
+            }
+        }
+        return porLinha;
+    }
+
+    private static PreviaResponse.Linha linhaDaPrevia(Classificada classificada, RegrasDeCategorizacao.Sugestao sugestao) {
         ExtratoLido.Linha linha = classificada.linha();
         LancamentosImportados.Existente parecido = classificada.parecido();
         return new PreviaResponse.Linha(linha.numero(), linha.data(), linha.descricao(), linha.valor(),
                 classificada.situacao().name(), classificada.motivo() == null ? null : classificada.motivo().name(),
                 classificada.marcada(), classificada.futuro(), linha.erro(),
                 parecido == null ? null : new PreviaResponse.Parecido(parecido.descricao(), parecido.data(), parecido.manual(),
-                        parecido.ignorado(), parecido.criadoEm(), parecido.ignoradoEm()));
+                        parecido.ignorado(), parecido.criadoEm(), parecido.ignoradoEm()),
+                sugestao == null ? null : new PreviaResponse.Sugestao(sugestao.regraId(), sugestao.posicao(), sugestao.condicao(),
+                        sugestao.texto(), sugestao.categoriaId(), sugestao.descricao()));
     }
 
     /** O perfil de CSV que leu o arquivo (decisão 12: a tela mostra o resumo); nulo no OFX. */

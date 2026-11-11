@@ -3,6 +3,9 @@
     <h2 mat-dialog-title class="seletor__titulo">Categoria de {{ dados.descricao }}</h2>
     <p class="seletor__texto">{{ dados.receita ? 'Receita' : 'Despesa' }} de <app-valor [valor]="dados.valor" /> em {{ dia }}. Só aparecem as categorias de {{ dados.receita ? 'receita' : 'despesa' }}.</p>
   </div>
+  @if (dados.regra; as regra) {
+    <app-alerta tipo="info" icone="regra" [titulo]="regra + '.'"><p class="flux-alerta__texto">Escolher outra vale só para esta importação; a regra não muda.</p></app-alerta>
+  }
   <fieldset class="seletor__opcoes">
     <legend class="flux-visualmente-oculto">Categoria</legend>
     <label class="seletor__opcao seletor__opcao--sem"><input type="radio" name="categoria" formControlName="categoria" [value]="null" />Sem categoria</label>

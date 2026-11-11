@@ -20,18 +20,21 @@ class ModularidadeTest {
     }
 
     /**
-     * Direção combinada no ADR 0012 e no ADR 0014: lançamentos depende de contas e categorias e
-     * implementa as interfaces deles (MovimentoDasContas, UsoDaConta, LimpezaDaConta,
-     * UsoDaCategoria); a importação depende de lançamentos e de contas; ninguém depende da
-     * importação, e contas e categorias não dependem de lançamentos.
+     * Direção combinada no ADR 0012, no ADR 0014 e no ADR 0015: lançamentos depende de contas e
+     * categorias e implementa as interfaces deles (MovimentoDasContas, UsoDaConta, LimpezaDaConta,
+     * UsoDaCategoria); as regras (categorizacao) dependem de contas, categorias e lançamentos e
+     * implementam UsoDaCategoria e LimpezaDaConta; a importação depende de lançamentos, de contas e
+     * das regras; ninguém depende da importação, e contas, categorias e lançamentos não dependem das
+     * regras.
      */
     @Test
     void dependenciasSeguemADirecaoCombinada() {
         assertThat(dependenciasDiretas("contas")).containsExactlyInAnyOrder("compartilhado");
         assertThat(dependenciasDiretas("categorias")).containsExactlyInAnyOrder("compartilhado", "acesso");
         assertThat(dependenciasDiretas("lancamentos")).containsExactlyInAnyOrder("compartilhado", "contas", "categorias");
-        assertThat(dependenciasDiretas("importacao")).containsExactlyInAnyOrder("compartilhado", "contas", "lancamentos");
-        assertThat(dependenciasDiretas("acesso")).doesNotContain("contas", "categorias", "lancamentos", "importacao");
+        assertThat(dependenciasDiretas("categorizacao")).containsExactlyInAnyOrder("compartilhado", "contas", "categorias", "lancamentos");
+        assertThat(dependenciasDiretas("importacao")).containsExactlyInAnyOrder("compartilhado", "contas", "lancamentos", "categorizacao");
+        assertThat(dependenciasDiretas("acesso")).doesNotContain("contas", "categorias", "lancamentos", "importacao", "categorizacao");
     }
 
     private Set<String> dependenciasDiretas(String modulo) {

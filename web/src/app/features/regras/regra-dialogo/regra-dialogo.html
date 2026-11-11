@@ -1,0 +1,128 @@
+<form class="regra-dialogo" [formGroup]="formulario" (ngSubmit)="salvar()">
+  <div class="regra-dialogo__cabecalho">
+    <h2 mat-dialog-title class="regra-dialogo__titulo">{{ editando ? 'Editar regra' : 'Nova regra' }}</h2>
+    @if (regra; as atual) {
+      <p class="regra-dialogo__texto">{{ atual.posicao }}ª na lista.</p>
+    } @else if (dados.sugestao; as sugestao) {
+      <p class="regra-dialogo__texto">Sugerida a partir de <b>{{ sugestao.deDescricao }}</b>, que você pôs em {{ nomeDaCategoria(sugestao.categoriaNome, sugestao.categoriaMaeNome) }}.</p>
+    }
+  </div>
+
+  @if (falhaAoCarregar()) {
+    <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível carregar as contas e as categorias." />
+  }
+
+  <fieldset class="flux-grupo">
+    <legend>Quando a descrição</legend>
+    <div class="regra-dialogo__condicao">
+      <div class="flux-campo">
+        <label class="flux-visualmente-oculto" for="regra-condicao">Condição</label>
+        <div class="flux-entrada">
+          <select id="regra-condicao" formControlName="condicao">
+            @for (opcao of condicoes; track opcao.valor) {
+              <option [ngValue]="opcao.valor">{{ opcao.rotulo }}</option>
+            }
+          </select>
+          <app-icone class="flux-entrada__seta" nome="baixo" />
+        </div>
+      </div>
+      <div class="flux-campo">
+        <label class="flux-visualmente-oculto" for="regra-texto">Texto</label>
+        <div class="flux-entrada" [class.flux-entrada--invalida]="erro('texto') !== null">
+          <input id="regra-texto" type="text" formControlName="texto" maxlength="255" autocomplete="off" [attr.aria-invalid]="erro('texto') !== null ? 'true' : null" [attr.aria-describedby]="erro('texto') !== null ? 'regra-texto-erro' : 'regra-texto-dica'" />
+        </div>
+      </div>
+    </div>
+    @if (erro('texto'); as mensagem) {
+      <p id="regra-texto-erro" class="flux-campo__erro">{{ mensagem }}</p>
+    } @else {
+      <p id="regra-texto-dica" class="flux-dica">Maiúsculas, acentos e pontuação não contam.@if (dados.sugestao; as sugestao) { No extrato: {{ sugestao.deDescricao }}}</p>
+    }
+  </fieldset>
+
+  <div class="regra-dialogo__duas">
+    <div class="flux-campo">
+      <label for="regra-categoria">Categoria</label>
+      <div class="flux-entrada" [class.flux-entrada--invalida]="erro('categoria') !== null">
+        <select id="regra-categoria" formControlName="categoria" [attr.aria-invalid]="erro('categoria') !== null ? 'true' : null" [attr.aria-describedby]="erro('categoria') !== null ? 'regra-categoria-erro' : 'regra-categoria-dica'">
+          <option [ngValue]="null" disabled>Escolha</option>
+          <optgroup label="Despesas">
+            @for (opcao of opcoesDeDespesa(); track opcao.id) {
+              <option [ngValue]="opcao.id">{{ opcao.rotulo }}</option>
+            }
+          </optgroup>
+          <optgroup label="Receitas">
+            @for (opcao of opcoesDeReceita(); track opcao.id) {
+              <option [ngValue]="opcao.id">{{ opcao.rotulo }}</option>
+            }
+          </optgroup>
+        </select>
+        <app-icone class="flux-entrada__seta" nome="baixo" />
+      </div>
+      @if (erro('categoria'); as mensagem) {
+        <p id="regra-categoria-erro" class="flux-campo__erro">{{ mensagem }}</p>
+      } @else {
+        <p id="regra-categoria-dica" class="flux-dica">{{ dicaDaCategoria() }}</p>
+      }
+    </div>
+    <div class="flux-campo">
+      <label for="regra-conta">Conta</label>
+      <div class="flux-entrada" [class.flux-entrada--invalida]="erro('conta') !== null">
+        <select id="regra-conta" formControlName="conta" [attr.aria-invalid]="erro('conta') !== null ? 'true' : null" [attr.aria-describedby]="erro('conta') !== null ? 'regra-conta-erro' : null">
+          <option [ngValue]="null">Todas as contas</option>
+          @for (opcao of opcoesDeConta(); track opcao.id) {
+            <option [ngValue]="opcao.id">{{ opcao.rotulo }}</option>
+          }
+        </select>
+        <app-icone class="flux-entrada__seta" nome="baixo" />
+      </div>
+      @if (erro('conta'); as mensagem) {
+        <p id="regra-conta-erro" class="flux-campo__erro">{{ mensagem }}</p>
+      }
+    </div>
+  </div>
+
+  <div class="flux-campo">
+    <label for="regra-descricao">Descrição legível <span class="flux-grupo__opcional">(opcional)</span></label>
+    <div class="flux-entrada" [class.flux-entrada--invalida]="erro('descricao') !== null">
+      <input id="regra-descricao" type="text" formControlName="descricao" maxlength="255" autocomplete="off" placeholder="Ex.: Uber" [attr.aria-invalid]="erro('descricao') !== null ? 'true' : null" [attr.aria-describedby]="erro('descricao') !== null ? 'regra-descricao-erro' : 'regra-descricao-dica'" />
+    </div>
+    @if (erro('descricao'); as mensagem) {
+      <p id="regra-descricao-erro" class="flux-campo__erro">{{ mensagem }}</p>
+    } @else {
+      <p id="regra-descricao-dica" class="flux-dica">Troca a descrição dos importados. A do extrato fica guardada.</p>
+    }
+  </div>
+
+  <div class="regra-dialogo__previa" role="status" aria-live="polite">
+    @if (previa(); as atual) {
+      <span class="regra-dialogo__titulo-previa"><app-icone nome="regra" [tamanho]="16" />{{ tituloDaPrevia(atual.casam, atual.semCategoria) }}</span>
+      @if (atual.exemplos.length > 0) {
+        <ul class="regra-dialogo__exemplos">
+          @for (exemplo of atual.exemplos; track $index) {
+            <li><span class="regra-dialogo__data">{{ dataCurta(exemplo.data).slice(0, 5) }}</span><span class="regra-dialogo__exemplo">{{ exemplo.descricao }}</span><app-valor [valor]="exemplo.valor" /></li>
+          }
+        </ul>
+      }
+    } @else if (erroDaPrevia(); as mensagem) {
+      <span class="regra-dialogo__titulo-previa regra-dialogo__titulo-previa--erro"><app-icone nome="alerta" [tamanho]="16" />{{ mensagem }}</span>
+    } @else {
+      <span class="regra-dialogo__titulo-previa regra-dialogo__titulo-previa--vazia"><app-icone nome="regra" [tamanho]="16" />Escreva o texto para ver quantos lançamentos ela pega.</span>
+    }
+  </div>
+  @if (!editando) {
+    <p class="flux-dica regra-dialogo__posicao">{{ textoDaPosicao() }}</p>
+  }
+
+  @if (erroGeral(); as mensagem) {
+    <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem" />
+  }
+
+  <div class="regra-dialogo__acoes">
+    @if (editando) {
+      <button mat-button type="button" class="regra-dialogo__excluir" [disabled]="enviando()" (click)="excluir()"><app-icone nome="lixeira" [tamanho]="18" />Excluir</button>
+    }
+    <button mat-stroked-button type="button" [disabled]="enviando()" (click)="cancelar()">Cancelar</button>
+    <button mat-flat-button type="submit" [disabled]="enviando() || falhaAoCarregar()">{{ editando ? 'Salvar' : 'Criar regra' }}</button>
+  </div>
+</form>

@@ -193,11 +193,13 @@ O que isso exige do produto:
   Cinza), sem verde e vermelho, que indicam entrada e saída.
 - **Arquivar:** a conta some dos seletores e do saldo total, mas o histórico continua
   nos relatórios. Se o saldo não for zero, o sistema avisa antes de arquivar; com saldo
-  zero, arquiva direto e oferece "Desfazer".
+  zero, arquiva direto e oferece "Desfazer". As regras de categorização só desta conta ficam
+  pausadas até ela ser reativada.
 - **Reativar:** a conta arquivada volta pela seção "Arquivadas". Se já houver uma conta
   ativa com o mesmo nome, a reativação é recusada. Conta arquivada não se edita.
 - **Excluir:** só é permitido em conta sem lançamentos e sem transferências. Com eles, o
-  sistema diz quantos são e oferece arquivar.
+  sistema diz quantos são e oferece arquivar. As regras de categorização só desta conta saem
+  junto, e as outras regras sobem de posição.
 - As contas aparecem em ordem alfabética. Cada usuário pode ter até 50 contas,
   contando as arquivadas.
 - Cartão de crédito não é conta. Ele tem módulo próprio.
@@ -221,10 +223,11 @@ O que isso exige do produto:
   o que foi lançado direto nela aparece como item próprio.
 - **Arquivar:** categoria em uso pode ser arquivada. Arquivar a principal arquiva junto
   as subcategorias ativas; reativar a principal traz de volta as que foram arquivadas
-  com ela. A subcategoria de uma principal arquivada não se reativa sozinha.
+  com ela. A subcategoria de uma principal arquivada não se reativa sozinha. As regras de
+  categorização de uma categoria arquivada ficam pausadas até ela ser reativada.
 - **Excluir:** só se a categoria não tiver lançamentos, regras nem orçamentos. Excluir a
-  principal exclui as subcategorias junto. Com lançamentos, o sistema diz quantos são e
-  oferece arquivar.
+  principal exclui as subcategorias junto. Com lançamentos ou regras, o sistema diz quantos
+  são e oferece arquivar.
 - As categorias não têm ícone nem cor. Aparecem em ordem alfabética, e cada usuário
   pode ter até 200, contando as arquivadas.
 ### 4. Lançamentos — Fatia 03b
@@ -319,9 +322,10 @@ Ver [ADR 0006](decisoes/0006-importacao-idempotente.md) e [ADR 0014](decisoes/00
     de qualquer descrição se ele foi lançado à mão. Vem desmarcada e diz com qual se parece;
   - **nova.** Vem marcada, menos a de data futura (um agendamento do banco pode não acontecer).
 
-  Na 04a, a categoria de cada linha é escolhida à mão, com a opção de usar a mesma nas outras
-  linhas de mesma descrição; as regras (Fatia 04b) passam a sugerir. O usuário pode desmarcar
-  linhas antes de confirmar. A revisão conta as marcadas, sem somar valores.
+  Cada linha para importar já vem com a categoria e a descrição legível da primeira regra de
+  categorização que casar (módulo 7). Sem regra, a categoria é escolhida à mão, com a opção de usar
+  a mesma nas outras linhas de mesma descrição; a escolha à mão vale sobre a da regra. O usuário pode
+  desmarcar linhas antes de confirmar. A revisão conta as marcadas, sem somar valores.
 - Os limites de lançamentos (1.000 por mês e 100.000 no total) valem na confirmação, para todas as
   linhas marcadas: ou entram todas, ou nenhuma.
 - Reimportar o mesmo arquivo, ou um arquivo com período sobreposto, não duplica lançamentos. Um
@@ -342,24 +346,49 @@ Ver [ADR 0006](decisoes/0006-importacao-idempotente.md) e [ADR 0014](decisoes/00
   registro fica no histórico como desfeito.
 - O registro da importação e o perfil de CSV não impedem excluir a conta: saem junto com ela, como
   os importados ignorados.
-- **Transferência entre contas próprias** aparece nos dois extratos. Na Fatia 04b, um lançamento
+- **Transferência entre contas próprias** aparece nos dois extratos. Na Fatia 04c, um lançamento
   importado poderá ser convertido em transferência, ligando-o a um lançamento da outra conta com o
   mesmo valor e sinal oposto. Até lá, ela entra como despesa numa conta e receita na outra.
 - A importação de fatura de cartão em CSV entra na Fatia 05.
 
 ### 7. Regras de categorização — Fatia 04b
 
-- A condição é aplicada à descrição: **contém**, **começa com** ou **igual a**. A
-  comparação ignora maiúsculas e acentos.
-- Filtros opcionais: conta ou cartão, e tipo (receita ou despesa).
-- A ação define a categoria e, opcionalmente, uma descrição mais legível
-  ("PAG*UBERTRIP 1234" → "Uber").
-- O usuário define a ordem de prioridade, e vale a primeira regra que casar.
-- As regras são aplicadas na pré-visualização da importação e sob demanda ("aplicar
-  regras aos lançamentos sem categoria").
-- Uma regra nunca sobrescreve uma categoria escolhida pelo usuário.
-- Quando o usuário categoriza à mão um lançamento importado sem categoria, o
-  sistema sugere criar uma regra com aquela descrição.
+Ver [ADR 0015](decisoes/0015-regras-de-categorizacao.md).
+
+- **Condição:** **contém**, **começa com** ou **igual a**, aplicada à descrição do extrato no
+  lançamento importado e à descrição no lançamento manual. A comparação ignora maiúsculas, acentos,
+  espaços repetidos e pontuação: "UBER *TRIP" e "UBER* TRIP" são o mesmo texto, e "pag uber" casa com
+  "PAG*UBERTRIP 8812". O texto tem até 255 caracteres e ao menos 2 letras ou números.
+- **Categoria:** obrigatória e ativa. A natureza dela define o tipo: uma regra com categoria de
+  despesa só pega despesas, e uma de receita, só receitas.
+- **Conta:** todas as contas ou uma conta ativa. O cartão entra na Fatia 05.
+- **Descrição legível**, opcional: troca a descrição do lançamento importado ("PAG*UBERTRIP 8812" →
+  "Uber"); a do extrato continua guardada. No lançamento manual, a regra só põe a categoria.
+- **Ordem:** a lista é numerada, e vale a primeira regra que casar. A regra nova entra em 1º lugar;
+  "Subir" e "Descer" mudam a posição.
+- Cada usuário pode ter até 200 regras. A mesma condição (mesmo texto, condição, natureza e conta)
+  não se repete.
+- O diálogo da regra mostra, enquanto ela é escrita, com quantos lançamentos ela casa, quantos deles
+  estão sem categoria e até 3 exemplos.
+- **Onde as regras agem:**
+  - na revisão da importação, cada linha para importar vem com a categoria e a descrição da primeira
+    regra que casar, marcada "pela 2ª regra". Trocar a categoria no seletor vale e não volta, e a
+    confirmação grava o que a revisão mostrou;
+  - em "Aplicar regras": na tela de Regras, no aviso que aparece depois de criar uma regra e em
+    Lançamentos com o filtro "Sem categoria". Valem as receitas e despesas sem categoria, manuais e
+    importadas, de contas ativas e de qualquer data. Uma prévia agrupada por regra diz quantos
+    lançamentos cada uma pega; desmarcar uma regra deixa os lançamentos dela sem categoria.
+- Uma regra nunca troca a categoria que um lançamento já tem, posta à mão ou por outra regra. A
+  descrição legível só troca a do importado que ainda está igual à do extrato.
+- **Sugestão de regra:** no resultado da importação, as descrições que ganharam categoria à mão na
+  revisão (até 5) aparecem com "Criar regra"; ao salvar um importado que estava sem categoria e
+  ganhou uma, o aviso oferece "Criar regra". O texto vem preenchido com a descrição do extrato até o
+  primeiro trecho com número ("PAG*UBERTRIP 8812" → "PAG*UBERTRIP"), e tudo pode ser editado antes de
+  salvar. Não há sugestão quando uma regra ativa já casa com a descrição.
+- **Categoria e conta da regra:** a regra é uso da categoria; com regras, a categoria não se exclui,
+  só se arquiva. Uma regra com a categoria ou a conta arquivada fica pausada até a reativação.
+  Excluir a conta exclui as regras só dela.
+- Excluir uma regra não muda os lançamentos que ela já categorizou.
 
 ### 8. Cartões de crédito — Fatia 05
 
@@ -482,9 +511,11 @@ Ver [ADR 0005](decisoes/0005-cartao-fatura-parcelas.md).
 | 02 | Conta de usuário: cadastro, confirmação de e-mail, esqueci a senha, perfil, exclusão da conta, termos e limite de tentativas | Concluída |
 | 03a | Contas e categorias: cadastro, arquivamento, categorias padrão e telas | Concluída |
 | 03b | Lançamentos manuais, transferências e saldo pelos lançamentos | Concluída |
-| 04a | Importação de extratos OFX e CSV: revisão, histórico, ignorar e desfazer | Implementada, aguardando publicação |
-| 04b | Regras de categorização e conversão de importados em transferência | — |
+| 04a | Importação de extratos OFX e CSV: revisão, histórico, ignorar e desfazer | Concluída |
+| 04b | Regras de categorização: cadastro, sugestão na revisão da importação, "Aplicar regras" e "Criar regra" | Implementada, aguardando publicação |
+| 04c | Conversão de importados em transferência | — |
 | 05 | Cartão de crédito: faturas e parcelamento | — |
 | 06 | Dashboard, relatórios e exportação dos dados | — |
 | 07 | Recorrências, orçamento e projeção de saldo | — |
 | 08 | Deploy, demo pública e README completo | — |
+

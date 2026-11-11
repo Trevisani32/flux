@@ -16,26 +16,30 @@ import { dataHoraCurta } from '../../shared/datas/data-hora';
 import { EstadoVazio } from '../../shared/estado-vazio/estado-vazio';
 import { Icone } from '../../shared/icone/icone';
 import { Valor } from '../../shared/valor/valor';
-import { detalheDoErro } from '../auth/erros-http';
+import { detalheDoErro, propriedadeDoErro, statusDoErro } from '../auth/erros-http';
 import { CategoriasService, ListaDeCategorias } from '../categorias/categorias.service';
 import { ContasService, ListaDeContas } from '../contas/contas.service';
 import { mesDe, parametrosDaUrl } from '../lancamentos/filtros';
 import { contaPadrao } from '../lancamentos/lancamento-dialogo/lancamento-dialogo';
+import { nomeDaCategoria } from '../regras/apresentacao';
+import { FluxoDeRegras } from '../regras/fluxo-de-regras';
+import { EscolhaAMao, RegrasService, SugestaoDeRegra } from '../regras/regras.service';
 import {
   erroDeTamanho, frasesDoResultado, mensagemDaCategoria, mensagemDoArquivo, PassoDaImportacao, passosDaImportacao, pedePerfil, perfilNaoLe,
   resumoDoHistorico, resumoDoPerfil, tamanhoDoArquivo,
 } from './apresentacao';
 import { abrirExcluidos } from './excluidos-dialogo/excluidos-dialogo';
-import { Amostra, Escolha, Importacao as ItemDoHistorico, ImportacaoService, Previa, Resultado } from './importacao.service';
+import { Amostra, Importacao as ItemDoHistorico, ImportacaoService, Previa, Resultado } from './importacao.service';
 import { PerfilCsv } from './perfil-csv/perfil-csv';
-import { Revisao } from './revisao/revisao';
+import { ConfirmacaoDaRevisao, Revisao } from './revisao/revisao';
 
 /**
  * A página de Importação (decisões 1 a 4 e 27 a 33): "Nova importação" e o histórico; escolhido
  * o arquivo, a página segue para o perfil do CSV (só na primeira vez da conta), a revisão e o
  * resultado, com o indicador de passos do mockup. O CSV com perfil salvo mostra o resumo do perfil
  * e "Revisar" (decisão 12); o OFX vai direto para a revisão. O arquivo só existe aqui, no
- * navegador: recarregar volta ao começo.
+ * navegador: recarregar volta ao começo. Na Fatia 04b, o resultado oferece criar regras com as
+ * categorias escolhidas à mão na revisão (decisão 20).
  */
 @Component({
   selector: 'app-importacao',
@@ -51,7 +55,11 @@ export class Importacao {
   private readonly dialogo = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
+  private readonly regras = inject(RegrasService);
+  private readonly fluxoDeRegras = inject(FluxoDeRegras);
   private readonly contaDaUrl = Number(inject(ActivatedRoute).snapshot.queryParamMap.get('conta')) || null;
+  /** As linhas que ganharam categoria à mão na última confirmação, para "Tentar de novo" nas sugestões. */
+  private aMao: readonly EscolhaAMao[] = [];
 
   readonly hoje = dataIsoNoFuso(inject(AGORA)());
   readonly contas = signal<ListaDeContas | null>(null);
@@ -76,6 +84,13 @@ export class Importacao {
   readonly resultado = signal<Resultado | null>(null);
   readonly enviando = signal(false);
   readonly erroDaConfirmacao = signal<string | null>(null);
+  readonly sugestoesDeRegra = signal<readonly SugestaoDeRegra[]>([]);
+  readonly falhaNasSugestoes = signal(false);
+  /** A mensagem do 422 das sugestões (categoria ou conta que não serve mais), embaixo do título do alerta. */
+  readonly detalheDasSugestoes = signal<string | null>(null);
+  /** Quantas linhas a revisão mandou com a categoria da regra (Fatia 04b): o texto do resultado conta. */
+  private readonly porRegras = signal(0);
+  readonly nomeDaCategoria = nomeDaCategoria;
   readonly temContaAtiva = computed(() => (this.contas()?.ativas.length ?? 0) > 0);
   readonly nomeDaConta = computed(() => this.contas()?.ativas.find((conta) => conta.id === this.contaId())?.nome ?? '');
   readonly passos = computed(() => passosDaImportacao(this.passo(), this.previa()?.formato ?? null));
@@ -96,7 +111,7 @@ export class Importacao {
   });
   readonly frases = computed(() => {
     const resultado = this.resultado();
-    return resultado === null ? null : frasesDoResultado(resultado);
+    return resultado === null ? null : frasesDoResultado(resultado, this.porRegras());
   });
   readonly tamanhoDoArquivo = tamanhoDoArquivo;
   readonly resumoDoPerfil = resumoDoPerfil;
@@ -242,7 +257,7 @@ export class Importacao {
     this.lerArquivo(anterior);
   }
 
-  importar(escolhas: Escolha[]): void {
+  importar(confirmacao: ConfirmacaoDaRevisao): void {
     const arquivo = this.arquivo();
     const previa = this.previa();
     if (arquivo === null || previa === null || this.enviando()) {
@@ -250,12 +265,15 @@ export class Importacao {
     }
     this.enviando.set(true);
     this.erroDaConfirmacao.set(null);
-    this.servico.confirmar(arquivo, previa.contaId, previa.hash, escolhas).subscribe({
+    this.servico.confirmar(arquivo, previa.contaId, previa.hash, confirmacao.escolhas).subscribe({
       next: (resultado) => {
         this.enviando.set(false);
+        this.porRegras.set(confirmacao.porRegras);
         this.resultado.set(resultado);
         this.passo.set('pronto');
         this.carregarHistorico();
+        this.aMao = confirmacao.aMao;
+        this.carregarSugestoes();
       },
       error: (erro: unknown) => {
         this.enviando.set(false);
@@ -285,6 +303,42 @@ export class Importacao {
     this.erroDoArquivo.set(null);
     this.erroDaConfirmacao.set(null);
     this.lendo.set(false);
+    this.aMao = [];
+    this.porRegras.set(0);
+    this.sugestoesDeRegra.set([]);
+    this.falhaNasSugestoes.set(false);
+    this.detalheDasSugestoes.set(null);
+  }
+
+  /**
+   * "Criar regras com as suas escolhas" (decisões 20 a 22 da 04b): a API devolve até 5, só para o que
+   * nenhuma regra pega. Sem escolha à mão, nem pergunta. Se falhar, o cartão diz (com a mensagem do 422,
+   * quando a categoria ou a conta não serve mais) e oferece tentar de novo.
+   */
+  carregarSugestoes(): void {
+    this.falhaNasSugestoes.set(false);
+    this.detalheDasSugestoes.set(null);
+    if (this.aMao.length === 0) {
+      this.sugestoesDeRegra.set([]);
+      return;
+    }
+    this.regras.sugestoes(this.aMao).subscribe({
+      next: (sugestoes) => this.sugestoesDeRegra.set(sugestoes),
+      error: (erro: unknown) => {
+        this.sugestoesDeRegra.set([]);
+        this.detalheDasSugestoes.set(statusDoErro(erro) === 422 ? propriedadeDoErro(erro, 'detail') : null);
+        this.falhaNasSugestoes.set(true);
+      },
+    });
+  }
+
+  /** "Criar regra": o diálogo já preenchido; criada, a sugestão sai do cartão. */
+  criarRegra(sugestao: SugestaoDeRegra): void {
+    this.fluxoDeRegras.novaRegra(sugestao).subscribe((regra) => {
+      if (regra !== undefined) {
+        this.sugestoesDeRegra.update((atuais) => atuais.filter((outra) => outra !== sugestao));
+      }
+    });
   }
 
   /** O histórico recarrega em qualquer fechamento: o Esc e o clique fora também fecham depois de restaurar. */

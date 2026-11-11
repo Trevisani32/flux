@@ -125,6 +125,13 @@
             </div>
           </div>
 
+          @if (filtros().categoria === 'sem') {
+            <div class="flux-card lancamentos__regras" role="note">
+              <span class="lancamentos__selo" aria-hidden="true"><app-icone nome="regra" /></span>
+              <p>As regras podem pôr categoria nos lançamentos sem categoria, de qualquer mês.</p>
+              <button mat-stroked-button type="button" (click)="aplicarRegras()"><app-icone nome="regra" [tamanho]="18" />Aplicar regras</button>
+            </div>
+          }
           @if (lista.dias.length === 0) {
             <app-estado-vazio icone="busca" titulo="Nada encontrado" [texto]="'Nenhum lançamento de ' + nomeDoMes(lista.mes).split(' ')[0] + ' passa por estes filtros.'">
               <button mat-stroked-button type="button" (click)="limparFiltros()">Limpar filtros</button>

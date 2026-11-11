@@ -1,0 +1,67 @@
+<div class="aplicar">
+  <div class="aplicar__cabecalho">
+    <h2 mat-dialog-title class="aplicar__titulo">Aplicar regras</h2>
+    @if (aplicacao(); as atual) {
+      @if (atual.total > 0) {
+        <p class="aplicar__texto">{{ quantidadeDeLancamentos(atual.total) }} sem categoria {{ atual.total === 1 ? 'casa' : 'casam' }} com {{ atual.grupos.length === 1 ? '1 regra' : atual.grupos.length + ' regras' }}. Transferências, excluídos e lançamentos de contas arquivadas ficam de fora, e nenhuma categoria escolhida é trocada.</p>
+      }
+    }
+  </div>
+
+  @if (falhaAoCarregar()) {
+    <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível carregar a prévia.">
+      @if (detalheAoCarregar(); as detalhe) {
+        <p class="flux-alerta__texto">{{ detalhe }}</p>
+      } @else {
+        <div class="flux-alerta__acoes"><button mat-stroked-button type="button" (click)="carregar()">Tentar de novo</button></div>
+      }
+    </app-alerta>
+  } @else if (aplicacao(); as atual) {
+    @if (atual.total === 0) {
+      <app-alerta tipo="info" icone="info" titulo="Nada para aplicar"><p class="flux-alerta__texto">Nenhum lançamento sem categoria casa com as suas regras.</p></app-alerta>
+    } @else {
+      <ul class="aplicar__grupos">
+        @for (grupo of atual.grupos; track grupo.regraId) {
+          <li class="aplicar__grupo" [class.aplicar__grupo--desmarcado]="!marcado(grupo.regraId)">
+            <label class="aplicar__marcar">
+              <input type="checkbox" class="flux-caixa" [checked]="marcado(grupo.regraId)" (change)="alternar(grupo.regraId)" />
+              <span class="aplicar__textos">
+                <span class="aplicar__regra">{{ grupo.posicao }}ª · {{ condicaoNoInicio(grupo.condicao) }} <span class="aplicar__termo">{{ grupo.texto }}</span> → {{ nomeDaCategoria(grupo.categoriaNome, grupo.categoriaMaeNome) }}</span>
+                @if (notaDoGrupo(grupo); as nota) {
+                  <span class="aplicar__nota">{{ nota }}</span>
+                }
+              </span>
+              <span class="aplicar__quantidade">{{ grupo.quantidade }}</span>
+            </label>
+            <ul class="aplicar__exemplos" [attr.aria-label]="'Exemplos da ' + grupo.posicao + 'ª regra'">
+              @for (exemplo of grupo.exemplos; track $index) {
+                <li><span>{{ dataCurta(exemplo.data).slice(0, 5) }}</span><span class="aplicar__exemplo">{{ exemplo.descricao }} · {{ exemplo.contaNome }}</span><app-valor [valor]="exemplo.valor" /></li>
+              }
+              @if (grupo.quantidade > grupo.exemplos.length) {
+                <li class="aplicar__mais">… e mais {{ grupo.quantidade - grupo.exemplos.length }}</li>
+              }
+            </ul>
+          </li>
+        }
+      </ul>
+      <p class="flux-dica">Desmarcar uma regra deixa os lançamentos dela sem categoria: eles não passam para a regra de baixo.</p>
+    }
+  } @else {
+    <p class="aplicar__carregando" role="status">Carregando a prévia…</p>
+  }
+
+  @if (erro(); as mensagem) {
+    <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem">
+      @if (recarregada()) {
+        <p class="flux-alerta__texto">A prévia foi atualizada. Confira e aplique de novo.</p>
+      }
+    </app-alerta>
+  }
+
+  <div class="aplicar__acoes">
+    <button mat-stroked-button type="button" [disabled]="enviando()" (click)="cancelar()">{{ (aplicacao()?.total ?? 1) === 0 ? 'Fechar' : 'Cancelar' }}</button>
+    @if ((aplicacao()?.total ?? 0) > 0) {
+      <button mat-flat-button type="button" [disabled]="enviando() || marcados() === 0" (click)="aplicar()">{{ textoDoBotao() }}</button>
+    }
+  </div>
+</div>

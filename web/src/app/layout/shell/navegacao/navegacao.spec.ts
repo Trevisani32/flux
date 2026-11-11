@@ -6,7 +6,7 @@ import { ICONES } from '../../../shared/icone/icones';
 import { Navegacao } from './navegacao';
 
 describe('Navegacao', () => {
-  it('tem os grupos Visão geral (Início, Lançamentos, Importação, Contas) e Organização (Categorias)', () => {
+  it('tem os grupos Visão geral (Início, Lançamentos, Importação, Contas) e Organização (Categorias e Regras)', () => {
     TestBed.configureTestingModule({ imports: [Navegacao], providers: [provideRouter([])] });
     const fixture = TestBed.createComponent(Navegacao);
     fixture.detectChanges();
@@ -23,8 +23,10 @@ describe('Navegacao', () => {
       ['Importação', '/importacao'],
       ['Contas', '/contas'],
       ['Categorias', '/categorias'],
+      ['Regras', '/regras'],
     ]);
     const icones = links.map((link) => Array.from(link.querySelectorAll('path')).map((caminho) => caminho.getAttribute('d')));
-    expect(icones).toEqual([[...ICONES.inicio], [...ICONES.lancamentos], [...ICONES.importar], [...ICONES.contas], [...ICONES.etiqueta]]);
+    expect(icones).toEqual([[...ICONES.inicio], [...ICONES.lancamentos], [...ICONES.importar], [...ICONES.contas], [...ICONES.etiqueta],
+      [...ICONES.regra]]);
   });
 });

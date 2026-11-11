@@ -13,6 +13,7 @@
 @use 'styles/listas';
 @use 'styles/lancamentos';
 @use 'styles/importacao';
+@use 'styles/regras';
 
 html {
   @include mat.theme(

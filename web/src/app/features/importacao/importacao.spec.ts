@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AGORA } from '../../core/tempo/agora';
@@ -11,6 +12,8 @@ import { Conta, ListaDeContas } from '../contas/contas.service';
 import { NUBANK_CONTA } from './apresentacao';
 import { Importacao } from './importacao';
 import { Importacao as ItemDoHistorico, Previa, Resultado } from './importacao.service';
+import { FluxoDeRegras } from '../regras/fluxo-de-regras';
+import { Regra, SugestaoDeRegra } from '../regras/regras.service';
 
 function conta(id: number, nome: string): Conta {
   return { id, nome, tipo: 'CORRENTE', saldoInicial: 0, dataSaldoInicial: '2026-10-01', cor: null, saldoAtual: 0, arquivadaEm: null };
@@ -25,9 +28,9 @@ const previa: Previa = {
   dataInicio: '2026-11-05', dataFim: '2026-11-06', arquivoRepetido: null, outraConta: null, perfil: null, origens: [],
   linhas: [
     { linha: 2, data: '2026-11-06', descricao: 'PADARIA', valor: -12.5, situacao: 'NOVA', motivo: null, marcada: true, futuro: false,
-      erro: null, parecido: null },
+      erro: null, parecido: null, sugestao: null },
     { linha: 1, data: '2026-11-05', descricao: 'CAFE', valor: -6, situacao: 'NOVA', motivo: null, marcada: true, futuro: false, erro: null,
-      parecido: null },
+      parecido: null, sugestao: null },
   ],
 };
 
@@ -256,7 +259,7 @@ describe('Importacao', () => {
     const { fixture, componente, elemento } = criar('1');
     componente.escolherArquivo(lista(new File(['OFXHEADER:100'], 'extrato.ofx')));
     httpTesting.expectOne('/api/importacoes/previa').flush(previa);
-    componente.importar([{ linha: 2, categoriaId: 9 }]);
+    componente.importar({ escolhas: [{ linha: 2, categoriaId: 9, descricao: null }], aMao: [], porRegras: 0 });
     httpTesting.expectOne({ method: 'POST', url: '/api/importacoes' }).flush({ codigo: 'CATEGORIA_INVALIDA',
       detail: 'Uma das categorias escolhidas foi arquivada ou excluída. Revise as linhas marcadas.', linha: 2, data: '06/11' },
     { status: 422, statusText: 'Unprocessable Entity' });
@@ -290,11 +293,52 @@ describe('Importacao', () => {
     expect(elemento.querySelector('.importacao__texto-pronto')?.textContent).toBe('1 já tinha sido importado.');
   });
 
+  it('depois de importar, conta as categorizadas por regras e sugere regras com as escolhas à mão; o erro (e o 422) tem "Tentar de novo", '
+    + 'e "Criar regra" tira a sugestão (Fatia 04b)', () => {
+    const { fixture, componente, elemento } = criar('1');
+    componente.escolherArquivo(lista(new File(['OFXHEADER:100'], 'extrato.ofx')));
+    httpTesting.expectOne('/api/importacoes/previa').flush(previa);
+    const aMao = [{ contaId: 1, descricaoBanco: 'PADARIA', descricao: null, categoriaId: 9 }];
+    componente.importar({ escolhas: [{ linha: 2, categoriaId: 9, descricao: null }], aMao, porRegras: 1 });
+    httpTesting.expectOne({ method: 'POST', url: '/api/importacoes' }).flush({ importacaoId: 13, contaId: 1, contaNome: 'Banco Horizonte',
+      importadas: 1, desmarcadas: 1, jaImportadas: 0, deFora: 0, entraramPorOutra: 0, saldoDeHoje: 0, mesDaUltimaLinha: '2026-11' });
+    httpTesting.expectOne({ method: 'GET', url: '/api/importacoes' }).flush(historico);
+    const primeira = httpTesting.expectOne({ method: 'POST', url: '/api/regras/sugestoes' });
+    expect(primeira.request.body).toEqual({ itens: aMao });
+    primeira.flush(null, { status: 500, statusText: 'Erro' });
+    fixture.detectChanges();
+    expect(elemento.querySelector('.importacao__texto-pronto')?.textContent).toBe('1 categorizado por regra e 1 ficou desmarcado.');
+    expect(elemento.querySelector('.flux-alerta__titulo')?.textContent).toBe('Não foi possível sugerir regras agora.');
+    expect(elemento.querySelector('app-alerta .flux-alerta__texto')).toBeNull();
+
+    const tentarDeNovo = () => (Array.from(elemento.querySelectorAll<HTMLButtonElement>('button'))
+      .find((botao) => botao.textContent?.trim() === 'Tentar de novo') as HTMLButtonElement).click();
+    tentarDeNovo();
+    httpTesting.expectOne({ method: 'POST', url: '/api/regras/sugestoes' })
+      .flush({ detail: 'Categoria não encontrada.', codigo: 'CATEGORIA_INVALIDA' }, { status: 422, statusText: 'Erro' });
+    fixture.detectChanges();
+    expect(elemento.querySelector('app-alerta .flux-alerta__texto')?.textContent).toBe('Categoria não encontrada.');
+
+    const sugestao: SugestaoDeRegra = { condicao: 'CONTEM', texto: 'PADARIA', categoriaId: 9, categoriaNome: 'Padaria', categoriaMaeNome: 'Alimentação',
+      natureza: 'DESPESA', descricao: null, deDescricao: 'PADARIA' };
+    tentarDeNovo();
+    httpTesting.expectOne({ method: 'POST', url: '/api/regras/sugestoes' }).flush([sugestao]);
+    fixture.detectChanges();
+    expect(elemento.querySelector('#importacao-sugestoes')?.textContent).toBe('Criar regras com as suas escolhas');
+    expect(elemento.querySelector('.importacao__texto-sugestao')?.textContent?.trim()).toBe('Contém "PADARIA"→ Alimentação › Padaria · de PADARIA');
+
+    const novaRegra = vi.spyOn(TestBed.inject(FluxoDeRegras), 'novaRegra').mockReturnValue(of({ id: 40 } as Regra));
+    (elemento.querySelector('button[aria-label="Criar regra para PADARIA"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(novaRegra).toHaveBeenCalledWith(sugestao);
+    expect(elemento.querySelector('#importacao-sugestoes')).toBeNull();
+  });
+
   it('o 422 da confirmação aparece na revisão, que continua aberta (decisão 24)', () => {
     const { fixture, componente, elemento } = criar('1');
     componente.escolherArquivo(lista(new File(['OFXHEADER:100'], 'extrato.ofx')));
     httpTesting.expectOne('/api/importacoes/previa').flush(previa);
-    componente.importar([{ linha: 2, categoriaId: null }]);
+    componente.importar({ escolhas: [{ linha: 2, categoriaId: null, descricao: null }], aMao: [], porRegras: 0 });
     httpTesting.expectOne({ method: 'POST', url: '/api/importacoes' }).flush({ codigo: 'LIMITE_DE_LANCAMENTOS', detail: 'Esta importação '
       + 'passaria do limite de 1.000 lançamentos em novembro de 2026. Desmarque linhas desse mês ou importe um período menor.' },
     { status: 422, statusText: 'Unprocessable Entity' });

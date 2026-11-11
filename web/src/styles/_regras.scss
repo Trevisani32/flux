@@ -1,0 +1,535 @@
+// Fatia 04b: as regras de categorização. As regras são globais (Plano B da Fatia 01, o orçamento de
+// 4 kB por componente) e cada uma é prefixada pelo seletor do componente dono, para não vazar. Aqui
+// também ficam as peças que a 04b acrescenta à revisão, ao resultado da importação e a Lançamentos.
+
+// Página de Regras
+app-regras .regras {
+  gap: 0;
+  padding: 6px 0 10px;
+}
+
+app-regras .regras__cabecalho {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px var(--flux-espaco-6) 8px;
+}
+
+app-regras .regras__titulo {
+  margin: 0;
+  font: var(--flux-fonte-titulo-card);
+}
+
+app-regras .regras__explica,
+app-regras .regras__rodape {
+  margin: 0;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+app-regras .regras__rodape {
+  padding: 12px var(--flux-espaco-6) 6px;
+  border-top: 1px solid var(--flux-borda);
+}
+
+app-regras .regras__lista {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+app-regras .regras__item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 70px;
+  padding: 10px 14px 10px var(--flux-espaco-6);
+}
+
+app-regras .regras__item + .regras__item {
+  border-top: 1px solid var(--flux-borda);
+}
+
+app-regras .regras__posicao {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--flux-borda);
+  border-radius: 10px;
+  background: var(--flux-card-2);
+  color: var(--flux-texto-2);
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+app-regras .regras__item--pausada .regras__posicao {
+  border-style: dashed;
+}
+
+app-regras .regras__textos {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+app-regras .regras__condicao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  color: var(--flux-texto-2);
+  font-weight: 600;
+}
+
+app-regras .regras__item--pausada .regras__condicao {
+  opacity: 0.6;
+}
+
+app-regras .regras__termo,
+app-aplicar-dialogo .aplicar__termo {
+  padding: 0 6px;
+  border-radius: 6px;
+  background: rgba(var(--flux-ouro-rgb), 0.1);
+  color: var(--flux-ouro-claro);
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+app-regras .regras__seta {
+  color: var(--flux-texto-3);
+}
+
+app-regras .regras__categoria {
+  color: var(--flux-texto);
+  font-weight: 700;
+}
+
+app-regras .regras__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+app-regras .regras__pausada {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--flux-raio-pilula);
+  background: color-mix(in srgb, var(--flux-cor-conta-laranja) 15%, transparent);
+  color: var(--flux-cor-conta-laranja);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+app-regras .regras__ordem {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+app-regras .regras__mover {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--flux-borda);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--flux-texto-2);
+  cursor: pointer;
+}
+
+app-regras .regras__mover:hover:not(:disabled) {
+  border-color: var(--flux-borda-2);
+  color: var(--flux-texto);
+}
+
+app-regras .regras__mover:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+// Diálogo da regra
+app-regra-dialogo .regra-dialogo,
+app-aplicar-dialogo .aplicar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 26px 26px 22px;
+}
+
+app-regra-dialogo .regra-dialogo__cabecalho,
+app-aplicar-dialogo .aplicar__cabecalho {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+app-regra-dialogo .regra-dialogo__titulo,
+app-aplicar-dialogo .aplicar__titulo {
+  margin: 0;
+  padding: 0;
+  color: var(--flux-texto);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+
+app-regra-dialogo .regra-dialogo__titulo::before,
+app-aplicar-dialogo .aplicar__titulo::before {
+  display: none;
+}
+
+app-regra-dialogo .regra-dialogo__texto,
+app-aplicar-dialogo .aplicar__texto {
+  margin: 0;
+  color: var(--flux-texto-2);
+  font-size: 13px;
+  line-height: 19px;
+}
+
+app-regra-dialogo .regra-dialogo__texto b {
+  color: var(--flux-texto);
+  overflow-wrap: anywhere;
+}
+
+app-regra-dialogo .regra-dialogo__condicao {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  gap: 10px;
+}
+
+app-regra-dialogo .regra-dialogo__duas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+app-regra-dialogo .regra-dialogo__previa {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid rgba(var(--flux-ouro-rgb), 0.3);
+  border-radius: 12px;
+  background: rgba(var(--flux-ouro-rgb), 0.05);
+  font-size: 13px;
+  line-height: 19px;
+}
+
+app-regra-dialogo .regra-dialogo__titulo-previa {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--flux-texto);
+  font-weight: 700;
+}
+
+app-regra-dialogo .regra-dialogo__titulo-previa app-icone {
+  color: var(--flux-ouro-texto);
+}
+
+app-regra-dialogo .regra-dialogo__titulo-previa--vazia {
+  color: var(--flux-texto-3);
+  font-weight: 600;
+}
+
+app-regra-dialogo .regra-dialogo__titulo-previa--erro,
+app-regra-dialogo .regra-dialogo__titulo-previa--erro app-icone {
+  color: var(--flux-negativo);
+  font-weight: 600;
+}
+
+app-regra-dialogo .regra-dialogo__exemplos,
+app-aplicar-dialogo .aplicar__exemplos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+app-regra-dialogo .regra-dialogo__exemplos li,
+app-aplicar-dialogo .aplicar__exemplos li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  color: var(--flux-texto-2);
+}
+
+app-regra-dialogo .regra-dialogo__data {
+  flex: none;
+  color: var(--flux-texto-3);
+  font-variant-numeric: tabular-nums;
+}
+
+app-regra-dialogo .regra-dialogo__exemplo,
+app-aplicar-dialogo .aplicar__exemplo {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+app-regra-dialogo .regra-dialogo__exemplos app-valor,
+app-aplicar-dialogo .aplicar__exemplos app-valor {
+  margin-left: auto;
+  font-size: 13px;
+}
+
+app-regra-dialogo .regra-dialogo__posicao {
+  margin-top: -6px;
+}
+
+app-regra-dialogo .regra-dialogo__acoes,
+app-aplicar-dialogo .aplicar__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+app-regra-dialogo .regra-dialogo__excluir {
+  margin-right: auto;
+  color: var(--flux-negativo);
+}
+
+// Diálogo de "Aplicar regras"
+app-aplicar-dialogo .aplicar__grupos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+app-aplicar-dialogo .aplicar__grupo {
+  overflow: hidden;
+  border: 1px solid var(--flux-borda-2);
+  border-radius: 14px;
+  background: var(--flux-card);
+}
+
+app-aplicar-dialogo .aplicar__marcar {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+
+app-aplicar-dialogo .aplicar__textos {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+app-aplicar-dialogo .aplicar__regra {
+  color: var(--flux-texto);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+app-aplicar-dialogo .aplicar__nota,
+app-aplicar-dialogo .aplicar__carregando {
+  margin: 0;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+app-aplicar-dialogo .aplicar__quantidade {
+  flex: none;
+  color: var(--flux-texto);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+app-aplicar-dialogo .aplicar__exemplos {
+  padding: 0 14px 10px 46px;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+app-aplicar-dialogo .aplicar__exemplos app-valor {
+  font-size: 12px;
+}
+
+app-aplicar-dialogo .aplicar__mais {
+  color: var(--flux-texto-3);
+}
+
+app-aplicar-dialogo .aplicar__grupo--desmarcado .aplicar__textos,
+app-aplicar-dialogo .aplicar__grupo--desmarcado .aplicar__exemplos {
+  opacity: 0.55;
+}
+
+// Revisão da importação: a coluna "Categorizadas por regras" da faixa (decisão 14). No desktop, a faixa
+// fica com 4 colunas; no celular, com 3, como no #c-revisao: "Ficam de fora" continua na pílula.
+app-revisao .revisao__faixa--com-regras {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+// Revisão da importação: a linha categorizada por regra
+app-revisao .revisao__categoria--regra {
+  border-color: rgba(var(--flux-ouro-rgb), 0.5);
+  background: rgba(var(--flux-ouro-rgb), 0.06);
+}
+
+app-revisao .revisao__categoria--regra .revisao__icone-regra {
+  color: var(--flux-ouro-texto);
+}
+
+app-revisao .revisao__banco {
+  overflow: hidden;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+app-revisao .revisao__por {
+  color: var(--flux-ouro-texto);
+  font-weight: 700;
+}
+
+// Resultado da importação: "Criar regras com as suas escolhas"
+app-importacao .importacao__sugestoes {
+  gap: 6px;
+}
+
+app-importacao .importacao__lista-sugestoes {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+app-importacao .importacao__sugestao {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+}
+
+app-importacao .importacao__sugestao + .importacao__sugestao {
+  border-top: 1px solid var(--flux-borda);
+}
+
+app-importacao .importacao__texto-sugestao {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+app-importacao .importacao__texto-sugestao b {
+  overflow-wrap: anywhere;
+}
+
+app-importacao .importacao__texto-sugestao span {
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+}
+
+// Lançamentos com o filtro "Sem categoria": o atalho de "Aplicar regras"
+app-lancamentos .lancamentos__regras {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 14px var(--flux-espaco-6);
+}
+
+app-lancamentos .lancamentos__regras p {
+  flex: 1 1 240px;
+  margin: 0;
+  color: var(--flux-texto-2);
+  font-size: 14px;
+  line-height: 21px;
+}
+
+@media (max-width: 959.98px) {
+  app-regras .regras__item {
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 6px 10px 16px;
+  }
+
+  app-regras .regras__posicao {
+    margin-top: 2px;
+  }
+
+  app-regras .regras__cabecalho,
+  app-regras .regras__rodape {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  app-regra-dialogo .regra-dialogo,
+  app-aplicar-dialogo .aplicar {
+    min-height: 100%;
+    gap: 14px;
+    padding: 18px 16px 16px;
+  }
+
+  app-regra-dialogo .regra-dialogo__condicao,
+  app-regra-dialogo .regra-dialogo__duas {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  app-regra-dialogo .regra-dialogo__acoes,
+  app-aplicar-dialogo .aplicar__acoes {
+    flex-direction: column-reverse;
+    margin-top: auto;
+  }
+
+  app-regra-dialogo .regra-dialogo__acoes button,
+  app-aplicar-dialogo .aplicar__acoes button {
+    width: 100%;
+  }
+
+  app-regra-dialogo .regra-dialogo__excluir {
+    margin-right: 0;
+  }
+
+  app-lancamentos .lancamentos__regras {
+    padding: 14px 16px;
+  }
+
+  app-revisao .revisao__faixa--com-regras {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  app-revisao .revisao__faixa--com-regras .revisao__faixa-fora {
+    display: none;
+  }
+}
