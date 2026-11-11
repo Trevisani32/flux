@@ -2,6 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
+import { CondicaoDaRegra } from '../regras/regras.service';
+
 export type SituacaoDaLinha = 'NOVA' | 'PROVAVEL' | 'JA_IMPORTADA' | 'ANTES_DO_SALDO_INICIAL' | 'FORA';
 export type MotivoDeFora = 'ILEGIVEL' | 'VALOR_ZERO' | 'LINHA_DE_SALDO' | 'DATA_ALEM_DO_LIMITE';
 
@@ -24,7 +26,23 @@ export interface Origem {
   readonly importadaEm: string;
 }
 
-/** Uma linha da revisão. Na ilegível, data, descrição e valor vêm nulos e `erro` diz o que faltou. */
+/**
+ * A regra que categorizou a linha na revisão (Fatia 04b, decisão 14): a posição e a condição, para a
+ * tela dizer "pela 2ª regra", a categoria e a descrição legível (nula = fica a do extrato).
+ */
+export interface SugestaoDaLinha {
+  readonly regraId: number;
+  readonly posicao: number;
+  readonly condicao: CondicaoDaRegra;
+  readonly texto: string;
+  readonly categoriaId: number;
+  readonly descricao: string | null;
+}
+
+/**
+ * Uma linha da revisão. Na ilegível, data, descrição e valor vêm nulos e `erro` diz o que faltou.
+ * `descricao` é sempre a do extrato; `sugestao` só vem na linha para importar que uma regra pega.
+ */
 export interface LinhaDaPrevia {
   readonly linha: number;
   readonly data: string | null;
@@ -36,6 +54,7 @@ export interface LinhaDaPrevia {
   readonly futuro: boolean;
   readonly erro: string | null;
   readonly parecido: Parecido | null;
+  readonly sugestao: SugestaoDaLinha | null;
 }
 
 /** Resposta de POST /api/importacoes/previa (nada foi gravado). */
@@ -57,10 +76,14 @@ export interface Previa {
   readonly origens: readonly Origem[];
 }
 
-/** Uma linha marcada, com a categoria escolhida (nula = sem categoria). */
+/**
+ * Uma linha marcada, com a categoria escolhida (nula = sem categoria) e a descrição que a revisão
+ * mostrou (a legível da regra, Fatia 04b; nula = a do extrato).
+ */
 export interface Escolha {
   readonly linha: number;
   readonly categoriaId: number | null;
+  readonly descricao: string | null;
 }
 
 /** Resposta de POST /api/importacoes. Sem nada gravado, `importacaoId` vem nulo. */

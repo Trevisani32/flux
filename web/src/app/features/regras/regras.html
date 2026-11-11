@@ -1,0 +1,68 @@
+<app-cabecalho-pagina titulo="Regras" [subtitulo]="subtitulo()">
+  @if ((lista()?.length ?? 0) > 0) {
+    <button mat-stroked-button type="button" (click)="aplicar(null)"><app-icone nome="regra" [tamanho]="18" />Aplicar regras</button>
+  }
+  <button mat-flat-button type="button" (click)="novaRegra()"><app-icone nome="mais" [tamanho]="18" [traco]="2.2" />Nova regra</button>
+</app-cabecalho-pagina>
+<div class="flux-conteudo">
+  @if (falhaAoCarregar()) {
+    <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível carregar as regras.">
+      <div class="flux-alerta__acoes"><button mat-stroked-button type="button" (click)="carregar()">Tentar de novo</button></div>
+    </app-alerta>
+  } @else if (lista(); as regras) {
+    @if (erroDaOrdem(); as mensagem) {
+      <app-alerta tipo="erro" icone="alerta" titulo="A ordem não mudou" papel="alert"><p class="flux-alerta__texto">{{ mensagem }}</p></app-alerta>
+    }
+    @if (regras.length === 0) {
+      <app-estado-vazio icone="regra" titulo="Nenhuma regra ainda" texto="Uma regra escolhe a categoria pela descrição: &quot;contém uber&quot; vira Transporte. Ela já vale na próxima importação.">
+        <button mat-flat-button type="button" (click)="novaRegra()"><app-icone nome="mais" [tamanho]="18" [traco]="2.2" />Nova regra</button>
+      </app-estado-vazio>
+    } @else {
+      <section class="flux-card regras" aria-labelledby="regras-titulo">
+        <div class="regras__cabecalho">
+          <h2 class="regras__titulo" id="regras-titulo">Em ordem de prioridade</h2>
+          <p class="regras__explica">Valem na revisão da importação e em "Aplicar regras". Nunca trocam uma categoria já escolhida.</p>
+        </div>
+        <ol class="regras__lista">
+          @for (regra of regras; track regra.id; let primeira = $first; let ultima = $last) {
+            <li class="regras__item" [class.regras__item--pausada]="regra.pausada">
+              <span class="regras__posicao" aria-hidden="true">{{ regra.posicao }}</span>
+              <span class="regras__textos">
+                <span class="regras__condicao"><span class="flux-visualmente-oculto">{{ regra.posicao }}ª: </span>{{ condicaoNoInicio(regra.condicao) }} <span class="regras__termo">{{ regra.texto }}</span><span class="flux-visualmente-oculto">, categoria </span><app-icone class="regras__seta" nome="proximo" [tamanho]="14" /><span class="regras__categoria">{{ nomeDaCategoria(regra.categoriaNome, regra.categoriaMaeNome) }}</span></span>
+                <span class="regras__meta">
+                  @if (motivoDaPausa(regra); as motivo) {
+                    <span class="regras__pausada">{{ motivo }}</span>
+                  }
+                  {{ metaDaRegra(regra) }}
+                </span>
+              </span>
+              <span class="regras__ordem flux-so-desktop">
+                <button type="button" class="regras__mover" [disabled]="primeira || ordenando()" [attr.aria-label]="'Subir a regra ' + fraseDaCondicao(regra.condicao, regra.texto)" (click)="mover(regra, -1)"><app-icone nome="cima" [tamanho]="16" /></button>
+                <button type="button" class="regras__mover" [disabled]="ultima || ordenando()" [attr.aria-label]="'Descer a regra ' + fraseDaCondicao(regra.condicao, regra.texto)" (click)="mover(regra, 1)"><app-icone nome="baixo" [tamanho]="16" /></button>
+              </span>
+              <button type="button" class="flux-botao-acoes" [attr.aria-label]="'Ações da regra ' + fraseDaCondicao(regra.condicao, regra.texto)" [matMenuTriggerFor]="menuDaRegra" [matMenuTriggerData]="{ regra, primeira, ultima }"><app-icone nome="mais-h" /></button>
+            </li>
+          }
+        </ol>
+        <p class="regras__rodape">A comparação ignora maiúsculas, acentos e pontuação. Uma regra pausada volta a valer quando a categoria ou a conta for reativada.</p>
+      </section>
+    }
+  }
+</div>
+
+<mat-menu #menuDaRegra="matMenu" class="flux-menu" xPosition="before">
+  <ng-template matMenuContent let-regra="regra" let-primeira="primeira" let-ultima="ultima">
+    <button mat-menu-item type="button" (click)="editar(regra)"><app-icone matMenuItemIcon nome="editar" />Editar</button>
+    @if (!primeira) {
+      <button mat-menu-item type="button" [disabled]="ordenando()" (click)="mover(regra, -1)"><app-icone matMenuItemIcon nome="cima" />Subir para {{ regra.posicao - 1 }}ª</button>
+    }
+    @if (!ultima) {
+      <button mat-menu-item type="button" [disabled]="ordenando()" (click)="mover(regra, 1)"><app-icone matMenuItemIcon nome="baixo" />Descer para {{ regra.posicao + 1 }}ª</button>
+    }
+    @if (!regra.pausada) {
+      <button mat-menu-item type="button" (click)="aplicar(regra.id)"><app-icone matMenuItemIcon nome="regra" />Aplicar esta regra</button>
+    }
+    <mat-divider />
+    <button mat-menu-item type="button" class="flux-menu__perigo" (click)="excluir(regra)"><app-icone matMenuItemIcon nome="lixeira" />Excluir</button>
+  </ng-template>
+</mat-menu>

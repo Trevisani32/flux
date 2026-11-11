@@ -33,14 +33,16 @@ describe('ImportacaoService', () => {
     pedido.flush({});
   });
 
-  it('a confirmação manda o arquivo de novo e a parte JSON "pedido" (decisão 13)', async () => {
-    servico.confirmar(arquivo, 3, 'abc', [{ linha: 2, categoriaId: 9 }, { linha: 3, categoriaId: null }]).subscribe();
+  it('a confirmação manda o arquivo de novo e a parte JSON "pedido", com a descrição de cada linha (decisão 13; 04b, decisão 15)', async () => {
+    servico.confirmar(arquivo, 3, 'abc', [{ linha: 2, categoriaId: 9, descricao: 'Uber' }, { linha: 3, categoriaId: null, descricao: null }])
+      .subscribe();
     const pedido = httpTesting.expectOne({ method: 'POST', url: '/api/importacoes' });
     const corpo = pedido.request.body as FormData;
     expect((corpo.get('arquivo') as File).name).toBe('extrato.ofx');
     const parte = corpo.get('pedido') as Blob;
     expect(parte.type).toBe('application/json');
-    expect(JSON.parse(await parte.text())).toEqual({ contaId: 3, hash: 'abc', linhas: [{ linha: 2, categoriaId: 9 }, { linha: 3, categoriaId: null }] });
+    expect(JSON.parse(await parte.text())).toEqual({ contaId: 3, hash: 'abc',
+      linhas: [{ linha: 2, categoriaId: 9, descricao: 'Uber' }, { linha: 3, categoriaId: null, descricao: null }] });
     pedido.flush({});
   });
 

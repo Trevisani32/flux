@@ -225,8 +225,11 @@ function juntar(partes: readonly string[]): string {
   return partes.length <= 1 ? (partes[0] ?? '') : `${partes.slice(0, -1).join(', ')} e ${partes[partes.length - 1]}`;
 }
 
-/** O título e o texto do resultado (decisão 27). */
-export function frasesDoResultado(resultado: Resultado): { readonly titulo: string; readonly texto: string } {
+/**
+ * O título e o texto do resultado (decisão 27). `porRegras` (Fatia 04b): quantas linhas a revisão mandou com
+ * a categoria da regra; nunca mais que as importadas (uma linha pode ter virado "já importada" no meio).
+ */
+export function frasesDoResultado(resultado: Resultado, porRegras = 0): { readonly titulo: string; readonly texto: string } {
   const n = resultado.importadas;
   const titulo = n === 0 ? 'Nada foi importado'
     : `${n.toLocaleString('pt-BR')} ${n === 1 ? 'lançamento importado' : 'lançamentos importados'} em ${resultado.contaNome}`;
@@ -236,6 +239,10 @@ export function frasesDoResultado(resultado: Resultado): { readonly titulo: stri
       : `${resultado.entraramPorOutra} linhas já tinham entrado por outra importação e ficaram de fora.`);
   }
   const partes: string[] = [];
+  const categorizados = Math.min(porRegras, n);
+  if (categorizados > 0) {
+    partes.push(categorizados === 1 ? '1 categorizado por regra' : `${categorizados} categorizados por regras`);
+  }
   if (resultado.desmarcadas > 0) {
     partes.push(resultado.desmarcadas === 1 ? '1 ficou desmarcado' : `${resultado.desmarcadas} ficaram desmarcados`);
   }

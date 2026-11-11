@@ -10,6 +10,8 @@ import { Icone } from '../../../shared/icone/icone';
 import { Valor } from '../../../shared/valor/valor';
 import { ListaDeCategorias } from '../../categorias/categorias.service';
 import { rotuloDoDia } from '../../lancamentos/apresentacao';
+import { fraseDaCondicao } from '../../regras/apresentacao';
+import { EscolhaAMao } from '../../regras/regras.service';
 import { chaveDaDescricao, contagens, fraseDasOrigens, fraseDoParecido, rotuloDaSituacao, textoDoBotaoImportar } from '../apresentacao';
 import { Escolha, LinhaDaPrevia, Previa } from '../importacao.service';
 import { abrirSeletorDeCategoria, opcoesDoSeletor } from '../seletor-de-categoria/seletor-de-categoria';
@@ -25,10 +27,29 @@ interface LinhaDoGrupo {
 }
 
 /**
+ * O que a revisão emite ao importar: as escolhas das linhas marcadas (com a descrição que ela mostrou)
+ * e, para "Criar regras com as suas escolhas" (Fatia 04b, decisão 20), as linhas marcadas que ganharam
+ * categoria à mão no seletor. `porRegras`: quantas marcadas vão com a categoria da regra, para o
+ * resultado dizer "6 categorizados por regras".
+ */
+export interface ConfirmacaoDaRevisao {
+  readonly escolhas: Escolha[];
+  readonly aMao: EscolhaAMao[];
+  readonly porRegras: number;
+}
+
+/** A categoria que as regras sugeriram para cada linha (Fatia 04b, decisão 14). */
+function sugeridas(previa: Previa): Map<number, number> {
+  return new Map(previa.linhas.filter((linha) => linha.sugestao !== null)
+    .map((linha) => [linha.linha, (linha.sugestao as NonNullable<LinhaDaPrevia['sugestao']>).categoriaId]));
+}
+
+/**
  * A revisão (decisões 14 a 22): "Para importar" com caixas e categoria em cada linha, "Já
  * importadas" (as 3 mais recentes, com a origem) e "Ficam de fora" recolhidas, e a barra fixa que
  * só conta as marcadas (o front não soma dinheiro). No celular, os grupos viram pílulas. Emite as
- * escolhas; quem chama envia o arquivo de novo.
+ * escolhas; quem chama envia o arquivo de novo. Na Fatia 04b, a linha que uma regra pega já vem com
+ * a categoria e a descrição legível da regra; o seletor troca a categoria, e nada a muda de volta.
  */
 @Component({
   selector: 'app-revisao',
@@ -46,7 +67,7 @@ export class Revisao {
   readonly enviando = input(false);
   /** O 422 da confirmação (limite, categoria, arquivo diferente). */
   readonly erro = input<string | null>(null);
-  readonly importar = output<Escolha[]>();
+  readonly importar = output<ConfirmacaoDaRevisao>();
   readonly cancelar = output<void>();
   readonly trocarConta = output<number>();
   readonly editarPerfil = output<void>();
@@ -63,6 +84,8 @@ export class Revisao {
     const notaDasProvaveis = provaveis === 1 ? '1 provável duplicada' : `${provaveis} prováveis duplicadas`;
     return `${notaDasNovas} e ${notaDasProvaveis}`;
   });
+  /** A coluna "Categorizadas por regras" da faixa (decisão 14 da 04b): as linhas para importar com a categoria da regra. */
+  readonly porRegras = computed(() => [...this.novas(), ...this.provaveis()].filter(({ linha }) => this.porRegra(linha)).length);
   readonly temNovaFutura = computed(() => this.novas().some(({ linha }) => linha.futuro));
   readonly jaImportadas = computed(() => this.previa().linhas.filter((linha) => linha.situacao === 'JA_IMPORTADA'));
   readonly deFora = computed(() => this.previa().linhas
@@ -77,14 +100,17 @@ export class Revisao {
   readonly marcadas = linkedSignal<ReadonlySet<number>>(() =>
     new Set(this.previa().linhas.filter((linha) => linha.marcada).map((linha) => linha.linha)));
   /**
-   * A categoria escolhida em cada linha; sem entrada, "Sem categoria". Outra revisão começa do zero;
-   * a lista de categorias nova (depois do CATEGORIA_INVALIDA) tira os ids que não estão mais ativos.
+   * A categoria de cada linha; sem entrada, "Sem categoria". Outra revisão começa da sugestão das
+   * regras (Fatia 04b); a lista de categorias nova (depois do CATEGORIA_INVALIDA) tira os ids que não
+   * estão mais ativos.
    */
   readonly categoriaDaLinha = linkedSignal<{ previa: Previa; ativas: ReadonlyMap<number, string> }, ReadonlyMap<number, number>>({
     source: () => ({ previa: this.previa(), ativas: this.nomes() }),
-    computation: (fonte, anterior) => anterior === undefined || anterior.source.previa !== fonte.previa ? new Map()
-      : new Map([...anterior.value].filter(([, id]) => fonte.ativas.has(id))),
+    computation: (fonte, anterior) => new Map([...(anterior === undefined || anterior.source.previa !== fonte.previa
+      ? sugeridas(fonte.previa) : anterior.value)].filter(([, id]) => fonte.ativas.has(id))),
   });
+  /** As linhas que ganharam categoria no seletor (decisão 15 da 04b): a escolha do usuário vence a regra. */
+  readonly escolhidas = linkedSignal<Previa, ReadonlySet<number>>({ source: this.previa, computation: () => new Set() });
   readonly quantidadeMarcadas = computed(() => this.marcadas().size);
   readonly textoDoBotao = computed(() => this.enviando() ? 'Importando…' : textoDoBotaoImportar(this.quantidadeMarcadas()));
   readonly todasMarcadas = computed(() => this.quantidadeMarcadas() === this.contagens().paraImportar);
@@ -129,6 +155,34 @@ export class Revisao {
     return id === undefined ? null : (this.nomes().get(id) ?? null);
   }
 
+  /** A categoria da linha veio da regra e o usuário não a trocou no seletor (decisões 14 e 15 da 04b). */
+  porRegra(linha: LinhaDaPrevia): boolean {
+    return linha.sugestao !== null && !this.escolhidas().has(linha.linha)
+      && this.categoriaDaLinha().get(linha.linha) === linha.sugestao.categoriaId;
+  }
+
+  /** A descrição que a linha vai gravar: a legível da regra ou a do extrato. */
+  descricaoDaLinha(linha: LinhaDaPrevia): string {
+    return linha.sugestao?.descricao ?? linha.descricao ?? '';
+  }
+
+  /** "Sugerida pela 2ª regra: contém "uber"", para o seletor e para o leitor de tela. */
+  fraseDaRegra(linha: LinhaDaPrevia): string | null {
+    const sugestao = linha.sugestao;
+    return sugestao === null ? null : `Sugerida pela ${sugestao.posicao}ª regra: ${this.condicaoDaRegra(linha)}`;
+  }
+
+  /** "contém "uber"", depois de "pela 2ª regra" na linha do desktop (#d-revisao). */
+  condicaoDaRegra(linha: LinhaDaPrevia): string {
+    return linha.sugestao === null ? '' : fraseDaCondicao(linha.sugestao.condicao, linha.sugestao.texto);
+  }
+
+  /** O nome acessível do botão da categoria. */
+  rotuloDaCategoria(linha: LinhaDaPrevia): string {
+    const base = `Categoria de ${this.descricaoDaLinha(linha)}: ${this.nomeDaCategoria(linha) ?? 'Sem categoria'}`;
+    return this.porRegra(linha) && linha.sugestao !== null ? `${base}, sugerida pela ${linha.sugestao.posicao}ª regra` : base;
+  }
+
   alternar(linha: LinhaDaPrevia): void {
     this.marcadas.update((atuais) => {
       const novas = new Set(atuais);
@@ -170,13 +224,14 @@ export class Revisao {
         && Math.sign(outra.valor ?? 0) === Math.sign(linha.valor ?? 0));
     const receita = (linha.valor ?? 0) > 0;
     abrirSeletorDeCategoria(this.dialogo, {
-      descricao: linha.descricao ?? '',
+      descricao: this.descricaoDaLinha(linha),
       valor: linha.valor ?? 0,
       data: linha.data ?? '',
       receita,
       opcoes: opcoesDoSeletor(receita ? this.categorias().receitas : this.categorias().despesas),
       atual: this.categoriaDaLinha().get(linha.linha) ?? null,
       iguais: iguais.length,
+      regra: this.porRegra(linha) ? this.fraseDaRegra(linha) : null,
     }).subscribe((escolha) => {
       if (escolha === undefined) {
         return;
@@ -187,17 +242,31 @@ export class Revisao {
         alvos.forEach((numero) => (escolha.categoriaId === null ? novas.delete(numero) : novas.set(numero, escolha.categoriaId)));
         return novas;
       });
+      this.escolhidas.update((atuais) => new Set([...atuais, ...alvos]));
     });
   }
 
+  /**
+   * As escolhas das marcadas, com a descrição que a revisão mostrou (decisão 15 da 04b), e as que
+   * ganharam categoria à mão, para as sugestões de regra do resultado (decisão 20 da 04b).
+   */
   confirmar(): void {
     if (this.enviando() || !this.algumaMarcada()) {
       return;
     }
-    const escolhas: Escolha[] = this.previa().linhas
-      .filter((linha) => this.marcadas().has(linha.linha))
-      .map((linha) => ({ linha: linha.linha, categoriaId: this.categoriaDaLinha().get(linha.linha) ?? null }));
-    this.importar.emit(escolhas);
+    const marcadas = this.previa().linhas.filter((linha) => this.marcadas().has(linha.linha));
+    const escolhas: Escolha[] = marcadas.map((linha) => ({
+      linha: linha.linha,
+      categoriaId: this.categoriaDaLinha().get(linha.linha) ?? null,
+      descricao: linha.sugestao?.descricao ?? null,
+    }));
+    const aMao: EscolhaAMao[] = marcadas.flatMap((linha) => {
+      const categoriaId = this.categoriaDaLinha().get(linha.linha);
+      return this.escolhidas().has(linha.linha) && categoriaId !== undefined && linha.descricao !== null
+        ? [{ contaId: this.previa().contaId, descricaoBanco: linha.descricao, descricao: linha.sugestao?.descricao ?? null, categoriaId }]
+        : [];
+    });
+    this.importar.emit({ escolhas, aMao, porRegras: marcadas.filter((linha) => this.porRegra(linha)).length });
   }
 
   private doGrupo(situacao: Grupo): LinhaDoGrupo[] {

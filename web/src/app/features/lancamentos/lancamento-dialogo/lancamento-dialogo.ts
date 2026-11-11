@@ -16,6 +16,7 @@ import { Valor } from '../../../shared/valor/valor';
 import { camposDoErro, codigoDoErro, detalheDoErro, statusDoErro } from '../../auth/erros-http';
 import { ListaDeCategorias } from '../../categorias/categorias.service';
 import { Conta, ListaDeContas } from '../../contas/contas.service';
+import { FluxoDeRegras } from '../../regras/fluxo-de-regras';
 import { OpcaoDeCategoria, opcoesDeCategoria } from '../apresentacao';
 import { DadosDaTransferencia, DadosDoLancamento, ItemDaLista, LancamentosService } from '../lancamentos.service';
 
@@ -103,6 +104,7 @@ export class LancamentoDialogo {
   private readonly referencia = inject<MatDialogRef<LancamentoDialogo, ResultadoDoLancamento>>(MatDialogRef);
   private readonly dialogo = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly fluxoDeRegras = inject(FluxoDeRegras);
 
   readonly dados = inject<DadosDoDialogoDeLancamento>(MAT_DIALOG_DATA);
   readonly item = this.dados.item;
@@ -267,6 +269,12 @@ export class LancamentoDialogo {
         this.servico.ultimaConta = conta;
         this.salvouAlgum = true;
         this.snackBar.open(valores.tipo === 'TRANSFERENCIA' ? 'Transferência salva.' : 'Lançamento salvo.', 'Fechar', { duration: 4000 });
+        // Fatia 04b (decisões 20 a 22): o importado que estava sem categoria e ganhou uma pode virar regra.
+        const antes = this.item;
+        if (antes !== null && this.importado && antes.categoriaId === null && antes.descricaoBanco !== null && valores.categoria !== null) {
+          this.fluxoDeRegras.oferecerRegra({ contaId: antes.contaId, descricaoBanco: antes.descricaoBanco, descricao: valores.descricao.trim(),
+            categoriaId: valores.categoria });
+        }
         if (criarOutro) {
           this.recomecar();
         } else {

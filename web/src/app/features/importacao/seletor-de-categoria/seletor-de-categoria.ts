@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { Observable } from 'rxjs';
 
+import { Alerta } from '../../../shared/alerta/alerta';
 import { dataCurta } from '../../../shared/datas/data-curta';
 import { Valor } from '../../../shared/valor/valor';
 import { GrupoDeCategorias } from '../../categorias/categorias.service';
@@ -25,6 +26,8 @@ export interface DadosDoSeletor {
   readonly atual: number | null;
   /** Quantas outras linhas para importar têm a mesma descrição. */
   readonly iguais: number;
+  /** Fatia 04b: "Sugerida pela 2ª regra: contém "uber"", quando a categoria atual veio da regra. */
+  readonly regra: string | null;
 }
 
 export interface EscolhaDoSeletor {
@@ -43,7 +46,7 @@ export function opcoesDoSeletor(grupo: GrupoDeCategorias): OpcaoDoSeletor[] {
 /** O seletor de categoria da revisão: um diálogo só para a página toda (tela cheia no celular). */
 @Component({
   selector: 'app-seletor-de-categoria',
-  imports: [MatButtonModule, MatDialogModule, ReactiveFormsModule, Valor],
+  imports: [MatButtonModule, MatDialogModule, ReactiveFormsModule, Alerta, Valor],
   templateUrl: './seletor-de-categoria.html',
   styleUrl: './seletor-de-categoria.scss',
 })

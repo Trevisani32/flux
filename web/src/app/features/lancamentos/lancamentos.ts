@@ -14,6 +14,7 @@ import { Icone } from '../../shared/icone/icone';
 import { Valor } from '../../shared/valor/valor';
 import { CategoriasService, ListaDeCategorias } from '../categorias/categorias.service';
 import { ContasService, ListaDeContas } from '../contas/contas.service';
+import { FluxoDeRegras } from '../regras/fluxo-de-regras';
 import {
   marcaDoDia, nomeDoMes, opcoesDeCategoria, opcoesDeCategoriasArquivadas, quantidadeDeItens, rotuloDoDia,
 } from './apresentacao';
@@ -44,6 +45,7 @@ export class Lancamentos {
   private readonly contasService = inject(ContasService);
   private readonly categoriasService = inject(CategoriasService);
   private readonly dialogo = inject(MatDialog);
+  private readonly fluxoDeRegras = inject(FluxoDeRegras);
   private readonly buscas = new Subject<string>();
   private pedido: Subscription | null = null;
 
@@ -93,7 +95,14 @@ export class Lancamentos {
     this.buscas.pipe(debounceTime(300), takeUntilDestroyed()).subscribe((busca) => this.navegar({ ...this.filtros(), busca: busca.trim() }));
     // O "Desfazer" de um importado excluído volta depois que o diálogo fechou (Fatia 04a).
     this.servico.restaurado$.pipe(takeUntilDestroyed()).subscribe(() => this.carregarLista());
+    // Fatia 04b: "Aplicar regras" pode terminar depois de um aviso curto, com outra tela aberta por cima.
+    this.fluxoDeRegras.aplicadas$.pipe(takeUntilDestroyed()).subscribe(() => this.carregarLista());
     this.carregarApoio();
+  }
+
+  /** Com o filtro "Sem categoria" (decisão 17 da 04b): a prévia de todas as regras. */
+  aplicarRegras(): void {
+    this.fluxoDeRegras.aplicar(null).subscribe();
   }
 
   /** "Tentar de novo": contas, categorias e a lista. */

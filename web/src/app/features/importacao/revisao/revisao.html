@@ -16,10 +16,13 @@
   </app-alerta>
 }
 
-<section class="flux-card revisao__faixa" aria-label="Resumo do arquivo">
+<section class="flux-card revisao__faixa" [class.revisao__faixa--com-regras]="porRegras() > 0" aria-label="Resumo do arquivo">
   <div><span class="revisao__numero">{{ contagens().paraImportar }}</span><span class="revisao__rotulo">Para importar</span><span class="revisao__nota">{{ notaParaImportar() }}</span></div>
+  @if (porRegras() > 0) {
+    <div class="revisao__faixa-regras"><span class="revisao__numero">{{ porRegras() }}</span><span class="revisao__rotulo"><span class="flux-so-desktop">Categorizadas por regras</span><span class="flux-so-celular">Por regras</span></span><span class="revisao__nota">mude no botão da categoria</span></div>
+  }
   <div><span class="revisao__numero">{{ contagens().jaImportadas }}</span><span class="revisao__rotulo">Já importadas</span><span class="revisao__nota">ficam de fora sozinhas</span></div>
-  <div><span class="revisao__numero">{{ contagens().deFora }}</span><span class="revisao__rotulo">Ficam de fora</span><span class="revisao__nota">antes do saldo inicial, saldo, zero ou ilegível</span></div>
+  <div class="revisao__faixa-fora"><span class="revisao__numero">{{ contagens().deFora }}</span><span class="revisao__rotulo">Ficam de fora</span><span class="revisao__nota">antes do saldo inicial, saldo, zero ou ilegível</span></div>
 </section>
 
 <div class="revisao__grupos flux-so-celular" role="group" aria-label="Grupo">
@@ -64,12 +67,19 @@
               <li class="revisao__dia flux-so-celular" aria-hidden="true">{{ dia }}</li>
             }
             <li class="revisao__linha" [class.revisao__linha--desmarcada]="!marcada(item.linha)">
-              <label class="revisao__caixa"><input type="checkbox" class="flux-caixa" [checked]="marcada(item.linha)" (change)="alternar(item.linha)" /><span class="revisao__leitor">Importar {{ item.linha.descricao }} de {{ dataDaLinha(item.linha) }}</span></label>
+              <label class="revisao__caixa"><input type="checkbox" class="flux-caixa" [checked]="marcada(item.linha)" (change)="alternar(item.linha)" /><span class="revisao__leitor">Importar {{ descricaoDaLinha(item.linha) }} de {{ dataDaLinha(item.linha) }}</span></label>
               <span class="revisao__data flux-so-desktop">{{ dataDaLinha(item.linha) }}</span>
               <span class="revisao__descricao">
-                <b>{{ item.linha.descricao }}</b>
+                <b>{{ descricaoDaLinha(item.linha) }}</b>
+                @if (item.linha.sugestao?.descricao) {
+                  <span class="revisao__banco">No extrato: {{ item.linha.descricao }}</span>
+                }
                 <span class="revisao__meta">
                   <span class="revisao__pilula" [class.revisao__pilula--provavel]="item.linha.situacao === 'PROVAVEL'">{{ rotulo(item.linha) }}</span>
+                  @if (porRegra(item.linha) && item.linha.sugestao; as sugestao) {
+                    <span class="revisao__por">pela {{ sugestao.posicao }}ª regra</span>
+                    <span class="revisao__condicao-regra flux-so-desktop">{{ condicaoDaRegra(item.linha) }}</span>
+                  }
                   @if (item.linha.futuro) {
                     <span class="revisao__pilula revisao__pilula--futuro"><app-icone nome="relogio" [tamanho]="11" [traco]="2.4" />Futuro</span>
                     <span>Agendado no banco: marque se quiser lançar.</span>
@@ -79,7 +89,7 @@
                   }
                 </span>
               </span>
-              <button type="button" class="revisao__categoria" [class.revisao__categoria--sem]="nomeDaCategoria(item.linha) === null" (click)="escolherCategoria(item.linha)" [attr.aria-label]="'Categoria de ' + item.linha.descricao + ': ' + (nomeDaCategoria(item.linha) ?? 'Sem categoria')"><span>{{ nomeDaCategoria(item.linha) ?? 'Sem categoria' }}</span><app-icone nome="baixo" [tamanho]="14" /></button>
+              <button type="button" class="revisao__categoria" [class.revisao__categoria--sem]="nomeDaCategoria(item.linha) === null" [class.revisao__categoria--regra]="porRegra(item.linha)" (click)="escolherCategoria(item.linha)" [attr.aria-label]="rotuloDaCategoria(item.linha)">@if (porRegra(item.linha)) {<app-icone class="revisao__icone-regra" nome="regra" [tamanho]="14" />}<span>{{ nomeDaCategoria(item.linha) ?? 'Sem categoria' }}</span><app-icone nome="baixo" [tamanho]="14" /></button>
               <app-valor class="revisao__valor" [valor]="item.linha.valor" />
             </li>
           }

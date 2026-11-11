@@ -46,10 +46,18 @@ export function quantidadeDeSubcategorias(quantidade: number): string {
 
 /**
  * O parágrafo de "Esta categoria não pode ser excluída" (decisão 33): "Alimentação e as
- * subcategorias têm 42 lançamentos." ou "Mercado tem 9 lançamentos.", com o que fazer.
+ * subcategorias têm 42 lançamentos." ou "Mercado tem 9 lançamentos.", com o que fazer. Com regras de
+ * categorização no uso (Fatia 04b, "42 lançamentos e 2 regras"; depois delas pode vir outro uso, como
+ * os orçamentos da Fatia 07), a ativa ganha o que acontece com elas ao arquivar.
  */
 export function paragrafoDoBloqueio(nome: string, temSubcategorias: boolean, uso: string, arquivada: boolean): TrechoDeTexto[] {
   const quem: TrechoDeTexto[] = temSubcategorias ? [{ forte: nome }, ` e as subcategorias têm ${uso}.`] : [{ forte: nome }, ` tem ${uso}.`];
-  return [...quem, arquivada ? ' Ela continua arquivada, com os lançamentos nos relatórios.'
-    : ' Para tirá-la dos seletores sem perder o histórico, arquive a categoria.'];
+  if (arquivada) {
+    return [...quem, ' Ela continua arquivada, com os lançamentos nos relatórios.'];
+  }
+  const regras = /(\d+) regras?\b/.exec(uso);
+  const dasRegras: TrechoDeTexto[] = regras === null ? []
+    : [regras[1] === '1' ? ' Arquivada, a regra dela fica pausada até você reativá-la.'
+      : ` Arquivada, as ${regras[1]} regras dela ficam pausadas até você reativá-la.`];
+  return [...quem, ' Para tirá-la dos seletores sem perder o histórico, arquive a categoria.', ...dasRegras];
 }

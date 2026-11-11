@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AGORA } from '../../core/tempo/agora';
 import { Categoria, CategoriasService, ListaDeCategorias } from '../categorias/categorias.service';
 import { Conta, ContasService, ListaDeContas } from '../contas/contas.service';
+import { FluxoDeRegras } from '../regras/fluxo-de-regras';
 import { LancamentoDialogo } from './lancamento-dialogo/lancamento-dialogo';
 import { ItemDaLista, LancamentosService, ListaDoMes } from './lancamentos.service';
 import { Lancamentos } from './lancamentos';
@@ -70,6 +71,8 @@ describe('Lancamentos', () => {
   function criar(parametros: Params, resposta: () => Observable<ListaDoMes> = () => of(outubro), listaDeContas: ListaDeContas = contas) {
     const url = new BehaviorSubject<ParamMap>(convertToParamMap(parametros));
     const restaurado = new Subject<void>();
+    const aplicadas = new Subject<number>();
+    const fluxo = { aplicadas$: aplicadas.asObservable(), aplicar: vi.fn(() => of(3)) };
     const servico = { listar: vi.fn(resposta), ultimaConta: null as number | null, restaurado$: restaurado.asObservable() };
     // Um Subject por diálogo aberto: fechamentos[n] fecha o n-ésimo.
     const fechamentos: Subject<unknown>[] = [];
@@ -87,6 +90,7 @@ describe('Lancamentos', () => {
         { provide: ContasService, useValue: { listar: () => of(listaDeContas) } },
         { provide: CategoriasService, useValue: { listar: () => of(categorias) } },
         { provide: MatDialog, useValue: dialogo },
+        { provide: FluxoDeRegras, useValue: fluxo },
         { provide: AGORA, useValue: () => new Date('2026-11-09T15:00:00Z') },
       ],
     });
@@ -95,7 +99,7 @@ describe('Lancamentos', () => {
     fixture.detectChanges();
     const elemento = fixture.nativeElement as HTMLElement;
     const atualizar = () => fixture.detectChanges();
-    return { elemento, atualizar, servico, dialogo, fechamentos, navegar, url, restaurado };
+    return { elemento, atualizar, servico, dialogo, fechamentos, navegar, url, restaurado, fluxo, aplicadas };
   }
 
   function textos(elemento: HTMLElement, seletor: string): string[] {
@@ -222,5 +226,19 @@ describe('Lancamentos', () => {
     expect(elemento.querySelector('.cabecalho__acoes a[href="/importacao"]')?.textContent?.trim()).toBe('Importar');
     restaurado.next();
     expect(servico.listar).toHaveBeenCalledTimes(2);
+  });
+
+  it('com o filtro "Sem categoria", oferece "Aplicar regras"; aplicadas, a lista recarrega (Fatia 04b, decisão 17)', () => {
+    const { elemento, servico, fluxo, aplicadas } = criar({ mes: '2026-10', categoria: 'sem' });
+    expect(elemento.querySelector('.lancamentos__regras p')?.textContent).toBe('As regras podem pôr categoria nos lançamentos sem categoria, '
+      + 'de qualquer mês.');
+    botao(elemento, 'Aplicar regras').click();
+    expect(fluxo.aplicar).toHaveBeenCalledWith(null);
+    aplicadas.next(3);
+    expect(servico.listar).toHaveBeenCalledTimes(2);
+    TestBed.resetTestingModule();
+
+    const semFiltro = criar({ mes: '2026-10' });
+    expect(semFiltro.elemento.querySelector('.lancamentos__regras')).toBeNull();
   });
 });

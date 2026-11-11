@@ -72,6 +72,9 @@ export const ICONES = {
   busca: ['M4 11a7 7 0 1 0 14 0a7 7 0 1 0-14 0', 'm20 20-3.5-3.5'],
   entrada: ['M17 7 7 17', 'M17 17H7V7'],
   saida: ['M7 17 17 7', 'M7 7h10v10'],
+  // Fatia 04b (regras de categorização): a regra (um raio) e "Subir".
+  regra: ['M13 2.5 4.5 13.5H11l-1 8 8.5-11H12z'],
+  cima: ['m6 15 6-6 6 6'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type NomeIcone = keyof typeof ICONES;

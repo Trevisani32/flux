@@ -4,9 +4,9 @@ import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { Categoria, ListaDeCategorias } from '../../categorias/categorias.service';
-import { Escolha, LinhaDaPrevia, Previa } from '../importacao.service';
+import { LinhaDaPrevia, Previa } from '../importacao.service';
 import { DadosDoSeletor, EscolhaDoSeletor } from '../seletor-de-categoria/seletor-de-categoria';
-import { Revisao } from './revisao';
+import { ConfirmacaoDaRevisao, Revisao } from './revisao';
 
 function categoria(id: number, nome: string, natureza: 'DESPESA' | 'RECEITA', subcategorias: Categoria[] = []): Categoria {
   return { id, nome, natureza, categoriaMaeId: null, nomeDaMae: null, arquivadaEm: null, subcategorias };
@@ -19,7 +19,7 @@ const categorias: ListaDeCategorias = {
 
 function linha(parcial: Partial<LinhaDaPrevia>): LinhaDaPrevia {
   return { linha: 1, data: '2026-11-05', descricao: 'CAFE DA ESQUINA', valor: -6, situacao: 'NOVA', motivo: null, marcada: true,
-    futuro: false, erro: null, parecido: null, ...parcial };
+    futuro: false, erro: null, parecido: null, sugestao: null, ...parcial };
 }
 
 /** A ordem da API: data mais recente primeiro; no mesmo dia, a linha de baixo do arquivo em cima. */
@@ -49,9 +49,9 @@ describe('Revisao', () => {
     fixture.componentRef.setInput('previa', atual);
     fixture.componentRef.setInput('categorias', categorias);
     fixture.componentRef.setInput('hoje', '2026-11-10');
-    const emitidas: Escolha[][] = [];
+    const emitidas: ConfirmacaoDaRevisao[] = [];
     const contas: number[] = [];
-    fixture.componentInstance.importar.subscribe((escolhas) => emitidas.push(escolhas));
+    fixture.componentInstance.importar.subscribe((confirmacao) => emitidas.push(confirmacao));
     fixture.componentInstance.trocarConta.subscribe((conta) => contas.push(conta));
     fixture.detectChanges();
     const elemento = fixture.nativeElement as HTMLElement;
@@ -76,6 +76,7 @@ describe('Revisao', () => {
   it('começa com as novas marcadas, menos a futura, e a barra só conta (decisões 18 e 21)', () => {
     const { elemento, atualizar } = criar();
     expect(textos(elemento, '.revisao__numero')).toEqual(['4', '1', '2']);
+    expect(elemento.querySelector('.revisao__faixa-regras')).toBeNull();
     expect(textos(elemento, '.revisao__nota')[0]).toBe('3 novas e 1 provável duplicada');
     expect(textos(elemento, '.revisao__nome-do-grupo')).toEqual(['Novas · 3', 'Prováveis duplicadas · 1']);
     expect(textos(elemento, '.revisao__nota-do-grupo')).toEqual([
@@ -122,18 +123,71 @@ describe('Revisao', () => {
     const dados = (dialogo.open.mock.calls[0] as unknown as [unknown, { data: DadosDoSeletor }])[1].data;
     expect(dados.iguais).toBe(1);
     expect(dados.receita).toBe(false);
+    expect(dados.regra).toBeNull();
     expect(dados.opcoes).toEqual([{ id: 1, nome: 'Alimentação', sub: false }, { id: 5, nome: 'Restaurante', sub: true }]);
     expect(textos(elemento, '.revisao__categoria')).toEqual(['Sem categoria', 'Alimentação › Restaurante', 'Alimentação › Restaurante',
       'Sem categoria']);
     botao(elemento, 'Importar 2 lançamentos').click();
-    expect(emitidas).toEqual([[{ linha: 7, categoriaId: 5 }, { linha: 6, categoriaId: 5 }]]);
+    expect(emitidas).toEqual([{
+      escolhas: [{ linha: 7, categoriaId: 5, descricao: null }, { linha: 6, categoriaId: 5, descricao: null }],
+      aMao: [{ contaId: 1, descricaoBanco: 'CAFE DA ESQUINA', descricao: null, categoriaId: 5 },
+        { contaId: 1, descricaoBanco: 'CAFÉ DA ESQUINA', descricao: null, categoriaId: 5 }],
+      porRegras: 0,
+    }]);
 
     // Depois do CATEGORIA_INVALIDA, a página manda a lista nova: a categoria que saiu some das linhas.
     fixture.componentRef.setInput('categorias', { ...categorias, despesas: { ativas: [categoria(1, 'Alimentação', 'DESPESA')], arquivadas: [] } });
     atualizar();
     expect(textos(elemento, '.revisao__categoria')).toEqual(['Sem categoria', 'Sem categoria', 'Sem categoria', 'Sem categoria']);
     botao(elemento, 'Importar 2 lançamentos').click();
-    expect(emitidas[1]).toEqual([{ linha: 7, categoriaId: null }, { linha: 6, categoriaId: null }]);
+    expect(emitidas[1]).toEqual({ escolhas: [{ linha: 7, categoriaId: null, descricao: null }, { linha: 6, categoriaId: null, descricao: null }],
+      aMao: [], porRegras: 0 });
+  });
+
+  it('a linha que uma regra pega vem com a categoria e a descrição dela; o seletor vence a regra e a descrição fica (Fatia 04b)', () => {
+    const regra = (posicao: number, texto: string, categoriaId: number, descricao: string | null) =>
+      ({ regraId: 30 + posicao, posicao, condicao: 'CONTEM' as const, texto, categoriaId, descricao });
+    const { elemento, atualizar, dialogo, emitidas } = criar({ ...previa, linhas: [
+      linha({ linha: 7, descricao: 'PAG*UBERTRIP 8812', valor: -23.9, sugestao: regra(2, 'uber', 5, 'Uber') }),
+      linha({ linha: 6, descricao: 'UBER EATS 991', valor: -52, sugestao: regra(1, 'uber eats', 1, null) }),
+      linha({ linha: 8, descricao: 'PADARIA', valor: -9 }),
+    ] }, { categoriaId: 1, usarNasIguais: false });
+
+    // A faixa ganha a coluna das regras (decisão 14): "Categorizadas por regras" no desktop, "Por regras" no celular.
+    expect(elemento.querySelector('.revisao__faixa')?.classList).toContain('revisao__faixa--com-regras');
+    expect(textos(elemento, '.revisao__numero')).toEqual(['3', '2', '0', '0']);
+    expect(textos(elemento, '.revisao__faixa-regras .flux-so-desktop')).toEqual(['Categorizadas por regras']);
+    expect(textos(elemento, '.revisao__faixa-regras .flux-so-celular')).toEqual(['Por regras']);
+    expect(textos(elemento, '.revisao__faixa-regras .revisao__nota')).toEqual(['mude no botão da categoria']);
+    expect(textos(elemento, '.revisao__nota')[0]).toBe('3 novas e 0 prováveis duplicadas');
+    expect(textos(elemento, '.revisao__descricao b')).toEqual(['Uber', 'UBER EATS 991', 'PADARIA']);
+    expect(textos(elemento, '.revisao__banco')).toEqual(['No extrato: PAG*UBERTRIP 8812']);
+    expect(textos(elemento, '.revisao__por')).toEqual(['pela 2ª regra', 'pela 1ª regra']);
+    expect(textos(elemento, '.revisao__condicao-regra')).toEqual(['contém "uber"', 'contém "uber eats"']);
+    expect(textos(elemento, '.revisao__categoria')).toEqual(['Alimentação › Restaurante', 'Alimentação', 'Sem categoria']);
+    expect(elemento.querySelectorAll('.revisao__categoria--regra .revisao__icone-regra')).toHaveLength(2);
+    expect(caixa(elemento, 'Importar Uber de 05/11').checked).toBe(true);
+
+    (elemento.querySelector('button[aria-label="Categoria de Uber: Alimentação › Restaurante, sugerida pela 2ª regra"]') as HTMLButtonElement)
+      .click();
+    atualizar();
+    const dados = (dialogo.open.mock.calls[0] as unknown as [unknown, { data: DadosDoSeletor }])[1].data;
+    expect(dados.regra).toBe('Sugerida pela 2ª regra: contém "uber"');
+    expect(dados.descricao).toBe('Uber');
+    expect(dados.atual).toBe(5);
+    expect(textos(elemento, '.revisao__categoria')).toEqual(['Alimentação', 'Alimentação', 'Sem categoria']);
+    expect(textos(elemento, '.revisao__por')).toEqual(['pela 1ª regra']);
+    expect(textos(elemento, '.revisao__condicao-regra')).toEqual(['contém "uber eats"']);
+    expect(textos(elemento, '.revisao__numero')).toEqual(['3', '1', '0', '0']);
+    expect(textos(elemento, '.revisao__descricao b')[0]).toBe('Uber');
+
+    botao(elemento, 'Importar 3 lançamentos').click();
+    expect(emitidas).toEqual([{
+      escolhas: [{ linha: 7, categoriaId: 1, descricao: 'Uber' }, { linha: 6, categoriaId: 1, descricao: null },
+        { linha: 8, categoriaId: null, descricao: null }],
+      aMao: [{ contaId: 1, descricaoBanco: 'PAG*UBERTRIP 8812', descricao: 'Uber', categoriaId: 1 }],
+      porRegras: 1,
+    }]);
   });
 
   it('sem linha para importar, mostra "Nada novo" e os avisos de outra conta e de arquivo repetido', () => {

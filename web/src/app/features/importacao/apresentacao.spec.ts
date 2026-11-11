@@ -10,7 +10,7 @@ import { Importacao, LinhaDaPrevia, Resultado } from './importacao.service';
 
 function linha(parcial: Partial<LinhaDaPrevia>): LinhaDaPrevia {
   return { linha: 1, data: '2026-11-05', descricao: 'CAFE', valor: -6, situacao: 'NOVA', motivo: null, marcada: true, futuro: false,
-    erro: null, parecido: null, ...parcial };
+    erro: null, parecido: null, sugestao: null, ...parcial };
 }
 
 function resultado(parcial: Partial<Resultado>): Resultado {
@@ -124,5 +124,9 @@ describe('apresentação da importação', () => {
       texto: '3 linhas já tinham entrado por outra importação e ficaram de fora.',
     });
     expect(frasesDoResultado(resultado({})).texto).toBe('');
+    // Fatia 04b: as categorizadas por regras vêm primeiro (#d-resultado), nunca mais que as importadas.
+    expect(frasesDoResultado(resultado({ importadas: 9, jaImportadas: 31 }), 6).texto).toBe('6 categorizados por regras e 31 já tinham sido importados.');
+    expect(frasesDoResultado(resultado({ importadas: 1 }), 1).texto).toBe('1 categorizado por regra.');
+    expect(frasesDoResultado(resultado({ importadas: 1 }), 2).texto).toBe('1 categorizado por regra.');
   });
 });
