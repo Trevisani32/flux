@@ -3,6 +3,7 @@ package com.flux.lancamentos.interno.dto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+import com.flux.lancamentos.interno.OrigemLancamento;
 import com.flux.lancamentos.interno.TipoLancamento;
 
 /**
@@ -18,7 +19,9 @@ import com.flux.lancamentos.interno.TipoLancamento;
  *   <li>{@code direcao}: só na transferência e com o filtro de uma das contas dela:
  *       "SAIDA" (a conta filtrada é a origem) ou "ENTRADA";</li>
  *   <li>{@code futuro}: data depois de hoje (ainda fora do saldo);</li>
- *   <li>{@code somenteLeitura}: alguma conta do item está arquivada (decisões 23 e 28).</li>
+ *   <li>{@code somenteLeitura}: alguma conta do item está arquivada (decisões 23 e 28);</li>
+ *   <li>{@code origem}: MANUAL ou IMPORTADO; {@code descricaoBanco} só no importado, a descrição
+ *       que veio do extrato (decisões 28 e 29).</li>
  * </ul>
  */
 public record ItemDaLista(
@@ -38,5 +41,7 @@ public record ItemDaLista(
         String contaDestinoNome,
         String direcao,
         boolean futuro,
-        boolean somenteLeitura) {
+        boolean somenteLeitura,
+        OrigemLancamento origem,
+        String descricaoBanco) {
 }

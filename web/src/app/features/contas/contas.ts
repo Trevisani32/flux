@@ -83,6 +83,11 @@ export class Contas {
     void this.router.navigate(['/lancamentos'], { queryParams: { conta: conta.id } });
   }
 
+  /** A Importação já com a conta escolhida (Fatia 04a, decisão 2). */
+  importarExtrato(conta: Conta): void {
+    void this.router.navigate(['/importacao'], { queryParams: { conta: conta.id } });
+  }
+
   arquivar(conta: Conta): void {
     if (conta.saldoAtual === 0) {
       this.servico.arquivar(conta.id).subscribe({

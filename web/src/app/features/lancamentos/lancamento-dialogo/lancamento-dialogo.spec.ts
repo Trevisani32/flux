@@ -21,7 +21,7 @@ function item(parcial: Partial<ItemDaLista>): ItemDaLista {
   return {
     tipo: 'DESPESA', id: 10, data: '2026-10-20', descricao: 'Mensalidade', valor: -400, observacao: 'Parcela 3 de 6.',
     contaId: 1, contaNome: 'Banco Horizonte', categoriaId: 9, categoriaNome: 'Educação', categoriaMaeNome: null,
-    categoriaArquivada: true, contaDestinoId: null, contaDestinoNome: null, direcao: null, futuro: false, somenteLeitura: false,
+    categoriaArquivada: true, contaDestinoId: null, contaDestinoNome: null, direcao: null, futuro: false, somenteLeitura: false, origem: 'MANUAL', descricaoBanco: null,
     ...parcial,
   };
 }
@@ -281,6 +281,60 @@ describe('LancamentoDialogo', () => {
     httpTesting.expectOne({ method: 'DELETE', url: '/api/transferencias/4' }).flush(null);
     TestBed.tick();
     await vi.waitFor(() => expect(resultado).toBe('excluido'));
+  });
+
+  it('o importado trava tipo, valor, data e conta, mostra a descrição do extrato e salva o resto (Fatia 04a)', async () => {
+    abrir(item({ origem: 'IMPORTADO', descricao: 'Padaria Central', descricaoBanco: 'PADARIA CENTRAL', valor: -12.5, data: '2026-11-09',
+      categoriaId: 1, categoriaNome: 'Alimentação', categoriaArquivada: false, observacao: null }));
+    expect(painel().querySelector('.flux-alerta__titulo')?.textContent).toBe('Lançamento importado');
+    expect(campo<HTMLInputElement>('#lancamento-valor').disabled).toBe(true);
+    expect(campo<HTMLInputElement>('#lancamento-data').disabled).toBe(true);
+    expect(campo<HTMLSelectElement>('#lancamento-conta').disabled).toBe(true);
+    expect(campo<HTMLInputElement>('input[value="RECEITA"]').disabled).toBe(true);
+    expect(campo<HTMLInputElement>('input[value="DESPESA"]').disabled).toBe(false);
+    expect(painel().querySelector('#lancamento-tipo-dica')).toBeNull();
+    expect(campo('#lancamento-descricao-banco').textContent).toBe('No extrato: PADARIA CENTRAL');
+    digitar('#lancamento-descricao', 'Padaria do bairro');
+    botao('Salvar').click();
+    TestBed.tick();
+
+    const pedido = httpTesting.expectOne({ method: 'PUT', url: '/api/lancamentos/10' });
+    expect(pedido.request.body).toEqual({ tipo: 'DESPESA', valor: 12.5, data: '2026-11-09', descricao: 'Padaria do bairro', contaId: 1,
+      categoriaId: 1, observacao: null });
+    pedido.flush(item({}));
+    TestBed.tick();
+    await vi.waitFor(() => expect(resultado).toBe('salvo'));
+  });
+
+  it('excluir o importado diz que ele não volta na reimportação, e "Desfazer" restaura com a categoria (Fatia 04a)', async () => {
+    abrir(item({ origem: 'IMPORTADO', descricao: 'Padaria Central', descricaoBanco: 'PADARIA CENTRAL', valor: -12.5, data: '2026-11-09',
+      categoriaId: 1, categoriaNome: 'Alimentação', categoriaArquivada: false }));
+    botao('Excluir').click();
+    TestBed.tick();
+
+    const confirmacao = document.querySelector('app-confirmacao-dialogo') as HTMLElement;
+    expect(Array.from(confirmacao.querySelectorAll('.confirmacao__texto')).map((p) => p.textContent?.replace(/\s/g, ' '))).toEqual([
+      '−R$ 12,50 em 09/11/2026, em Banco Horizonte. Ele sai da lista e do saldo e não volta se você importar o extrato de novo.',
+      'Dá para restaurar depois, em Importação, nos excluídos da importação.']);
+    Array.from(confirmacao.querySelectorAll<HTMLButtonElement>('button')).find((botaoDaConfirmacao) => botaoDaConfirmacao.textContent?.trim()
+      === 'Excluir lançamento')?.click();
+    TestBed.tick();
+    httpTesting.expectOne({ method: 'DELETE', url: '/api/lancamentos/10' }).flush(null);
+    TestBed.tick();
+    await vi.waitFor(() => expect(resultado).toBe('excluido'));
+
+    const desfazer = await vi.waitFor(() => {
+      const acao = Array.from(document.querySelectorAll<HTMLButtonElement>('.mat-mdc-snack-bar-container button'))
+        .find((botaoDoAviso) => botaoDoAviso.textContent?.trim() === 'Desfazer');
+      expect(acao).toBeDefined();
+      return acao as HTMLButtonElement;
+    });
+    expect(document.querySelector('.mat-mdc-snack-bar-container')?.textContent).toContain('Lançamento excluído.');
+    desfazer.click();
+    TestBed.tick();
+    const pedido = httpTesting.expectOne({ method: 'POST', url: '/api/lancamentos/10/restaurar' });
+    expect(pedido.request.body).toEqual({ categoriaId: 1 });
+    pedido.flush(item({}));
   });
 
   it('calcula a data limite e a conta padrão', () => {

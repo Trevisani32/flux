@@ -1,0 +1,105 @@
+<form class="perfil" [formGroup]="formulario" (ngSubmit)="salvar()">
+  @if (sugeriuNubank()) {
+    <app-alerta tipo="info" icone="info" titulo="Parece um extrato da conta do Nubank">
+      <p class="flux-alerta__texto">O modelo "Nubank (conta)" já veio preenchido. Confira as colunas e continue. O perfil fica salvo para as próximas importações de {{ contaNome() }}.</p>
+    </app-alerta>
+  }
+  @if (amostra(); as atual) {
+    <div class="perfil__amostra">
+      <table class="perfil__tabela" aria-label="Primeiras linhas do arquivo">
+        <thead><tr>@for (coluna of colunas(); track coluna.numero) {<th scope="col">Coluna {{ coluna.numero }}</th>}</tr></thead>
+        <tbody>
+          @for (linha of atual.linhas; track $index) {
+            <tr [class.perfil__cabecalho]="$index < formulario.controls.linhasDeCabecalho.value">@for (coluna of colunas(); track coluna.numero) {<td>{{ linha[coluna.numero - 1] }}</td>}</tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+  <div class="perfil__campos">
+    <div class="flux-campo">
+      <label for="perfil-modelo">Modelo</label>
+      <div class="flux-entrada"><select id="perfil-modelo" formControlName="modelo"><option value="NUBANK_CONTA">Nubank (conta)</option><option value="PERSONALIZADO">Personalizado</option></select><app-icone class="flux-entrada__seta" nome="baixo" /></div>
+    </div>
+    <div class="flux-campo">
+      <label for="perfil-separador">Separador de colunas</label>
+      <div class="flux-entrada"><select id="perfil-separador" formControlName="separador"><option value="VIRGULA">Vírgula</option><option value="PONTO_E_VIRGULA">Ponto e vírgula</option><option value="TAB">Tabulação</option></select><app-icone class="flux-entrada__seta" nome="baixo" /></div>
+    </div>
+    <div class="flux-campo">
+      <label for="perfil-cabecalho">Linhas de cabeçalho a pular</label>
+      <div class="flux-entrada" [class.flux-entrada--invalida]="erroDe('linhasDeCabecalho') !== null"><input id="perfil-cabecalho" type="number" min="0" max="20" formControlName="linhasDeCabecalho" [attr.aria-invalid]="erroDe('linhasDeCabecalho') !== null" [attr.aria-describedby]="erroDe('linhasDeCabecalho') !== null ? 'perfil-cabecalho-erro' : null" /></div>
+      @if (erroDe('linhasDeCabecalho'); as mensagem) {
+        <p id="perfil-cabecalho-erro" class="flux-campo__erro" role="alert">{{ mensagem }}</p>
+      }
+    </div>
+    <div class="flux-campo">
+      <label for="perfil-data">Coluna da data</label>
+      <div class="flux-entrada" [class.flux-entrada--invalida]="erroDe('colunaData') !== null"><select id="perfil-data" formControlName="colunaData" [attr.aria-invalid]="erroDe('colunaData') !== null" [attr.aria-describedby]="erroDe('colunaData') !== null ? 'perfil-data-erro' : null">@for (coluna of colunas(); track coluna.numero) {<option [ngValue]="coluna.numero">{{ coluna.rotulo }}</option>}</select><app-icone class="flux-entrada__seta" nome="baixo" /></div>
+      @if (erroDe('colunaData'); as mensagem) {
+        <p id="perfil-data-erro" class="flux-campo__erro" role="alert">{{ mensagem }}</p>
+      }
+    </div>
+    <div class="flux-campo">
+      <label for="perfil-formato-data">Formato da data</label>
+      <div class="flux-entrada"><select id="perfil-formato-data" formControlName="formatoData"><option value="DD_MM_AAAA">DD/MM/AAAA</option><option value="DD_MM_AA">DD/MM/AA</option><option value="AAAA_MM_DD">AAAA-MM-DD</option></select><app-icone class="flux-entrada__seta" nome="baixo" /></div>
+    </div>
+    <div class="flux-campo">
+      <label for="perfil-descricao">Coluna da descrição</label>
+      <div class="flux-entrada" [class.flux-entrada--invalida]="erroDe('colunaDescricao') !== null"><select id="perfil-descricao" formControlName="colunaDescricao" [attr.aria-invalid]="erroDe('colunaDescricao') !== null" [attr.aria-describedby]="erroDe('colunaDescricao') !== null ? 'perfil-descricao-erro' : null">@for (coluna of colunas(); track coluna.numero) {<option [ngValue]="coluna.numero">{{ coluna.rotulo }}</option>}</select><app-icone class="flux-entrada__seta" nome="baixo" /></div>
+      @if (erroDe('colunaDescricao'); as mensagem) {
+        <p id="perfil-descricao-erro" class="flux-campo__erro" role="alert">{{ mensagem }}</p>
+      }
+    </div>
+  </div>
+  <fieldset class="flux-grupo">
+    <legend>Valor</legend>
+    <div class="flux-segmentado">
+      <label><input type="radio" name="modo" formControlName="modo" value="UMA" />Uma coluna, saídas negativas</label>
+      <label><input type="radio" name="modo" formControlName="modo" value="DUAS" />Entradas e saídas em colunas separadas</label>
+    </div>
+  </fieldset>
+  <div class="perfil__campos">
+    <div class="flux-campo">
+      <label for="perfil-valor">{{ modo() === 'DUAS' ? 'Coluna das entradas' : 'Coluna do valor' }}</label>
+      <div class="flux-entrada" [class.flux-entrada--invalida]="erroDe('colunaValor') !== null"><select id="perfil-valor" formControlName="colunaValor" [attr.aria-invalid]="erroDe('colunaValor') !== null" [attr.aria-describedby]="erroDe('colunaValor') !== null ? 'perfil-valor-erro' : null">@for (coluna of colunas(); track coluna.numero) {<option [ngValue]="coluna.numero">{{ coluna.rotulo }}</option>}</select><app-icone class="flux-entrada__seta" nome="baixo" /></div>
+      @if (erroDe('colunaValor'); as mensagem) {
+        <p id="perfil-valor-erro" class="flux-campo__erro" role="alert">{{ mensagem }}</p>
+      }
+    </div>
+    @if (modo() === 'DUAS') {
+      <div class="flux-campo">
+        <label for="perfil-saidas">Coluna das saídas</label>
+        <div class="flux-entrada" [class.flux-entrada--invalida]="erroDe('colunaSaidas') !== null"><select id="perfil-saidas" formControlName="colunaSaidas" [attr.aria-invalid]="erroDe('colunaSaidas') !== null" [attr.aria-describedby]="erroDe('colunaSaidas') !== null ? 'perfil-saidas-erro' : null"><option [ngValue]="null" disabled>Escolha</option>@for (coluna of colunas(); track coluna.numero) {<option [ngValue]="coluna.numero">{{ coluna.rotulo }}</option>}</select><app-icone class="flux-entrada__seta" nome="baixo" /></div>
+        @if (erroDe('colunaSaidas'); as mensagem) {
+          <p id="perfil-saidas-erro" class="flux-campo__erro" role="alert">{{ mensagem }}</p>
+        }
+      </div>
+    }
+    <div class="flux-campo">
+      <label for="perfil-decimal">Separador decimal</label>
+      <div class="flux-entrada"><select id="perfil-decimal" formControlName="separadorDecimal"><option value="PONTO">Ponto (1234.56)</option><option value="VIRGULA">Vírgula (1.234,56)</option></select><app-icone class="flux-entrada__seta" nome="baixo" /></div>
+    </div>
+    <div class="flux-campo">
+      <label for="perfil-identificador">Coluna do identificador <span class="flux-grupo__opcional">(opcional)</span></label>
+      <div class="flux-entrada"><select id="perfil-identificador" formControlName="colunaIdentificador" aria-describedby="perfil-identificador-dica"><option [ngValue]="null">Nenhuma</option>@for (coluna of colunas(); track coluna.numero) {<option [ngValue]="coluna.numero">{{ coluna.rotulo }}</option>}</select><app-icone class="flux-entrada__seta" nome="baixo" /></div>
+      <p id="perfil-identificador-dica" class="flux-dica">Com ele, reimportar o mesmo período não duplica, mesmo que o banco mude a descrição.</p>
+    </div>
+  </div>
+  @if (amostra(); as atual) {
+    <p class="perfil__lida" role="status">
+      <span class="perfil__lida-rotulo">Primeira linha lida</span>
+      @if (atual.primeiraLinha; as linha) {
+        <span>{{ dataCurta(linha.data) }}</span><span class="perfil__lida-descricao">{{ linha.descricao }}</span><app-valor [valor]="linha.valor" />
+      } @else {
+        <span class="perfil__lida-erro">{{ atual.erroDaPrimeiraLinha }}</span>
+      }
+    </p>
+  }
+  @if (erroGeral(); as mensagem) {
+    <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem" />
+  }
+  <div class="perfil__acoes">
+    <button mat-stroked-button type="button" [disabled]="enviando() || lendo()" (click)="voltar.emit()">Voltar</button>
+    <button mat-flat-button type="submit" [disabled]="enviando() || lendo()">Salvar perfil e revisar</button>
+  </div>
+</form>

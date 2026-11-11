@@ -37,15 +37,18 @@
 } @else {
   <form class="lancamento-dialogo" [formGroup]="formulario" (ngSubmit)="salvar(false)">
     <h2 mat-dialog-title class="lancamento-dialogo__titulo">{{ titulo() }}</h2>
+    @if (importado) {
+      <app-alerta tipo="info" icone="importar" titulo="Lançamento importado"><p class="flux-alerta__texto">Tipo, valor, data e conta vêm do extrato e não mudam.</p></app-alerta>
+    }
 
-    <fieldset class="flux-grupo" [attr.aria-describedby]="editando ? 'lancamento-tipo-dica' : null">
+    <fieldset class="flux-grupo" [attr.aria-describedby]="editando && !importado ? 'lancamento-tipo-dica' : null">
       <legend class="flux-visualmente-oculto">Tipo</legend>
       <div class="flux-segmentado flux-segmentado--largo">
         <label [class.flux-segmentado__opcao--desligada]="tipoTravado('DESPESA')"><input type="radio" name="tipo" formControlName="tipo" value="DESPESA" [attr.disabled]="tipoTravado('DESPESA') ? '' : null" />Despesa</label>
         <label [class.flux-segmentado__opcao--desligada]="tipoTravado('RECEITA')"><input type="radio" name="tipo" formControlName="tipo" value="RECEITA" [attr.disabled]="tipoTravado('RECEITA') ? '' : null" />Receita</label>
         <label [class.flux-segmentado__opcao--desligada]="tipoTravado('TRANSFERENCIA')"><input type="radio" name="tipo" formControlName="tipo" value="TRANSFERENCIA" [attr.disabled]="tipoTravado('TRANSFERENCIA') ? '' : null" />Transferência</label>
       </div>
-      @if (editando) {
+      @if (editando && !importado) {
         <p id="lancamento-tipo-dica" class="flux-dica">{{ transferencia() ? 'Para virar receita ou despesa, exclua a transferência e crie o lançamento.' : 'Para virar transferência, exclua o lançamento e crie a transferência.' }}</p>
       }
     </fieldset>
@@ -53,7 +56,7 @@
     <div class="lancamento-dialogo__duas">
       <div class="flux-campo">
         <label for="lancamento-valor">Valor</label>
-        <div class="flux-entrada" [class.flux-entrada--invalida]="erro('valor') !== null">
+        <div class="flux-entrada" [class.flux-entrada--invalida]="erro('valor') !== null" [class.flux-entrada--travada]="importado">
           <span class="flux-entrada__prefixo" aria-hidden="true">R$</span>
           <input id="lancamento-valor" type="text" inputmode="decimal" formControlName="valor" placeholder="0,00" autocomplete="off" (blur)="formatarValor()" [attr.aria-invalid]="erro('valor') !== null ? 'true' : null" [attr.aria-describedby]="erro('valor') !== null ? 'lancamento-valor-erro' : null" />
         </div>
@@ -63,7 +66,7 @@
       </div>
       <div class="flux-campo">
         <label for="lancamento-data">Data</label>
-        <div class="flux-entrada" [class.flux-entrada--invalida]="erro('data') !== null">
+        <div class="flux-entrada" [class.flux-entrada--invalida]="erro('data') !== null" [class.flux-entrada--travada]="importado">
           <input id="lancamento-data" type="date" formControlName="data" [max]="limite" [attr.aria-invalid]="erro('data') !== null ? 'true' : null" [attr.aria-describedby]="erro('data') !== null ? 'lancamento-data-erro' : dicaDaData() !== null ? 'lancamento-data-dica' : null" />
         </div>
         @if (erro('data'); as mensagem) {
@@ -77,10 +80,12 @@
     <div class="flux-campo">
       <label for="lancamento-descricao">Descrição @if (transferencia()) {<span class="flux-grupo__opcional">(opcional)</span>}</label>
       <div class="flux-entrada" [class.flux-entrada--invalida]="erro('descricao') !== null">
-        <input id="lancamento-descricao" type="text" formControlName="descricao" maxlength="255" autocomplete="off" [placeholder]="transferencia() ? 'Transferência' : ''" [attr.aria-invalid]="erro('descricao') !== null ? 'true' : null" [attr.aria-describedby]="erro('descricao') !== null ? 'lancamento-descricao-erro' : null" />
+        <input id="lancamento-descricao" type="text" formControlName="descricao" maxlength="255" autocomplete="off" [placeholder]="transferencia() ? 'Transferência' : ''" [attr.aria-invalid]="erro('descricao') !== null ? 'true' : null" [attr.aria-describedby]="erro('descricao') !== null ? 'lancamento-descricao-erro' : item?.descricaoBanco ? 'lancamento-descricao-banco' : null" />
       </div>
       @if (erro('descricao'); as mensagem) {
         <p id="lancamento-descricao-erro" class="flux-campo__erro">{{ mensagem }}</p>
+      } @else if (item?.descricaoBanco; as doBanco) {
+        <p id="lancamento-descricao-banco" class="flux-dica">No extrato: {{ doBanco }}</p>
       }
     </div>
 
@@ -121,7 +126,7 @@
       <div class="lancamento-dialogo__duas">
         <div class="flux-campo">
           <label for="lancamento-conta">Conta</label>
-          <div class="flux-entrada" [class.flux-entrada--invalida]="erro('conta') !== null">
+          <div class="flux-entrada" [class.flux-entrada--invalida]="erro('conta') !== null" [class.flux-entrada--travada]="importado">
             <select id="lancamento-conta" formControlName="conta" [attr.aria-invalid]="erro('conta') !== null ? 'true' : null" [attr.aria-describedby]="erro('conta') !== null ? 'lancamento-conta-erro' : null">
               <option [ngValue]="null" disabled>Escolha</option>
               @for (conta of contasAtivas; track conta.id) {

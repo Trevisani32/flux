@@ -110,6 +110,8 @@ export class LancamentoDialogo {
   readonly limite = dataLimite(this.dados.hoje);
   readonly contasAtivas = this.dados.contas.ativas;
   readonly somenteLeitura = this.item?.somenteLeitura ?? false;
+  /** Importado (decisão 29): tipo, valor, data e conta travados; excluir o ignora (decisão 30). */
+  readonly importado = this.item?.origem === 'IMPORTADO';
   /** No item só leitura: a conta arquivada que trava o item. */
   readonly contaArquivada = this.dados.contas.arquivadas
     .find((conta) => conta.id === this.item?.contaId || conta.id === this.item?.contaDestinoId)?.nome ?? null;
@@ -147,6 +149,11 @@ export class LancamentoDialogo {
   private salvouAlgum = false;
 
   constructor() {
+    if (this.importado) {
+      this.formulario.controls.valor.disable();
+      this.formulario.controls.data.disable();
+      this.formulario.controls.conta.disable();
+    }
     const campos: CampoDoLancamento[] = ['valor', 'data', 'descricao', 'conta', 'categoria', 'origem', 'destino', 'observacao'];
     for (const campo of campos) {
       const controle: AbstractControl = this.formulario.controls[campo];
@@ -166,8 +173,11 @@ export class LancamentoDialogo {
     });
   }
 
-  /** Na edição, lançamento não vira transferência nem o contrário (decisão 15). */
+  /** Na edição, lançamento não vira transferência nem o contrário (decisão 15); o importado não troca de tipo. */
   tipoTravado(tipo: TipoDoFormulario): boolean {
+    if (this.importado) {
+      return this.item?.tipo !== tipo;
+    }
     return this.item !== null && (this.item.tipo === 'TRANSFERENCIA') !== (tipo === 'TRANSFERENCIA');
   }
 
@@ -278,23 +288,39 @@ export class LancamentoDialogo {
       return;
     }
     const transferencia = item.tipo === 'TRANSFERENCIA';
+    const importado = this.importado;
     const paragrafo: TrechoDeTexto[] = transferencia
       ? ['Os dois lados saem do Flux: a saída de ', { forte: valorComSinal(item) },
         ` de ${item.contaNome} e a entrada em ${item.contaDestinoNome}, em ${dataCurta(item.data)}.`]
-      : [{ forte: valorComSinal(item) }, ` em ${dataCurta(item.data)}, em ${item.contaNome}. O saldo da conta muda na hora.`];
+      : importado
+        ? [{ forte: valorComSinal(item) }, ` em ${dataCurta(item.data)}, em ${item.contaNome}. Ele sai da lista e do saldo e não volta `
+          + 'se você importar o extrato de novo.']
+        : [{ forte: valorComSinal(item) }, ` em ${dataCurta(item.data)}, em ${item.contaNome}. O saldo da conta muda na hora.`];
     abrirConfirmacao(this.dialogo, {
       titulo: transferencia ? 'Excluir a transferência?' : `Excluir ${item.descricao}?`,
       icone: 'lixeira',
       perigo: true,
-      paragrafos: [paragrafo, [{ forte: 'Não dá para desfazer.' }]],
+      paragrafos: [paragrafo, importado ? ['Dá para restaurar depois, em Importação, nos excluídos da importação.']
+        : [{ forte: 'Não dá para desfazer.' }]],
       confirmar: transferencia ? 'Excluir transferência' : 'Excluir lançamento',
       falha: 'Não foi possível excluir. Tente novamente.',
       acao: () => transferencia ? this.servico.excluirTransferencia(item.id) : this.servico.excluirLancamento(item.id),
     }).subscribe((excluido) => {
-      if (excluido === true) {
-        this.snackBar.open(transferencia ? 'Transferência excluída.' : 'Lançamento excluído.', 'Fechar', { duration: 4000 });
-        this.referencia.close('excluido');
+      if (excluido !== true) {
+        return;
       }
+      if (importado) {
+        // "Desfazer" restaura com a categoria que ele tinha (decisão 31); as telas recarregam pelo restaurado$.
+        this.snackBar.open('Lançamento excluído.', 'Desfazer', { duration: 8000 }).onAction().subscribe(() => {
+          this.servico.restaurarLancamento(item.id, item.categoriaId).subscribe({
+            next: () => this.snackBar.open('Lançamento restaurado.', 'Fechar', { duration: 4000 }),
+            error: () => this.snackBar.open('Não foi possível restaurar. Tente em Importação.', 'Fechar', { duration: 6000 }),
+          });
+        });
+      } else {
+        this.snackBar.open(transferencia ? 'Transferência excluída.' : 'Lançamento excluído.', 'Fechar', { duration: 4000 });
+      }
+      this.referencia.close('excluido');
     });
   }
 

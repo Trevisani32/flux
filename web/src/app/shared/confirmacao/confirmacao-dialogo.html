@@ -34,7 +34,7 @@
       <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem" />
     }
     <div class="confirmacao__acoes">
-      <button mat-stroked-button type="button" [disabled]="enviando()" (click)="cancelar()">Cancelar</button>
+      <button mat-stroked-button type="button" [disabled]="enviando()" (click)="cancelar()">{{ dados.cancelar ?? 'Cancelar' }}</button>
       <button mat-flat-button type="button" [class.flux-botao-perigo-cheio]="dados.perigo" [disabled]="enviando()" (click)="confirmar()">{{ dados.confirmar }}</button>
     </div>
   </div>

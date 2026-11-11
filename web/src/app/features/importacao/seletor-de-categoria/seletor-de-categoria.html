@@ -1,0 +1,22 @@
+<form class="seletor" [formGroup]="formulario" (ngSubmit)="aplicar()">
+  <div class="seletor__cabecalho">
+    <h2 mat-dialog-title class="seletor__titulo">Categoria de {{ dados.descricao }}</h2>
+    <p class="seletor__texto">{{ dados.receita ? 'Receita' : 'Despesa' }} de <app-valor [valor]="dados.valor" /> em {{ dia }}. Só aparecem as categorias de {{ dados.receita ? 'receita' : 'despesa' }}.</p>
+  </div>
+  <fieldset class="seletor__opcoes">
+    <legend class="flux-visualmente-oculto">Categoria</legend>
+    <label class="seletor__opcao seletor__opcao--sem"><input type="radio" name="categoria" formControlName="categoria" [value]="null" />Sem categoria</label>
+    @for (opcao of dados.opcoes; track opcao.id) {
+      <label class="seletor__opcao" [class.seletor__opcao--sub]="opcao.sub"><input type="radio" name="categoria" formControlName="categoria" [value]="opcao.id" />{{ opcao.nome }}</label>
+    }
+  </fieldset>
+  <div class="seletor__rodape">
+    @if (dados.iguais > 0) {
+      <label class="seletor__iguais"><input type="checkbox" class="flux-caixa" formControlName="usarNasIguais" />{{ textoDasIguais() }}</label>
+    }
+    <div class="seletor__acoes">
+      <button mat-stroked-button type="button" (click)="cancelar()">Cancelar</button>
+      <button mat-flat-button type="submit">Aplicar</button>
+    </div>
+  </div>
+</form>

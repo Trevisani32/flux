@@ -23,7 +23,7 @@ function item(parcial: Partial<ItemDaLista>): ItemDaLista {
   return {
     tipo: 'DESPESA', id: 10, data: '2026-10-06', descricao: 'Mercado Bom Preço', valor: -287.43, observacao: null,
     contaId: 1, contaNome: 'Banco Horizonte', categoriaId: 2, categoriaNome: 'Mercado', categoriaMaeNome: 'Alimentação',
-    categoriaArquivada: false, contaDestinoId: null, contaDestinoNome: null, direcao: null, futuro: false, somenteLeitura: false,
+    categoriaArquivada: false, contaDestinoId: null, contaDestinoNome: null, direcao: null, futuro: false, somenteLeitura: false, origem: 'MANUAL', descricaoBanco: null,
     ...parcial,
   };
 }
@@ -69,7 +69,8 @@ describe('Lancamentos', () => {
 
   function criar(parametros: Params, resposta: () => Observable<ListaDoMes> = () => of(outubro), listaDeContas: ListaDeContas = contas) {
     const url = new BehaviorSubject<ParamMap>(convertToParamMap(parametros));
-    const servico = { listar: vi.fn(resposta), ultimaConta: null as number | null };
+    const restaurado = new Subject<void>();
+    const servico = { listar: vi.fn(resposta), ultimaConta: null as number | null, restaurado$: restaurado.asObservable() };
     // Um Subject por diálogo aberto: fechamentos[n] fecha o n-ésimo.
     const fechamentos: Subject<unknown>[] = [];
     const dialogo = { open: vi.fn(() => {
@@ -94,7 +95,7 @@ describe('Lancamentos', () => {
     fixture.detectChanges();
     const elemento = fixture.nativeElement as HTMLElement;
     const atualizar = () => fixture.detectChanges();
-    return { elemento, atualizar, servico, dialogo, fechamentos, navegar, url };
+    return { elemento, atualizar, servico, dialogo, fechamentos, navegar, url, restaurado };
   }
 
   function textos(elemento: HTMLElement, seletor: string): string[] {
@@ -213,6 +214,13 @@ describe('Lancamentos', () => {
     fechamentos[1].next('salvo');
     expect(servico.listar).toHaveBeenCalledTimes(2);
     fechamentos[0].next(undefined);
+    expect(servico.listar).toHaveBeenCalledTimes(2);
+  });
+
+  it('um importado restaurado pelo aviso curto recarrega a lista, e "Importar" leva à importação (Fatia 04a)', () => {
+    const { elemento, servico, restaurado } = criar({ mes: '2026-10' });
+    expect(elemento.querySelector('.cabecalho__acoes a[href="/importacao"]')?.textContent?.trim()).toBe('Importar');
+    restaurado.next();
     expect(servico.listar).toHaveBeenCalledTimes(2);
   });
 });

@@ -199,3 +199,83 @@ test('o Início mostra o mês e os últimos lançamentos', async ({ page }) => {
     expect(await semRolagemHorizontal(page)).toBe(true);
   }
 });
+
+// Fatia 04a: a importação, com o mesmo usuário da jornada (o e2e já faz 8 dos 10 cadastros por
+// hora). O OFX é fictício e nasce na memória: o .gitignore não deixa arquivo .ofx fora dos
+// fixtures do backend (decisão 42). As linhas são de hoje, a data do saldo inicial da conta nova.
+function extratoDeHoje(): Buffer {
+  const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()).replaceAll('-', '');
+  const transacao = (fitid: string, valor: string, memo: string) =>
+    `<STMTTRN><TRNTYPE>OTHER<DTPOSTED>${hoje}000000[-3:BRT]<TRNAMT>${valor}<FITID>${fitid}<MEMO>${memo}</STMTTRN>\n`;
+  return Buffer.from('OFXHEADER:100\nDATA:OFXSGML\nVERSION:102\nCHARSET:1252\n\n<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><CURDEF>BRL\n'
+    + '<BANKACCTFROM><BANKID>0341<ACCTID>00000-0<ACCTTYPE>CHECKING</BANKACCTFROM>\n<BANKTRANLIST>\n'
+    + transacao('e2e-1', '-6.00', 'CAFE DA ESQUINA') + transacao('e2e-2', '-6.00', 'CAFE DA ESQUINA')
+    + transacao('e2e-3', '250.00', 'PIX RECEBIDO MARIA') + '</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>\n', 'utf8');
+}
+
+async function escolherOExtrato(page: Page): Promise<void> {
+  await irPeloMenu(page, 'Importação');
+  await expect(page.getByRole('heading', { name: 'Importação', level: 1 })).toBeVisible();
+  await page.getByLabel('Conta', { exact: true }).selectOption({ label: 'Conta Itaú' });
+  await page.locator('#importacao-arquivo').setInputFiles({ name: 'extrato.ofx', mimeType: 'application/x-ofx', buffer: extratoDeHoje() });
+}
+
+test('importa um OFX: revisão, categoria nas linhas iguais, resultado e a lista', async ({ page }) => {
+  await entrar(page);
+  await irPeloMenu(page, 'Contas');
+  await novaConta(page, 'Conta Itaú', 'Conta corrente', '0');
+  await escolherOExtrato(page);
+
+  await expect(page.getByRole('heading', { name: 'Revisar importação', level: 1 })).toBeVisible();
+  await expect(page.locator('.revisao__nome-do-grupo')).toHaveText(['Novas · 3']);
+  await page.getByRole('button', { name: 'Categoria de CAFE DA ESQUINA: Sem categoria' }).first().click();
+  const seletor = page.getByRole('dialog');
+  await seletor.getByLabel('Restaurante', { exact: true }).check();
+  await expect(seletor.getByLabel('Usar também na outra linha com a mesma descrição')).toBeChecked();
+  await seletor.getByRole('button', { name: 'Aplicar' }).click();
+  await expect(seletor).toBeHidden();
+  await expect(page.locator('.revisao__categoria')).toHaveText(['Sem categoria', 'Alimentação › Restaurante', 'Alimentação › Restaurante']);
+  if (!ehDesktop(page)) {
+    expect(await semRolagemHorizontal(page)).toBe(true);
+  }
+  await page.getByRole('button', { name: 'Importar 3 lançamentos' }).click();
+
+  await expect(page.getByRole('heading', { name: '3 lançamentos importados em Conta Itaú', level: 2 })).toBeVisible();
+  await expect(page.locator('.importacao__texto-pronto').last()).toHaveText('Saldo de hoje de Conta Itaú: R$ 238,00');
+  await page.getByRole('button', { name: 'Ver lançamentos' }).click();
+  await expect(page.getByRole('heading', { name: 'Lançamentos', level: 1 })).toBeVisible();
+  await expect(linha(page, 'CAFE DA ESQUINA')).toHaveCount(2);
+});
+
+test('reimportar avisa e não duplica; excluir o importado o ignora, e desfazer a importação apaga tudo', async ({ page }) => {
+  await entrar(page);
+  await escolherOExtrato(page);
+  await expect(page.getByText('O que já entrou aparece como "Já importada".')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Nada novo neste arquivo' })).toBeVisible();
+  await page.getByRole('button', { name: 'Escolher outro arquivo' }).click();
+
+  await irPeloMenu(page, 'Lançamentos');
+  await linha(page, 'PIX RECEBIDO MARIA').click();
+  const dialogo = page.getByRole('dialog');
+  await expect(dialogo).toContainText('Tipo, valor, data e conta vêm do extrato e não mudam.');
+  await expect(dialogo.getByLabel('Valor', { exact: true })).toBeDisabled();
+  await dialogo.getByRole('button', { name: 'Excluir' }).click();
+  const confirmacao = page.getByRole('dialog').filter({ hasText: 'Excluir PIX RECEBIDO MARIA?' });
+  await expect(confirmacao).toContainText('não volta se você importar o extrato de novo');
+  await confirmacao.getByRole('button', { name: 'Excluir lançamento' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(linha(page, 'PIX RECEBIDO MARIA')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Desfazer', exact: true }).click();
+  await expect(linha(page, 'PIX RECEBIDO MARIA')).toHaveCount(1);
+
+  await irPeloMenu(page, 'Importação');
+  await page.getByRole('button', { name: 'Ações da importação extrato.ofx' }).click();
+  await page.getByRole('menuitem', { name: 'Desfazer importação' }).click();
+  const desfazer = page.getByRole('dialog').filter({ hasText: 'Desfazer a importação de extrato.ofx?' });
+  await expect(desfazer).toContainText('Os 3 lançamentos que ela trouxe saem de Conta Itaú. O saldo muda na hora.');
+  await desfazer.getByRole('button', { name: 'Desfazer importação' }).click();
+  await expect(page.locator('.importacao__item--desfeita')).toContainText('extrato.ofx');
+  if (!ehDesktop(page)) {
+    expect(await semRolagemHorizontal(page)).toBe(true);
+  }
+});

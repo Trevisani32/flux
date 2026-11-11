@@ -167,6 +167,12 @@ describe('Contas', () => {
     expect(navegar).toHaveBeenCalledWith(['/lancamentos'], { queryParams: { conta: 3 } });
   });
 
+  it('Importar extrato abre a importação já com a conta (Fatia 04a)', () => {
+    const { componente, navegar } = criar();
+    componente.importarExtrato(lista.ativas[2]);
+    expect(navegar).toHaveBeenCalledWith(['/importacao'], { queryParams: { conta: 3 } });
+  });
+
   it('o bloqueio da exclusão leva a arquivar a conta; na arquivada, só fecha', () => {
     const { componente, dialogo, fechamentos } = criar();
     componente.excluir(lista.ativas[0]);

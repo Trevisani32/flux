@@ -17,6 +17,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 @RestControllerAdvice
@@ -78,6 +79,15 @@ public class TratadorGlobalDeErros extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(corpo);
     }
 
+    /**
+     * Pedido que não é multipart num endpoint de arquivo (o 413 do arquivo grande demais tem
+     * tratador próprio, mais específico, no ResponseEntityExceptionHandler).
+     */
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<ProblemDetail> trataMultipart(MultipartException ex) {
+        return resposta(HttpStatus.BAD_REQUEST, "Requisição inválida", "Envie o arquivo do extrato.");
+    }
+
     @ExceptionHandler(LimiteExcedidoException.class)
     public ResponseEntity<ProblemDetail> trataLimiteExcedido(LimiteExcedidoException ex) {
         ProblemDetail corpo = ProblemDetail.forStatusAndDetail(
@@ -107,6 +117,7 @@ public class TratadorGlobalDeErros extends ResponseEntityExceptionHandler {
             case 403 -> definirMensagem(corpo, "Acesso negado", "Você não tem permissão para acessar este recurso.");
             case 404 -> definirMensagem(corpo, "Recurso não encontrado", "O recurso solicitado não existe.");
             case 405 -> definirMensagem(corpo, "Método não permitido", "Método HTTP não suportado para este recurso.");
+            case 413 -> definirMensagem(corpo, "Arquivo grande demais", "O arquivo pode ter no máximo 5 MB.");
             case 415 -> definirMensagem(corpo, "Tipo de conteúdo não suportado", "Envie o corpo como application/json.");
             default -> definirMensagem(corpo, "Erro na requisição", "A requisição não pôde ser processada.");
         }

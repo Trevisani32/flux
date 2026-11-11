@@ -1,5 +1,6 @@
 <app-cabecalho-pagina [titulo]="titulo()" [subtitulo]="hoje">
   @if (temContaAtiva()) {
+    <a mat-stroked-button routerLink="/importacao"><app-icone nome="importar" [tamanho]="18" />Importar extrato</a>
     <button mat-flat-button type="button" (click)="abrir(null)"><app-icone nome="mais" [tamanho]="18" [traco]="2.2" />Novo lançamento</button>
   }
 </app-cabecalho-pagina>

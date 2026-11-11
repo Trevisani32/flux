@@ -13,6 +13,7 @@
     }
   }
   @if (temContaAtiva()) {
+    <a mat-stroked-button class="flux-so-desktop" routerLink="/importacao"><app-icone nome="importar" [tamanho]="18" />Importar</a>
     <button mat-flat-button type="button" (click)="abrir(null)"><app-icone nome="mais" [tamanho]="18" [traco]="2.2" />Novo lançamento</button>
   }
 </app-cabecalho-pagina>
@@ -33,6 +34,7 @@
           <app-estado-vazio icone="lancamentos" [titulo]="'Nenhum lançamento em ' + nomeDoMes(lista.mes).split(' ')[0]" texto="Registre uma receita, uma despesa ou uma transferência com data neste mês.">
             @if (temContaAtiva()) {
               <button mat-stroked-button type="button" (click)="abrir(null)">Novo lançamento</button>
+              <a mat-stroked-button routerLink="/importacao">Importar extrato</a>
             }
           </app-estado-vazio>
         } @else {

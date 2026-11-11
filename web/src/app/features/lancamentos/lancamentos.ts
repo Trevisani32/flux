@@ -91,6 +91,8 @@ export class Lancamentos {
       this.carregarLista();
     });
     this.buscas.pipe(debounceTime(300), takeUntilDestroyed()).subscribe((busca) => this.navegar({ ...this.filtros(), busca: busca.trim() }));
+    // O "Desfazer" de um importado excluído volta depois que o diálogo fechou (Fatia 04a).
+    this.servico.restaurado$.pipe(takeUntilDestroyed()).subscribe(() => this.carregarLista());
     this.carregarApoio();
   }
 

@@ -1,0 +1,134 @@
+@let atual = previa();
+@if (atual.outraConta; as outra) {
+  @if (!continuarAqui()) {
+    <app-alerta tipo="atencao" icone="alerta" [titulo]="'Este extrato é da conta final ' + outra.finalDaConta + ', que você já importou em ' + outra.contaNome" papel="alert">
+      <p class="flux-alerta__texto">Se a conta escolhida estiver errada, troque antes de importar.</p>
+      <div class="flux-alerta__acoes">
+        <button mat-stroked-button type="button" (click)="trocarConta.emit(outra.contaId)">Importar em {{ outra.contaNome }}</button>
+        <button type="button" class="revisao__link" (click)="continuarAqui.set(true)">Continuar em {{ atual.contaNome }}</button>
+      </div>
+    </app-alerta>
+  }
+}
+@if (atual.arquivoRepetido; as repetido) {
+  <app-alerta [tipo]="repetido.mesmaConta ? 'info' : 'atencao'" [icone]="repetido.mesmaConta ? 'info' : 'alerta'" [titulo]="'Este arquivo já foi importado em ' + dataHoraCurta(repetido.importadoEm) + ', em ' + repetido.contaNome">
+    <p class="flux-alerta__texto">{{ repetido.mesmaConta ? 'O que já entrou aparece como "Já importada".' : 'Confira se a conta escolhida está certa.' }}</p>
+  </app-alerta>
+}
+
+<section class="flux-card revisao__faixa" aria-label="Resumo do arquivo">
+  <div><span class="revisao__numero">{{ contagens().paraImportar }}</span><span class="revisao__rotulo">Para importar</span><span class="revisao__nota">{{ notaParaImportar() }}</span></div>
+  <div><span class="revisao__numero">{{ contagens().jaImportadas }}</span><span class="revisao__rotulo">Já importadas</span><span class="revisao__nota">ficam de fora sozinhas</span></div>
+  <div><span class="revisao__numero">{{ contagens().deFora }}</span><span class="revisao__rotulo">Ficam de fora</span><span class="revisao__nota">antes do saldo inicial, saldo, zero ou ilegível</span></div>
+</section>
+
+<div class="revisao__grupos flux-so-celular" role="group" aria-label="Grupo">
+  <button type="button" class="revisao__chip" [attr.aria-pressed]="grupoNoCelular() === 'importar'" (click)="mostrarNoCelular('importar')">Para importar <span class="revisao__qtd">{{ contagens().paraImportar }}</span></button>
+  @if (jaImportadas().length > 0) {
+    <button type="button" class="revisao__chip" [attr.aria-pressed]="grupoNoCelular() === 'ja'" (click)="mostrarNoCelular('ja')">Já importadas <span class="revisao__qtd">{{ jaImportadas().length }}</span></button>
+  }
+  <button type="button" class="revisao__chip" [attr.aria-pressed]="grupoNoCelular() === 'fora'" (click)="mostrarNoCelular('fora')">Ficam de fora <span class="revisao__qtd">{{ deFora().length }}</span></button>
+</div>
+
+@if (contagens().paraImportar === 0) {
+  <app-estado-vazio [class.revisao__oculto-no-celular]="grupoNoCelular() !== 'importar'" icone="sucesso" titulo="Nada novo neste arquivo" [texto]="'As ' + atual.linhas.length + ' linhas já foram importadas ou ficam de fora.'">
+    <button mat-stroked-button type="button" (click)="cancelar.emit()">Escolher outro arquivo</button>
+  </app-estado-vazio>
+} @else {
+  <section class="flux-card revisao__importar" [class.revisao__oculto-no-celular]="grupoNoCelular() !== 'importar'" aria-labelledby="revisao-importar">
+    <div class="revisao__cabecalho">
+      <div>
+        <h2 class="revisao__titulo" id="revisao-importar">Para importar</h2>
+        <p class="revisao__explica">Desmarque o que não quer lançar e escolha as categorias. Depois, só a data e o valor não mudam.</p>
+      </div>
+      @if (atual.formato === 'CSV') {
+        <button type="button" class="revisao__link" (click)="editarPerfil.emit()">Editar perfil do CSV</button>
+      }
+    </div>
+    <div class="revisao__colunas flux-so-desktop" aria-hidden="true">
+      <span></span><span>Data</span><span>Descrição</span><span>Categoria</span><span class="revisao__a-direita">Valor</span>
+    </div>
+    <label class="revisao__todas"><input type="checkbox" class="flux-caixa" [checked]="todasMarcadas()" [indeterminate]="algumaMarcada() && !todasMarcadas()" (change)="alternarTodas()" />Marcar todas as linhas para importar</label>
+    @for (grupo of [{ chave: 'NOVA', titulo: 'Novas', nota: temNovaFutura() ? 'a futura vem desmarcada' : null, linhas: novas() }, { chave: 'PROVAVEL', titulo: 'Prováveis duplicadas', nota: 'vêm desmarcadas: marque só se não for o mesmo lançamento', linhas: provaveis() }]; track grupo.chave) {
+      @if (grupo.linhas.length > 0) {
+        <div class="revisao__grupo">
+          <span class="revisao__nome-do-grupo">{{ grupo.titulo }} · {{ grupo.linhas.length }}</span>
+          @if (grupo.nota; as nota) {
+            <span class="revisao__nota-do-grupo">{{ nota }}</span>
+          }
+          <button type="button" class="revisao__link" (click)="alternarGrupo(grupo.chave === 'NOVA' ? 'NOVA' : 'PROVAVEL')">{{ grupoInteiroMarcado(grupo.chave === 'NOVA' ? 'NOVA' : 'PROVAVEL') ? 'Desmarcar todas' : 'Marcar todas' }}</button>
+        </div>
+        <ul class="revisao__lista">
+          @for (item of grupo.linhas; track item.linha.linha) {
+            @if (item.dia; as dia) {
+              <li class="revisao__dia flux-so-celular" aria-hidden="true">{{ dia }}</li>
+            }
+            <li class="revisao__linha" [class.revisao__linha--desmarcada]="!marcada(item.linha)">
+              <label class="revisao__caixa"><input type="checkbox" class="flux-caixa" [checked]="marcada(item.linha)" (change)="alternar(item.linha)" /><span class="revisao__leitor">Importar {{ item.linha.descricao }} de {{ dataDaLinha(item.linha) }}</span></label>
+              <span class="revisao__data flux-so-desktop">{{ dataDaLinha(item.linha) }}</span>
+              <span class="revisao__descricao">
+                <b>{{ item.linha.descricao }}</b>
+                <span class="revisao__meta">
+                  <span class="revisao__pilula" [class.revisao__pilula--provavel]="item.linha.situacao === 'PROVAVEL'">{{ rotulo(item.linha) }}</span>
+                  @if (item.linha.futuro) {
+                    <span class="revisao__pilula revisao__pilula--futuro"><app-icone nome="relogio" [tamanho]="11" [traco]="2.4" />Futuro</span>
+                    <span>Agendado no banco: marque se quiser lançar.</span>
+                  }
+                  @if (item.linha.situacao === 'PROVAVEL' && item.linha.parecido; as parecido) {
+                    <span>{{ fraseDoParecido(parecido) }}</span>
+                  }
+                </span>
+              </span>
+              <button type="button" class="revisao__categoria" [class.revisao__categoria--sem]="nomeDaCategoria(item.linha) === null" (click)="escolherCategoria(item.linha)" [attr.aria-label]="'Categoria de ' + item.linha.descricao + ': ' + (nomeDaCategoria(item.linha) ?? 'Sem categoria')"><span>{{ nomeDaCategoria(item.linha) ?? 'Sem categoria' }}</span><app-icone nome="baixo" [tamanho]="14" /></button>
+              <app-valor class="revisao__valor" [valor]="item.linha.valor" />
+            </li>
+          }
+        </ul>
+      }
+    }
+  </section>
+}
+
+@if (jaImportadas().length > 0) {
+  <section class="flux-card revisao__dobravel" [class.revisao__oculto-no-celular]="grupoNoCelular() !== 'ja'">
+    <button type="button" class="revisao__alternar" [attr.aria-expanded]="jaAbertas()" aria-controls="revisao-ja" (click)="jaAbertas.set(!jaAbertas())">Já importadas <span class="revisao__qtd">{{ jaImportadas().length }}</span><app-icone class="revisao__seta" nome="baixo" /></button>
+    @if (jaAbertas()) {
+      <div id="revisao-ja">
+        <p class="revisao__explica-grupo">{{ fraseDasOrigens(atual.origens) }}@if (jaImportadas().length > 3) { As 3 mais recentes:}</p>
+        <ul class="revisao__curta">
+          @for (linha of jaMaisRecentes(); track linha.linha) {
+            <li><span>{{ dataDaLinha(linha) }}</span><span class="revisao__curta-descricao">{{ linha.descricao }}</span><span class="revisao__pilula revisao__pilula--cinza">{{ rotulo(linha) }}</span><app-valor [valor]="linha.valor" /></li>
+          }
+        </ul>
+      </div>
+    }
+  </section>
+}
+@if (deFora().length > 0) {
+  <section class="flux-card revisao__dobravel" [class.revisao__oculto-no-celular]="grupoNoCelular() !== 'fora'">
+    <button type="button" class="revisao__alternar" [attr.aria-expanded]="foraAbertas()" aria-controls="revisao-fora" (click)="foraAbertas.set(!foraAbertas())">Ficam de fora <span class="revisao__qtd">{{ deFora().length }}</span><app-icone class="revisao__seta" nome="baixo" /></button>
+    @if (foraAbertas()) {
+      <div id="revisao-fora">
+        <p class="revisao__explica-grupo">Não entram e não dá para marcar.@if (temAntesDoSaldoInicial()) { A data do saldo inicial muda em Contas, se o extrato estiver certo e o saldo inicial, não.}</p>
+        <ul class="revisao__curta">
+          @for (linha of deFora(); track linha.linha) {
+            <li><span>{{ dataDaLinha(linha) }}</span><span class="revisao__curta-descricao">{{ linha.descricao ?? '—' }}</span><span class="revisao__pilula revisao__pilula--fora">{{ rotulo(linha) }}</span><app-valor [valor]="linha.valor" /></li>
+          }
+        </ul>
+      </div>
+    }
+  </section>
+} @else if (grupoNoCelular() === 'fora') {
+  <p class="revisao__nenhuma flux-so-celular">Nenhuma linha fica de fora.</p>
+}
+
+@if (contagens().paraImportar > 0) {
+  @if (erro(); as mensagem) {
+    <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível importar"><p class="flux-alerta__texto">{{ mensagem }}</p></app-alerta>
+  }
+  <div class="revisao__barra">
+    <span class="revisao__resumo"><b>{{ quantidadeMarcadas() }} de {{ contagens().paraImportar }}</b> marcadas. As desmarcadas, as já importadas e as de fora não entram.</span>
+    <button mat-stroked-button type="button" [disabled]="enviando()" (click)="cancelar.emit()">Cancelar</button>
+    <button mat-flat-button type="button" class="revisao__importar-botao" [disabled]="enviando() || !algumaMarcada()" (click)="confirmar()">{{ textoDoBotao() }}</button>
+  </div>
+}

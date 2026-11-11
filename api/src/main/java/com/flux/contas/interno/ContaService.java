@@ -16,6 +16,7 @@ import com.flux.compartilhado.erro.CampoInvalidoException;
 import com.flux.compartilhado.erro.RecursoNaoEncontradoException;
 import com.flux.compartilhado.erro.RegraDeNegocioException;
 import com.flux.compartilhado.texto.TextoComparavel;
+import com.flux.contas.LimpezaDaConta;
 import com.flux.contas.MovimentoDasContas;
 import com.flux.contas.UsoDaConta;
 import com.flux.contas.interno.dto.ContaResponse;
@@ -35,13 +36,15 @@ public class ContaService implements SmartInitializingSingleton {
     private final ContaRepository repositorio;
     private final ObjectProvider<MovimentoDasContas> movimento;
     private final ObjectProvider<UsoDaConta> usos;
+    private final ObjectProvider<LimpezaDaConta> limpezas;
     private final Clock clock;
 
     public ContaService(ContaRepository repositorio, ObjectProvider<MovimentoDasContas> movimento,
-                        ObjectProvider<UsoDaConta> usos, Clock clock) {
+                        ObjectProvider<UsoDaConta> usos, ObjectProvider<LimpezaDaConta> limpezas, Clock clock) {
         this.repositorio = repositorio;
         this.movimento = movimento;
         this.usos = usos;
+        this.limpezas = limpezas;
         this.clock = clock;
     }
 
@@ -157,6 +160,8 @@ public class ContaService implements SmartInitializingSingleton {
             throw new RegraDeNegocioException("Esta conta não pode ser excluída porque tem " + uso
                     + ". Arquive a conta para tirá-la do saldo total e dos seletores.", "CONTA_EM_USO").com("uso", uso);
         }
+        // Sem uso: o que não prende a conta sai antes dela (os importados ignorados, Fatia 04a).
+        limpezas.orderedStream().forEach(limpeza -> limpeza.antesDeExcluir(usuarioId, id));
         repositorio.delete(conta);
     }
 

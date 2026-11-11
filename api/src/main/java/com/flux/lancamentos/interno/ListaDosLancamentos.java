@@ -29,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * A lista do mês, os últimos lançamentos e o item de cada resposta. O mês tem no máximo
  * 1.000 lançamentos (decisão 34): os filtros, os totais e o saldo do dia são feitos em
- * memória, sobre os lançamentos do mês.
+ * memória, sobre os lançamentos do mês. Os importados ignorados ficam de fora (Fatia 04a).
  */
 @Service
 public class ListaDosLancamentos {
@@ -53,7 +53,8 @@ public class ListaDosLancamentos {
     public ListaDoMesResponse listar(Long usuarioId, FiltroDaLista filtro) {
         LocalDate hoje = LocalDate.now(clock);
         YearMonth mes = filtro.mes() == null ? YearMonth.from(hoje) : filtro.mes();
-        List<Lancamento> doMes = repositorio.findAllByUsuarioIdAndDataBetween(usuarioId, mes.atDay(1), mes.atEndOfMonth());
+        List<Lancamento> doMes = repositorio.findAllByUsuarioIdAndDataBetweenAndIgnoradoEmIsNull(usuarioId, mes.atDay(1),
+                mes.atEndOfMonth());
         List<CategoriaResumo> todasAsCategorias = categorias.listar(usuarioId);
         Montagem montagem = new Montagem(contas.listar(usuarioId), todasAsCategorias, hoje);
         Set<Long> categoriasDoFiltro = filtro.categoriaId() == null ? Set.of()
@@ -103,7 +104,8 @@ public class ListaDosLancamentos {
     @Transactional(readOnly = true)
     public List<ItemDaLista> ultimos(Long usuarioId) {
         LocalDate hoje = LocalDate.now(clock);
-        List<Lancamento> recentes = repositorio.findTop10ByUsuarioIdAndDataLessThanEqualOrderByDataDescIdDesc(usuarioId, hoje);
+        List<Lancamento> recentes =
+                repositorio.findTop10ByUsuarioIdAndDataLessThanEqualAndIgnoradoEmIsNullOrderByDataDescIdDesc(usuarioId, hoje);
         Montagem montagem = montagem(usuarioId);
         Map<Long, List<Lancamento>> lados = ladosDasTransferencias(usuarioId, recentes);
         List<ItemDaLista> itens = new ArrayList<>();

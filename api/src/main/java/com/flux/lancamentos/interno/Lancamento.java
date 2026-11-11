@@ -3,6 +3,7 @@ package com.flux.lancamentos.interno;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Objects;
 
 import com.flux.compartilhado.texto.TextoComparavel;
 import jakarta.persistence.Column;
@@ -67,6 +68,20 @@ public class Lancamento {
     @Column(name = "atualizado_em", nullable = false)
     private Instant atualizadoEm;
 
+    /** Só no importado (ADR 0006): a importação, a chave de idempotência e a descrição do banco. */
+    @Column(name = "importacao_id")
+    private Long importacaoId;
+
+    @Column(name = "chave_importacao", length = 300)
+    private String chaveImportacao;
+
+    @Column(name = "descricao_banco", length = 255)
+    private String descricaoBanco;
+
+    /** Importado excluído (decisão 30): fica fora da lista e do saldo, e a chave continua. */
+    @Column(name = "ignorado_em")
+    private Instant ignoradoEm;
+
     protected Lancamento() {
     }
 
@@ -92,8 +107,52 @@ public class Lancamento {
         this.atualizadoEm = agora;
     }
 
+    /**
+     * Linha de extrato confirmada na importação: receita se o valor é positivo, despesa se é
+     * negativo (ADR 0002). A descrição do banco é a mesma descrição, já sem espaços sobrando.
+     */
+    public static Lancamento importado(Long usuarioId, Long contaId, Long importacaoId, LocalDate data, BigDecimal valor,
+                                       String descricao, String chave, Long categoriaId, Instant agora) {
+        Lancamento lancamento = new Lancamento(usuarioId, null, agora);
+        lancamento.origem = OrigemLancamento.IMPORTADO;
+        lancamento.importacaoId = importacaoId;
+        lancamento.chaveImportacao = chave;
+        lancamento.descricaoBanco = descricao;
+        lancamento.alterar(valor.signum() > 0 ? TipoLancamento.RECEITA : TipoLancamento.DESPESA, contaId, data, descricao, valor,
+                categoriaId, null, agora);
+        return lancamento;
+    }
+
+    /**
+     * No importado só mudam descrição, categoria e observação (decisão 29). Sem nenhuma mudança,
+     * {@code atualizado_em} fica como está: abrir e salvar não conta como "editado" no desfazer.
+     */
+    public void alterarImportado(String descricao, Long categoriaId, String observacao, Instant agora) {
+        if (Objects.equals(this.descricao, descricao) && Objects.equals(this.categoriaId, categoriaId)
+                && Objects.equals(this.observacao, observacao)) {
+            return;
+        }
+        alterar(tipo, contaId, data, descricao, valor, categoriaId, observacao, agora);
+    }
+
+    /** Excluir um importado (decisão 30): ignora e tira a categoria; não mexe em atualizado_em. */
+    public void ignorar(Instant agora) {
+        this.ignoradoEm = agora;
+        this.categoriaId = null;
+    }
+
+    /** Volta para a lista, com a categoria dada (ou sem nenhuma). */
+    public void restaurar(Long categoriaId) {
+        this.ignoradoEm = null;
+        this.categoriaId = categoriaId;
+    }
+
     public boolean transferencia() {
         return tipo == TipoLancamento.TRANSFERENCIA;
+    }
+
+    public boolean importado() {
+        return origem == OrigemLancamento.IMPORTADO;
     }
 
     public Long getId() {
@@ -142,5 +201,25 @@ public class Lancamento {
 
     public Long getTransferenciaId() {
         return transferenciaId;
+    }
+
+    public Long getImportacaoId() {
+        return importacaoId;
+    }
+
+    public String getChaveImportacao() {
+        return chaveImportacao;
+    }
+
+    public String getDescricaoBanco() {
+        return descricaoBanco;
+    }
+
+    public Instant getIgnoradoEm() {
+        return ignoradoEm;
+    }
+
+    public Instant getCriadoEm() {
+        return criadoEm;
     }
 }

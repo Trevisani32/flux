@@ -9,6 +9,9 @@ import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import com.flux.categorias.CategoriaResumo;
 import com.flux.categorias.CategoriasConsulta;
@@ -18,7 +21,7 @@ import com.flux.contas.ContaResumo;
 import com.flux.contas.ContasConsulta;
 import org.springframework.stereotype.Component;
 
-/** Regras comuns a lançamentos e transferências: travas, conta, data, categoria e limites. */
+/** Regras comuns a lançamentos, transferências e importados: travas, conta, data, categoria e limites. */
 @Component
 public class RegrasDosLancamentos {
 
@@ -86,12 +89,18 @@ public class RegrasDosLancamentos {
 
     /** Conta de um item que já existe: arquivada, o item fica só leitura (decisões 23 e 28). */
     void exigirContaAtiva(Long usuarioId, Long contaId, String item) {
+        exigirContaAtivaPara(usuarioId, contaId, "editar ou excluir " + item);
+    }
+
+    /** "Poupança está arquivada. Reative a conta para restaurar este lançamento." Devolve a conta. */
+    ContaResumo exigirContaAtivaPara(Long usuarioId, Long contaId, String acao) {
         ContaResumo conta = contas.buscar(usuarioId, contaId)
                 .orElseThrow(() -> new IllegalStateException("Lançamento sem conta: " + contaId));
         if (conta.arquivada()) {
-            throw new RegraDeNegocioException(conta.nome() + " está arquivada. Reative a conta para editar ou excluir "
-                    + item + ".", "CONTA_ARQUIVADA");
+            throw new RegraDeNegocioException(conta.nome() + " está arquivada. Reative a conta para " + acao + ".",
+                    "CONTA_ARQUIVADA");
         }
+        return conta;
     }
 
     /**
@@ -127,6 +136,27 @@ public class RegrasDosLancamentos {
         if (repositorio.countByUsuarioId(usuarioId) + novos > LIMITE_TOTAL) {
             throw new RegraDeNegocioException("Você chegou ao limite de " + String.format(PT_BR, "%,d", LIMITE_TOTAL)
                     + " lançamentos.", "LIMITE_DE_LANCAMENTOS");
+        }
+    }
+
+    /**
+     * Importação (decisão 24): as linhas novas não podem passar do limite total nem do limite de
+     * nenhum mês. É tudo ou nada; os ignorados contam, porque são linhas guardadas.
+     */
+    void exigirLimitesDaImportacao(Long usuarioId, List<LocalDate> datas) {
+        if (repositorio.countByUsuarioId(usuarioId) + datas.size() > LIMITE_TOTAL) {
+            throw new RegraDeNegocioException("Esta importação passaria do limite de " + String.format(PT_BR, "%,d", LIMITE_TOTAL)
+                    + " lançamentos.", "LIMITE_DE_LANCAMENTOS");
+        }
+        Map<YearMonth, Long> porMes = new TreeMap<>(datas.stream().collect(Collectors.groupingBy(YearMonth::from, Collectors.counting())));
+        for (Map.Entry<YearMonth, Long> mes : porMes.entrySet()) {
+            YearMonth doMes = mes.getKey();
+            if (repositorio.countByUsuarioIdAndDataBetween(usuarioId, doMes.atDay(1), doMes.atEndOfMonth()) + mes.getValue()
+                    > LIMITE_POR_MES) {
+                throw new RegraDeNegocioException("Esta importação passaria do limite de " + String.format(PT_BR, "%,d", LIMITE_POR_MES)
+                        + " lançamentos em " + doMes.atDay(1).format(MES_E_ANO)
+                        + ". Desmarque linhas desse mês ou importe um período menor.", "LIMITE_DE_LANCAMENTOS");
+            }
         }
     }
 
