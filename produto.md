@@ -538,7 +538,7 @@ Ver [ADR 0005](decisoes/0005-cartao-fatura-parcelas.md).
 | 03b | Lançamentos manuais, transferências e saldo pelos lançamentos | Concluída |
 | 04a | Importação de extratos OFX e CSV: revisão, histórico, ignorar e desfazer | Concluída |
 | 04b | Regras de categorização: cadastro, sugestão na revisão da importação, "Aplicar regras" e "Criar regra" | Concluída |
-| 04c | Conversão de importados em transferência: pares, lado novo, desfazer e sugestão no resultado da importação | Implementada, aguardando publicação |
+| 04c | Conversão de importados em transferência: pares, lado novo, desfazer e sugestão no resultado da importação | Concluída |
 | 05 | Cartão de crédito: faturas e parcelamento | — |
 | 06 | Dashboard, relatórios e exportação dos dados | — |
 | 07 | Recorrências, orçamento e projeção de saldo | — |
