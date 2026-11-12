@@ -2,6 +2,7 @@ package com.flux.lancamentos.interno.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 import com.flux.lancamentos.interno.OrigemLancamento;
 import com.flux.lancamentos.interno.TipoLancamento;
@@ -21,7 +22,10 @@ import com.flux.lancamentos.interno.TipoLancamento;
  *   <li>{@code futuro}: data depois de hoje (ainda fora do saldo);</li>
  *   <li>{@code somenteLeitura}: alguma conta do item está arquivada (decisões 23 e 28);</li>
  *   <li>{@code origem}: MANUAL ou IMPORTADO; {@code descricaoBanco} só no importado, a descrição
- *       que veio do extrato (decisões 28 e 29).</li>
+ *       que veio do extrato (decisões 28 e 29);</li>
+ *   <li>{@code lados}: só na transferência, a saída e a entrada, cada uma com a conta, a data, a
+ *       origem, a descrição do extrato e a observação (Fatia 04c: a convertida tem um lado importado,
+ *       e os lados podem ter datas diferentes); nulo na receita e na despesa.</li>
  * </ul>
  */
 public record ItemDaLista(
@@ -43,5 +47,11 @@ public record ItemDaLista(
         boolean futuro,
         boolean somenteLeitura,
         OrigemLancamento origem,
-        String descricaoBanco) {
+        String descricaoBanco,
+        List<Lado> lados) {
+
+    /** Um lado da transferência. {@code descricaoBanco} só no importado. */
+    public record Lado(Long contaId, String contaNome, LocalDate data, OrigemLancamento origem, String descricaoBanco,
+                       String observacao) {
+    }
 }

@@ -12,7 +12,9 @@ import jakarta.validation.constraints.Size;
 
 /**
  * Corpo de POST /api/transferencias e PUT /api/transferencias/{id}. O valor chega positivo.
- * A descrição é opcional: vazia, a transferência grava "Transferência" (decisão 25).
+ * A descrição é opcional: vazia, a transferência grava "Transferência" (decisão 25). Na convertida
+ * (Fatia 04c, decisão 31), o PUT repete o valor, as contas e a data da saída, e só a descrição e a
+ * observação mudam, nos dois lados.
  */
 public record SalvarTransferenciaRequest(
         @NotNull(message = "Informe o valor.")

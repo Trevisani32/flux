@@ -86,6 +86,34 @@ export interface Escolha {
   readonly descricao: string | null;
 }
 
+/** Um lado de um par sugerido (Fatia 04c): `valor` com sinal. */
+export interface LadoSugerido {
+  readonly id: number;
+  readonly data: string;
+  readonly descricao: string;
+  readonly valor: number;
+  readonly contaId: number;
+  readonly contaNome: string;
+}
+
+/** Uma linha importada e o único par possível dela (Fatia 04c, decisão 35): nada se converte sozinho. */
+export interface ParSugerido {
+  readonly lancamento: LadoSugerido;
+  readonly par: LadoSugerido;
+}
+
+/**
+ * Um lançamento da importação numa transferência convertida (Fatia 04c, decisão 34): a data dele, a
+ * conta do outro lado e o tipo que o outro lado volta a ter quando o desfazer desfaz a conversão.
+ */
+export interface TransferenciaDaImportacao {
+  readonly data: string;
+  readonly contaId: number;
+  readonly contaNome: string;
+  readonly contaArquivada: boolean;
+  readonly tipo: 'RECEITA' | 'DESPESA';
+}
+
 /** Resposta de POST /api/importacoes. Sem nada gravado, `importacaoId` vem nulo. */
 export interface Resultado {
   readonly importacaoId: number | null;
@@ -98,6 +126,11 @@ export interface Resultado {
   readonly entraramPorOutra: number;
   readonly saldoDeHoje: number;
   readonly mesDaUltimaLinha: string | null;
+  /**
+   * Fatia 04c: as linhas gravadas com um só par possível. A API manda sempre; é opcional aqui porque os
+   * objetos de teste das fatias anteriores não o trazem.
+   */
+  readonly pares?: readonly ParSugerido[];
 }
 
 /** Um item do histórico (GET /api/importacoes). */
@@ -117,6 +150,8 @@ export interface Importacao {
   readonly editados: number;
   readonly excluidos: number;
   readonly desfeitaEm: string | null;
+  /** Fatia 04c: os lançamentos dela numa transferência convertida. A API manda sempre; opcional pelo mesmo motivo de `pares`. */
+  readonly transferencias?: readonly TransferenciaDaImportacao[];
 }
 
 export interface Excluido {

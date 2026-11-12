@@ -157,6 +157,38 @@ public class Lancamento {
         this.categoriaId = categoriaId;
     }
 
+    /**
+     * Fatia 04c (decisão 29): a receita ou despesa vira um lado da transferência. Data, valor, conta,
+     * observação, descrição do extrato e chave de importação ficam; a categoria sai e a descrição passa a
+     * ser a da transferência. O lado novo, lançado na conversão, não passa por aqui.
+     */
+    public void converterEmLado(Long transferenciaId, String descricaoDaTransferencia, Instant agora) {
+        this.transferenciaId = transferenciaId;
+        alterar(TipoLancamento.TRANSFERENCIA, contaId, data, descricaoDaTransferencia, valor, null, observacao, agora);
+    }
+
+    /**
+     * Fatia 04c (decisão 32): o lado sai da transferência e volta a ser receita ou despesa, pelo sinal,
+     * sem categoria. O importado volta com a descrição do extrato; o manual fica com a descrição que tem.
+     * Quem chama apaga o vínculo depois de gravar isto.
+     */
+    public void soltarDaTransferencia(Instant agora) {
+        this.transferenciaId = null;
+        alterar(valor.signum() > 0 ? TipoLancamento.RECEITA : TipoLancamento.DESPESA, contaId, data,
+                importado() ? descricaoBanco : descricao, valor, null, observacao, agora);
+    }
+
+    /**
+     * Fatia 04c (decisão 31): na transferência convertida só mudam a descrição e a observação. Sem
+     * mudança, {@code atualizado_em} fica como está, como no importado.
+     */
+    public void alterarLadoConvertido(String descricao, String observacao, Instant agora) {
+        if (Objects.equals(this.descricao, descricao) && Objects.equals(this.observacao, observacao)) {
+            return;
+        }
+        alterar(tipo, contaId, data, descricao, valor, null, observacao, agora);
+    }
+
     public boolean transferencia() {
         return tipo == TipoLancamento.TRANSFERENCIA;
     }

@@ -39,12 +39,13 @@ final class Montagem {
                 categoria == null ? null : categoria.id(), categoria == null ? null : categoria.nome(),
                 categoria == null ? null : categoria.nomeDaMae(), categoria != null && categoria.arquivada(),
                 null, null, null, lancamento.getData().isAfter(hoje), conta.arquivada(), lancamento.getOrigem(),
-                lancamento.getDescricaoBanco());
+                lancamento.getDescricaoBanco(), null);
     }
 
     /**
      * A transferência numa linha só (decisão 26). {@code referencia} é o lado que dá a data,
-     * a descrição e a observação: o da conta filtrada ou, sem filtro de conta, a saída.
+     * a descrição e a observação: o da conta filtrada ou, sem filtro de conta, a saída. Os
+     * {@code lados} vão sempre na ordem saída, entrada (Fatia 04c).
      */
     ItemDaLista daTransferencia(Lancamento saida, Lancamento entrada, Lancamento referencia, String direcao) {
         ContaResumo origem = contas.get(saida.getContaId());
@@ -52,6 +53,12 @@ final class Montagem {
         return new ItemDaLista(TipoLancamento.TRANSFERENCIA, saida.getTransferenciaId(), referencia.getData(),
                 referencia.getDescricao(), entrada.getValor(), referencia.getObservacao(), origem.id(), origem.nome(),
                 null, null, null, false, destino.id(), destino.nome(), direcao, referencia.getData().isAfter(hoje),
-                origem.arquivada() || destino.arquivada(), referencia.getOrigem(), null);
+                origem.arquivada() || destino.arquivada(), referencia.getOrigem(), null,
+                List.of(lado(saida, origem), lado(entrada, destino)));
+    }
+
+    private static ItemDaLista.Lado lado(Lancamento lancamento, ContaResumo conta) {
+        return new ItemDaLista.Lado(conta.id(), conta.nome(), lancamento.getData(), lancamento.getOrigem(),
+                lancamento.getDescricaoBanco(), lancamento.getObservacao());
     }
 }

@@ -1,6 +1,7 @@
 package com.flux.lancamentos.interno;
 
 import java.net.URI;
+import java.util.List;
 
 import com.flux.compartilhado.seguranca.UsuarioAtual;
 import com.flux.lancamentos.interno.dto.ItemDaLista;
@@ -22,10 +23,12 @@ public class TransferenciaController {
 
     private final UsuarioAtual usuarioAtual;
     private final TransferenciaService transferenciaService;
+    private final ConversaoService conversaoService;
 
-    public TransferenciaController(UsuarioAtual usuarioAtual, TransferenciaService transferenciaService) {
+    public TransferenciaController(UsuarioAtual usuarioAtual, TransferenciaService transferenciaService, ConversaoService conversaoService) {
         this.usuarioAtual = usuarioAtual;
         this.transferenciaService = transferenciaService;
+        this.conversaoService = conversaoService;
     }
 
     @GetMapping("/{id}")
@@ -48,5 +51,11 @@ public class TransferenciaController {
     public ResponseEntity<Void> excluir(@PathVariable Long id) {
         transferenciaService.excluir(usuarioAtual.id(), id);
         return ResponseEntity.noContent().build();
+    }
+
+    /** Fatia 04c: desfaz a convertida; responde os dois lançamentos, a saída primeiro (decisão 32). */
+    @PostMapping("/{id}/desfazer")
+    public List<ItemDaLista> desfazer(@PathVariable Long id) {
+        return conversaoService.desfazer(usuarioAtual.id(), id);
     }
 }

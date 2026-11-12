@@ -34,6 +34,8 @@ export interface DadosDaConfirmacao {
   /** Alerta dourado com um saldo ("O saldo desta conta é R$ 3.902,05"). */
   readonly alerta?: { readonly titulo: string; readonly valor: number; readonly texto: string };
   readonly paragrafos: readonly (readonly TrechoDeTexto[])[];
+  /** Alerta laranja depois dos parágrafos, com o que mais acontece (Fatia 04c: "1 deles está numa transferência"). */
+  readonly aviso?: { readonly titulo: string; readonly texto: string };
   /** Texto do botão que confirma. */
   readonly confirmar: string;
   /** Texto do botão que fecha sem confirmar; sem ele, "Cancelar" ("Fechar" num aviso que só leva a outra tela). */

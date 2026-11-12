@@ -14,6 +14,7 @@
 @use 'styles/lancamentos';
 @use 'styles/importacao';
 @use 'styles/regras';
+@use 'styles/conversao';
 
 html {
   @include mat.theme(

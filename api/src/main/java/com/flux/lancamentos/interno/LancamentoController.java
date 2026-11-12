@@ -5,8 +5,10 @@ import java.time.YearMonth;
 import java.util.List;
 
 import com.flux.compartilhado.seguranca.UsuarioAtual;
+import com.flux.lancamentos.interno.dto.ConverterRequest;
 import com.flux.lancamentos.interno.dto.ItemDaLista;
 import com.flux.lancamentos.interno.dto.ListaDoMesResponse;
+import com.flux.lancamentos.interno.dto.ParesResponse;
 import com.flux.lancamentos.interno.dto.RestaurarRequest;
 import com.flux.lancamentos.interno.dto.SalvarLancamentoRequest;
 import jakarta.validation.Valid;
@@ -28,11 +30,14 @@ public class LancamentoController {
     private final UsuarioAtual usuarioAtual;
     private final LancamentoService lancamentoService;
     private final ListaDosLancamentos lista;
+    private final ConversaoService conversaoService;
 
-    public LancamentoController(UsuarioAtual usuarioAtual, LancamentoService lancamentoService, ListaDosLancamentos lista) {
+    public LancamentoController(UsuarioAtual usuarioAtual, LancamentoService lancamentoService, ListaDosLancamentos lista,
+                                ConversaoService conversaoService) {
         this.usuarioAtual = usuarioAtual;
         this.lancamentoService = lancamentoService;
         this.lista = lista;
+        this.conversaoService = conversaoService;
     }
 
     /** ?mes=2026-11&conta=3&categoria=12|sem&tipo=receita|despesa|transferencia&busca=texto, todos opcionais. */
@@ -77,5 +82,18 @@ public class LancamentoController {
     @PostMapping("/{id}/restaurar")
     public ItemDaLista restaurar(@PathVariable Long id, @RequestBody(required = false) RestaurarRequest pedido) {
         return lancamentoService.restaurar(usuarioAtual.id(), id, pedido);
+    }
+
+    /** Fatia 04c: o importado e os pares possíveis para virar transferência (decisão 27). */
+    @GetMapping("/{id}/pares")
+    public ParesResponse pares(@PathVariable Long id) {
+        return conversaoService.pares(usuarioAtual.id(), id);
+    }
+
+    /** Fatia 04c: liga o importado a um par ou a um lado novo; responde a transferência criada. */
+    @PostMapping("/{id}/converter")
+    public ResponseEntity<ItemDaLista> converter(@PathVariable Long id, @Valid @RequestBody ConverterRequest pedido) {
+        ItemDaLista criada = conversaoService.converter(usuarioAtual.id(), id, pedido);
+        return ResponseEntity.created(URI.create("/api/transferencias/" + criada.id())).body(criada);
     }
 }

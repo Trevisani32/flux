@@ -18,6 +18,9 @@ import { ListaDeCategorias } from '../../categorias/categorias.service';
 import { Conta, ListaDeContas } from '../../contas/contas.service';
 import { FluxoDeRegras } from '../../regras/fluxo-de-regras';
 import { OpcaoDeCategoria, opcoesDeCategoria } from '../apresentacao';
+import { abrirConversao } from '../conversao-dialogo/conversao-dialogo';
+import { convertida } from '../conversao';
+import { abrirConvertida, ResultadoDaConvertida } from '../convertida-dialogo/convertida-dialogo';
 import { DadosDaTransferencia, DadosDoLancamento, ItemDaLista, LancamentosService } from '../lancamentos.service';
 
 export interface DadosDoDialogoDeLancamento {
@@ -32,8 +35,11 @@ export interface DadosDoDialogoDeLancamento {
   readonly contaPadrao: number | null;
 }
 
-/** Como o diálogo fecha quando algo mudou; sem mudança, fecha sem resultado. */
-export type ResultadoDoLancamento = 'salvo' | 'excluido';
+/**
+ * Como o diálogo fecha quando algo mudou; sem mudança, fecha sem resultado. Fatia 04c: "convertido"
+ * quando o importado virou transferência, e os resultados do diálogo da convertida.
+ */
+export type ResultadoDoLancamento = 'salvo' | 'excluido' | 'convertido' | ResultadoDaConvertida;
 
 type TipoDoFormulario = 'DESPESA' | 'RECEITA' | 'TRANSFERENCIA';
 type CampoDoLancamento = 'valor' | 'data' | 'descricao' | 'conta' | 'categoria' | 'origem' | 'destino' | 'observacao';
@@ -114,6 +120,11 @@ export class LancamentoDialogo {
   readonly somenteLeitura = this.item?.somenteLeitura ?? false;
   /** Importado (decisão 29): tipo, valor, data e conta travados; excluir o ignora (decisão 30). */
   readonly importado = this.item?.origem === 'IMPORTADO';
+  /** Fatia 04c (decisão 26): o atalho do alerta, dito pelo sentido do dinheiro. */
+  readonly textoDaConversao = (this.item?.valor ?? 0) < 0 ? 'Se é dinheiro indo para outra conta sua:' : 'Se é dinheiro vindo de outra conta sua:';
+  /** O que a só leitura manda reativar a conta para fazer: a convertida não se exclui, ela se desfaz (Fatia 04c). */
+  readonly acaoDaSoLeitura = this.item !== null && convertida(this.item) ? 'editar ou desfazer esta transferência'
+    : this.item?.tipo === 'TRANSFERENCIA' ? 'editar ou excluir esta transferência' : 'editar ou excluir este lançamento';
   /** No item só leitura: a conta arquivada que trava o item. */
   readonly contaArquivada = this.dados.contas.arquivadas
     .find((conta) => conta.id === this.item?.contaId || conta.id === this.item?.contaDestinoId)?.nome ?? null;
@@ -289,6 +300,23 @@ export class LancamentoDialogo {
     });
   }
 
+  /**
+   * Fatia 04c (decisão 26): "Converter em transferência" abre a conversão por cima. "Cancelar" e "Voltar"
+   * voltam a este diálogo como estava; convertido, ele fecha com "convertido" (a conversão troca a
+   * descrição e tira a categoria, então o que não foi salvo aqui não vale mais).
+   */
+  converter(): void {
+    const item = this.item;
+    if (item === null || this.enviando()) {
+      return;
+    }
+    abrirConversao(this.dialogo, { lancamentoId: item.id, contas: this.dados.contas, parSugerido: null }).subscribe((transferencia) => {
+      if (transferencia !== undefined) {
+        this.referencia.close('convertido');
+      }
+    });
+  }
+
   /** Abre a confirmação por cima; confirmada, fecha com "excluido". */
   excluir(): void {
     const item = this.item;
@@ -422,8 +450,14 @@ export class LancamentoDialogo {
   }
 }
 
-/** Abre o diálogo com o painel certo; o Observable emite "salvo", "excluido" ou undefined. */
+/**
+ * Abre o diálogo com o painel certo; o Observable emite como ele fechou, ou undefined. A transferência
+ * convertida que não é só leitura abre o diálogo dela (Fatia 04c, decisão 31).
+ */
 export function abrirDialogoDeLancamento(dialogo: MatDialog, dados: DadosDoDialogoDeLancamento): Observable<ResultadoDoLancamento | undefined> {
+  if (dados.item !== null && !dados.item.somenteLeitura && convertida(dados.item)) {
+    return abrirConvertida(dialogo, { item: dados.item });
+  }
   return dialogo.open<LancamentoDialogo, DadosDoDialogoDeLancamento, ResultadoDoLancamento>(LancamentoDialogo, {
     data: dados,
     panelClass: 'flux-dialogo',
