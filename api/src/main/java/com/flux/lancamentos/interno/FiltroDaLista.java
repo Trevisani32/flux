@@ -7,12 +7,13 @@ import com.flux.compartilhado.texto.TextoComparavel;
 
 /**
  * Filtros da lista do mês, lidos da URL (decisão 13). {@code mes} nulo é o mês de hoje;
- * {@code categoriaId} é a principal (com as subcategorias) ou a subcategoria;
- * {@code semCategoria} é o filtro "Sem categoria".
+ * {@code contaId} ou {@code cartaoId} (Fatia 05a, decisão 23: nunca os dois); {@code categoriaId} é a
+ * principal (com as subcategorias) ou a subcategoria; {@code semCategoria} é o filtro "Sem categoria".
  */
 public record FiltroDaLista(
         YearMonth mes,
         Long contaId,
+        Long cartaoId,
         Long categoriaId,
         boolean semCategoria,
         TipoLancamento tipo,
@@ -24,7 +25,10 @@ public record FiltroDaLista(
      * Lê os parâmetros: {@code categoria} é "sem" ou um id; {@code tipo} é "receita",
      * "despesa" ou "transferencia"; a busca vazia é ignorada.
      */
-    public static FiltroDaLista de(YearMonth mes, Long conta, String categoria, String tipo, String busca) {
+    public static FiltroDaLista de(YearMonth mes, Long conta, Long cartao, String categoria, String tipo, String busca) {
+        if (conta != null && cartao != null) {
+            throw new CampoInvalidoException("cartao", "Filtre por uma conta ou por um cartão, não pelos dois.");
+        }
         Long categoriaId = null;
         boolean semCategoria = false;
         if (categoria != null && !categoria.isBlank()) {
@@ -51,6 +55,6 @@ public record FiltroDaLista(
         if (buscaLimpa.length() > TAMANHO_MAXIMO_DA_BUSCA) {
             throw new CampoInvalidoException("busca", "Use no máximo " + TAMANHO_MAXIMO_DA_BUSCA + " caracteres.");
         }
-        return new FiltroDaLista(mes, conta, categoriaId, semCategoria, tipoLido, buscaLimpa.isEmpty() ? null : buscaLimpa);
+        return new FiltroDaLista(mes, conta, cartao, categoriaId, semCategoria, tipoLido, buscaLimpa.isEmpty() ? null : buscaLimpa);
     }
 }

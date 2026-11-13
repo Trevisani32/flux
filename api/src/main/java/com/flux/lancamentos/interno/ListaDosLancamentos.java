@@ -16,6 +16,9 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.flux.cartoes.CalendarioDoCartao;
+import com.flux.cartoes.CartaoResumo;
+import com.flux.cartoes.CartoesConsulta;
 import com.flux.categorias.CategoriaResumo;
 import com.flux.categorias.CategoriasConsulta;
 import com.flux.compartilhado.texto.TextoComparavel;
@@ -29,7 +32,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * A lista do mês, os últimos lançamentos e o item de cada resposta. O mês tem no máximo
  * 1.000 lançamentos (decisão 34): os filtros, os totais e o saldo do dia são feitos em
- * memória, sobre os lançamentos do mês. Os importados ignorados ficam de fora (Fatia 04a).
+ * memória, sobre os lançamentos do mês. Os importados ignorados ficam de fora (Fatia 04a). Desde a
+ * Fatia 05a, a lista tem as parcelas e os estornos do cartão, na data do vencimento da fatura (decisão 22),
+ * e o filtro de um cartão, que mostra a fatura do mês (decisão 23).
  */
 @Service
 public class ListaDosLancamentos {
@@ -38,14 +43,20 @@ public class ListaDosLancamentos {
 
     private final LancamentoRepository repositorio;
     private final ContasConsulta contas;
+    private final CartoesConsulta cartoes;
     private final CategoriasConsulta categorias;
+    private final CompraRepository compras;
+    private final FaturaRepository faturas;
     private final Clock clock;
 
-    public ListaDosLancamentos(LancamentoRepository repositorio, ContasConsulta contas, CategoriasConsulta categorias,
-                               Clock clock) {
+    public ListaDosLancamentos(LancamentoRepository repositorio, ContasConsulta contas, CartoesConsulta cartoes,
+                               CategoriasConsulta categorias, CompraRepository compras, FaturaRepository faturas, Clock clock) {
         this.repositorio = repositorio;
         this.contas = contas;
+        this.cartoes = cartoes;
         this.categorias = categorias;
+        this.compras = compras;
+        this.faturas = faturas;
         this.clock = clock;
     }
 
@@ -56,7 +67,8 @@ public class ListaDosLancamentos {
         List<Lancamento> doMes = repositorio.findAllByUsuarioIdAndDataBetweenAndIgnoradoEmIsNull(usuarioId, mes.atDay(1),
                 mes.atEndOfMonth());
         List<CategoriaResumo> todasAsCategorias = categorias.listar(usuarioId);
-        Montagem montagem = new Montagem(contas.listar(usuarioId), todasAsCategorias, hoje);
+        Montagem montagem = new Montagem(contas.listar(usuarioId), cartoes.listar(usuarioId), todasAsCategorias,
+                comprasDe(usuarioId, doMes), hoje);
         Set<Long> categoriasDoFiltro = filtro.categoriaId() == null ? Set.of()
                 : idsComSubcategorias(todasAsCategorias, filtro.categoriaId());
         String chaveDaBusca = filtro.busca() == null ? null : TextoComparavel.chave(filtro.busca());
@@ -68,6 +80,9 @@ public class ListaDosLancamentos {
                 if (passa(lancamento, filtro, categoriasDoFiltro, chaveDaBusca)) {
                     linhas.add(new Linha(montagem.doLancamento(lancamento), lancamento.getId()));
                 }
+                continue;
+            }
+            if (filtro.cartaoId() != null) {
                 continue;
             }
             Par par = Par.de(lados.get(lancamento.getTransferenciaId()));
@@ -97,16 +112,17 @@ public class ListaDosLancamentos {
         List<ItemDaLista> itens = linhas.stream().map(Linha::item).toList();
         return new ListaDoMesResponse(mes.toString(), hoje, totais(itens),
                 (int) itens.stream().filter(item -> item.tipo() != TipoLancamento.TRANSFERENCIA).count(),
-                (int) itens.stream().filter(item -> item.tipo() == TipoLancamento.TRANSFERENCIA).count(), dias);
+                (int) itens.stream().filter(item -> item.tipo() == TipoLancamento.TRANSFERENCIA).count(), dias,
+                faturaDoFiltro(usuarioId, filtro.cartaoId(), montagem, mes, doMes, hoje));
     }
 
-    /** Os 5 mais recentes até hoje, sem os futuros; a transferência é um item só. */
+    /** Os 5 mais recentes de conta até hoje, sem os futuros e sem os de fatura (decisão 26 da 05a); a transferência é um item só. */
     @Transactional(readOnly = true)
     public List<ItemDaLista> ultimos(Long usuarioId) {
         LocalDate hoje = LocalDate.now(clock);
         List<Lancamento> recentes =
-                repositorio.findTop10ByUsuarioIdAndDataLessThanEqualAndIgnoradoEmIsNullOrderByDataDescIdDesc(usuarioId, hoje);
-        Montagem montagem = montagem(usuarioId);
+                repositorio.findTop10ByUsuarioIdAndContaIdIsNotNullAndDataLessThanEqualAndIgnoradoEmIsNullOrderByDataDescIdDesc(usuarioId, hoje);
+        Montagem montagem = montagem(usuarioId, List.of());
         Map<Long, List<Lancamento>> lados = ladosDasTransferencias(usuarioId, recentes);
         List<ItemDaLista> itens = new ArrayList<>();
         Set<Long> transferenciasVistas = new HashSet<>();
@@ -124,21 +140,46 @@ public class ListaDosLancamentos {
         return itens;
     }
 
-    /** Receita ou despesa, como resposta de buscar, criar e editar. */
+    /** Receita ou despesa (de conta ou de fatura), como resposta de buscar, criar e editar. */
     @Transactional(readOnly = true)
     public ItemDaLista itemDoLancamento(Long usuarioId, Lancamento lancamento) {
-        return montagem(usuarioId).doLancamento(lancamento);
+        return montagem(usuarioId, List.of(lancamento)).doLancamento(lancamento);
     }
 
     /** A transferência inteira, como resposta de buscar, criar e editar. */
     @Transactional(readOnly = true)
     public ItemDaLista itemDaTransferencia(Long usuarioId, List<Lancamento> lados) {
         Par par = Par.de(lados);
-        return montagem(usuarioId).daTransferencia(par.saida(), par.entrada(), par.saida(), null);
+        return montagem(usuarioId, List.of()).daTransferencia(par.saida(), par.entrada(), par.saida(), null);
     }
 
-    private Montagem montagem(Long usuarioId) {
-        return new Montagem(contas.listar(usuarioId), categorias.listar(usuarioId), LocalDate.now(clock));
+    private Montagem montagem(Long usuarioId, List<Lancamento> lancamentos) {
+        return new Montagem(contas.listar(usuarioId), cartoes.listar(usuarioId), categorias.listar(usuarioId),
+                comprasDe(usuarioId, lancamentos), LocalDate.now(clock));
+    }
+
+    /** As compras dos lançamentos de fatura (Fatia 05a), por id. */
+    private Map<Long, Compra> comprasDe(Long usuarioId, List<Lancamento> lancamentos) {
+        Set<Long> ids = lancamentos.stream().filter(Lancamento::deFatura).map(Lancamento::getCompraId).collect(Collectors.toSet());
+        return ids.isEmpty() ? Map.of() : compras.findAllByUsuarioIdAndIdIn(usuarioId, ids).stream()
+                .collect(Collectors.toMap(Compra::getId, compra -> compra));
+    }
+
+    /**
+     * Decisão 23 da 05a: com o filtro de um cartão, a fatura do mês, com as datas, a situação e o total da fatura
+     * inteira (os lançamentos do cartão no mês, sem os outros filtros). Cartão de outro usuário: sem faixa.
+     */
+    private ListaDoMesResponse.FaturaDoFiltro faturaDoFiltro(Long usuarioId, Long cartaoId, Montagem montagem, YearMonth mes,
+                                                             List<Lancamento> doMes, LocalDate hoje) {
+        CartaoResumo cartao = cartaoId == null ? null : montagem.cartao(cartaoId);
+        if (cartao == null) {
+            return null;
+        }
+        FaturasDoCartao doCartao = FaturasDoCartao.carregar(faturas, usuarioId, cartao);
+        CalendarioDoCartao.Datas datas = doCartao.datas(mes);
+        BigDecimal soma = somar(doMes.stream().filter(lancamento -> cartaoId.equals(lancamento.getCartaoId())).map(Lancamento::getValor));
+        return new ListaDoMesResponse.FaturaDoFiltro(cartao.id(), cartao.nome(), cartao.cor(), mes.toString(), datas.fechamento(),
+                datas.vencimento(), doCartao.situacao(mes, hoje).name(), soma.negate().setScale(2, RoundingMode.UNNECESSARY));
     }
 
     private Map<Long, List<Lancamento>> ladosDasTransferencias(Long usuarioId, List<Lancamento> lancamentos) {
@@ -150,6 +191,7 @@ public class ListaDosLancamentos {
 
     private static boolean passa(Lancamento lancamento, FiltroDaLista filtro, Set<Long> categoriasDoFiltro, String chaveDaBusca) {
         return (filtro.contaId() == null || filtro.contaId().equals(lancamento.getContaId()))
+                && (filtro.cartaoId() == null || filtro.cartaoId().equals(lancamento.getCartaoId()))
                 && (filtro.categoriaId() == null || categoriasDoFiltro.contains(lancamento.getCategoriaId()))
                 && (!filtro.semCategoria() || lancamento.getCategoriaId() == null)
                 && (filtro.tipo() == null || filtro.tipo() == lancamento.getTipo())
@@ -204,7 +246,7 @@ public class ListaDosLancamentos {
         BigDecimal antes = repositorio.somarDaContaAntesDe(usuarioId, contaId, mes.atDay(1));
         BigDecimal saldo = conta.saldoInicial().add(antes == null ? BigDecimal.ZERO : antes);
         Map<LocalDate, BigDecimal> movimentoPorDia = new TreeMap<>();
-        doMes.stream().filter(lancamento -> lancamento.getContaId().equals(contaId))
+        doMes.stream().filter(lancamento -> contaId.equals(lancamento.getContaId()))
                 .forEach(lancamento -> movimentoPorDia.merge(lancamento.getData(), lancamento.getValor(), BigDecimal::add));
         saldos.put(mes.atDay(1).minusDays(1), saldo.setScale(2, RoundingMode.UNNECESSARY));
         for (Map.Entry<LocalDate, BigDecimal> dia : movimentoPorDia.entrySet()) {

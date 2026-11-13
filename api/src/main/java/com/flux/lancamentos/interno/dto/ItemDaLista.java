@@ -25,7 +25,12 @@ import com.flux.lancamentos.interno.TipoLancamento;
  *       que veio do extrato (decisões 28 e 29);</li>
  *   <li>{@code lados}: só na transferência, a saída e a entrada, cada uma com a conta, a data, a
  *       origem, a descrição do extrato e a observação (Fatia 04c: a convertida tem um lado importado,
- *       e os lados podem ter datas diferentes); nulo na receita e na despesa.</li>
+ *       e os lados podem ter datas diferentes); nulo na receita e na despesa;</li>
+ *   <li>Fatia 05a, só no lançamento de fatura (a parcela e o estorno, sem conta: {@code contaId} e
+ *       {@code contaNome} nulos): {@code cartaoId}, {@code cartaoNome}, {@code cartaoCor}, {@code compraId},
+ *       {@code estorno}, {@code parcela}/{@code parcelas} (o número e o total de parcelas) e
+ *       {@code dataCompra}. A {@code data} é o vencimento da fatura (decisão 22), e {@code somenteLeitura},
+ *       o cartão arquivado.</li>
  * </ul>
  */
 public record ItemDaLista(
@@ -48,7 +53,15 @@ public record ItemDaLista(
         boolean somenteLeitura,
         OrigemLancamento origem,
         String descricaoBanco,
-        List<Lado> lados) {
+        List<Lado> lados,
+        Long cartaoId,
+        String cartaoNome,
+        String cartaoCor,
+        Long compraId,
+        boolean estorno,
+        Integer parcela,
+        Integer parcelas,
+        LocalDate dataCompra) {
 
     /** Um lado da transferência. {@code descricaoBanco} só no importado. */
     public record Lado(Long contaId, String contaNome, LocalDate data, OrigemLancamento origem, String descricaoBanco,

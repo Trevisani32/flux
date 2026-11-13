@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -155,10 +156,21 @@ public class ContaService implements SmartInitializingSingleton {
                 .map(uso -> uso.uso(usuarioId, id))
                 .flatMap(Optional::stream)
                 .toList();
-        if (!emUso.isEmpty()) {
-            String uso = juntar(emUso);
-            throw new RegraDeNegocioException("Esta conta não pode ser excluída porque tem " + uso
-                    + ". Arquive a conta para tirá-la do saldo total e dos seletores.", "CONTA_EM_USO").com("uso", uso);
+        // Fatia 05a: o papel ("a conta de pagamento de 1 cartão") entra na frase com "é".
+        List<String> papeis = usos.orderedStream()
+                .map(uso -> uso.papel(usuarioId, id))
+                .flatMap(Optional::stream)
+                .toList();
+        if (!emUso.isEmpty() || !papeis.isEmpty()) {
+            List<String> motivos = new ArrayList<>();
+            if (!emUso.isEmpty()) {
+                motivos.add("tem " + juntar(emUso));
+            }
+            papeis.forEach(papel -> motivos.add("é " + papel));
+            String motivo = juntar(motivos);
+            RegraDeNegocioException recusa = new RegraDeNegocioException("Esta conta não pode ser excluída porque " + motivo
+                    + ". Arquive a conta para tirá-la do saldo total e dos seletores.", "CONTA_EM_USO").com("motivo", motivo);
+            throw emUso.isEmpty() ? recusa : recusa.com("uso", juntar(emUso));
         }
         // Sem uso: o que não prende a conta sai antes dela (os importados ignorados, Fatia 04a).
         limpezas.orderedStream().forEach(limpeza -> limpeza.antesDeExcluir(usuarioId, id));

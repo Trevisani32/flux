@@ -11,7 +11,7 @@ import java.util.Set;
  * Fatia 04c (decisão 27): quem pode ser o outro lado de uma transferência convertida. O par tem o
  * mesmo valor com o sinal oposto, fica em outra conta ativa, é receita ou despesa (manual ou
  * importada) que não está excluída nem numa transferência e tem até 5 dias de diferença, para antes
- * ou para depois. A mais perto da data vem primeiro; no empate, a mais antiga, e depois o menor id.
+ * ou para depois. Um lançamento de fatura (Fatia 05a) não tem conta e nunca é par. A mais perto da data vem primeiro; no empate, a mais antiga, e depois o menor id.
  */
 final class Pares {
 
@@ -35,6 +35,7 @@ final class Pares {
         return !Objects.equals(outro.getId(), fixo.getId())
                 && !outro.transferencia()
                 && outro.getIgnoradoEm() == null
+                && outro.getContaId() != null
                 && !outro.getContaId().equals(fixo.getContaId())
                 && contasAtivas.contains(outro.getContaId())
                 && outro.getValor().compareTo(fixo.getValor().negate()) == 0
