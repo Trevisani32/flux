@@ -19,7 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Receitas e despesas, manuais e importadas. Um lado de transferência não é editado por aqui.
+ * Receitas e despesas de conta, manuais e importadas. Um lado de transferência e um lançamento de fatura (a
+ * parcela e o estorno, Fatia 05a, decisão 25) não são lidos nem editados por aqui: dão 404.
  * No importado só mudam descrição, categoria e observação, e excluir o ignora (decisões 29 e 30).
  */
 @Service
@@ -130,7 +131,7 @@ public class LancamentoService {
     }
 
     private Lancamento encontrar(Long usuarioId, Long id) {
-        return repositorio.findByIdAndUsuarioIdAndTransferenciaIdIsNullAndIgnoradoEmIsNull(id, usuarioId)
+        return repositorio.findByIdAndUsuarioIdAndTransferenciaIdIsNullAndFaturaIdIsNullAndIgnoradoEmIsNull(id, usuarioId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Lançamento não encontrado."));
     }
 

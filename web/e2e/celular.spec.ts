@@ -54,19 +54,19 @@ test('nenhuma tela tem rolagem horizontal a 375 px', async ({ page }) => {
   await page.goto('/minha-conta/senha');
   await expect(page.getByRole('heading', { name: 'Trocar senha' })).toBeVisible();
   expect(await semRolagemHorizontal(page)).toBe(true);
-  for (const [rota, titulo] of [['/lancamentos', 'Lançamentos'], ['/importacao', 'Importação'], ['/contas', 'Contas'], ['/categorias', 'Categorias'],
-    ['/categorias?natureza=receita', 'Categorias'], ['/regras', 'Regras']]) {
+  for (const [rota, titulo] of [['/lancamentos', 'Lançamentos'], ['/importacao', 'Importação'], ['/contas', 'Contas'], ['/cartoes', 'Cartões'],
+    ['/categorias', 'Categorias'], ['/categorias?natureza=receita', 'Categorias'], ['/regras', 'Regras']]) {
     await page.goto(rota);
     await expect(page.getByRole('heading', { name: titulo, level: 1 })).toBeVisible();
     expect(await semRolagemHorizontal(page), rota).toBe(true);
   }
 });
 
-test('a gaveta tem Lançamentos, Importação, Contas, Categorias e Regras, e a página aberta fica marcada', async ({ page }) => {
+test('a gaveta tem Lançamentos, Importação, Contas, Cartões, Categorias e Regras, e a página aberta fica marcada', async ({ page }) => {
   await entrarNoInicio(page);
   await page.getByRole('button', { name: 'Abrir menu' }).click();
   const navegacao = page.getByRole('navigation', { name: 'Menu principal' });
-  await expect(navegacao.getByRole('list', { name: 'Visão geral' }).getByRole('link')).toHaveText(['Início', 'Lançamentos', 'Importação', 'Contas']);
+  await expect(navegacao.getByRole('list', { name: 'Visão geral' }).getByRole('link')).toHaveText(['Início', 'Lançamentos', 'Importação', 'Contas', 'Cartões']);
   await expect(navegacao.getByRole('list', { name: 'Organização' }).getByRole('link')).toHaveText(['Categorias', 'Regras']);
   await navegacao.getByRole('link', { name: 'Categorias' }).click();
   await expect(page.getByRole('heading', { name: 'Categorias', level: 1 })).toBeVisible();

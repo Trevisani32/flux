@@ -1,4 +1,4 @@
-/** Traços dos ícones (viewBox 0 0 24 24), copiados dos mockups das Fatias 01 e 02. */
+/** Traços dos ícones (viewBox 0 0 24 24), desenhados nas Fatias 01 e 02. */
 export const ICONES = {
   inicio: ['M3 10.5 12 3l9 7.5', 'M5 9v11a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9'],
   lancamentos: ['M7 4 3 8l4 4', 'M3 8h13', 'm17 12 4 4-4 4', 'M21 16H8'],
@@ -42,7 +42,7 @@ export const ICONES = {
   escudo: ['M12 3 4.5 6v6c0 4.5 3.2 7.8 7.5 9 4.3-1.2 7.5-4.5 7.5-9V6z', 'm9 12 2 2 4-4'],
   esquerda: ['M19 12H5', 'm11 18-6-6 6-6'],
   externo: ['M14 4h6v6', 'M20 4l-9 9', 'M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4'],
-  // Fatia 03a: os quatro primeiros vêm do mockup da Fatia 01 (o cofre, redesenhado só com caminhos).
+  // Fatia 03a: os quatro primeiros vêm da Fatia 01 (o cofre, redesenhado só com caminhos).
   contas: ['M3 21h18', 'M5 21v-9M9.7 21v-9M14.3 21v-9M19 21v-9', 'M12 3 3 8.5h18z'],
   cofre: [
     'M5.5 4h13A2.5 2.5 0 0 1 21 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5v-11A2.5 2.5 0 0 1 5.5 4z',
@@ -75,6 +75,8 @@ export const ICONES = {
   // Fatia 04b (regras de categorização): a regra (um raio) e "Subir".
   regra: ['M13 2.5 4.5 13.5H11l-1 8 8.5-11H12z'],
   cima: ['m6 15 6-6 6 6'],
+  // Fatia 05a (cartões): as parcelas da compra, na prévia.
+  parcelas: ['M4 6h16M4 12h10M4 18h6', 'm16 15 3 3-3 3', 'M19 18h-6'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type NomeIcone = keyof typeof ICONES;

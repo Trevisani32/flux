@@ -13,6 +13,8 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
+import com.flux.cartoes.CartaoResumo;
+import com.flux.cartoes.CartoesConsulta;
 import com.flux.categorias.CategoriaResumo;
 import com.flux.categorias.CategoriasConsulta;
 import com.flux.compartilhado.erro.CampoInvalidoException;
@@ -21,7 +23,10 @@ import com.flux.contas.ContaResumo;
 import com.flux.contas.ContasConsulta;
 import org.springframework.stereotype.Component;
 
-/** Regras comuns a lançamentos, transferências e importados: travas, conta, data, categoria e limites. */
+/**
+ * Regras comuns a lançamentos, transferências, importados e, desde a Fatia 05a, compras e estornos no cartão:
+ * travas, conta, cartão, data, categoria e limites.
+ */
 @Component
 public class RegrasDosLancamentos {
 
@@ -32,13 +37,15 @@ public class RegrasDosLancamentos {
     private static final DateTimeFormatter MES_E_ANO = DateTimeFormatter.ofPattern("MMMM 'de' yyyy", PT_BR);
 
     private final ContasConsulta contas;
+    private final CartoesConsulta cartoes;
     private final CategoriasConsulta categorias;
     private final LancamentoRepository repositorio;
     private final Clock clock;
 
-    public RegrasDosLancamentos(ContasConsulta contas, CategoriasConsulta categorias, LancamentoRepository repositorio,
-                                Clock clock) {
+    public RegrasDosLancamentos(ContasConsulta contas, CartoesConsulta cartoes, CategoriasConsulta categorias,
+                                LancamentoRepository repositorio, Clock clock) {
         this.contas = contas;
+        this.cartoes = cartoes;
         this.categorias = categorias;
         this.repositorio = repositorio;
         this.clock = clock;
@@ -63,6 +70,20 @@ public class RegrasDosLancamentos {
         categorias.travar(usuarioId);
     }
 
+    /**
+     * Compra e estorno (decisão 49 da 05a): a trava de cartões e depois a de categorias. Depois delas, ninguém
+     * arquiva nem exclui o cartão, muda os dias, ajusta um fechamento ou exclui a categoria até o fim da transação.
+     */
+    void travarCartoesECategorias(Long usuarioId) {
+        cartoes.travar(usuarioId);
+        categorias.travar(usuarioId);
+    }
+
+    /** Ajuste de fechamento (decisão 49 da 05a): só a trava de cartões. */
+    void travarCartoes(Long usuarioId) {
+        cartoes.travar(usuarioId);
+    }
+
     /** Transferência: sem categoria, só a trava de contas. */
     void travarContas(Long usuarioId) {
         contas.travar(usuarioId);
@@ -85,6 +106,28 @@ public class RegrasDosLancamentos {
                     "CONTA_ARQUIVADA");
         }
         return conta;
+    }
+
+    /** Cartão de uma compra ou estorno (Fatia 05a): do usuário (ADR 0007) e ativo (decisão 5). */
+    CartaoResumo cartaoParaLancar(Long usuarioId, Long cartaoId) {
+        CartaoResumo cartao = cartoes.buscar(usuarioId, cartaoId)
+                .orElseThrow(() -> new RegraDeNegocioException("Cartão não encontrado."));
+        if (cartao.arquivado()) {
+            throw new RegraDeNegocioException(cartao.nome() + " está arquivado. Reative o cartão para lançar nele.",
+                    "CARTAO_ARQUIVADO");
+        }
+        return cartao;
+    }
+
+    /** Cartão de um item que já existe (Fatia 05a): arquivado, o item fica só leitura (decisão 5). */
+    CartaoResumo exigirCartaoAtivoPara(Long usuarioId, Long cartaoId, String acao) {
+        CartaoResumo cartao = cartoes.buscar(usuarioId, cartaoId)
+                .orElseThrow(() -> new IllegalStateException("Compra sem cartão: " + cartaoId));
+        if (cartao.arquivado()) {
+            throw new RegraDeNegocioException(cartao.nome() + " está arquivado. Reative o cartão para " + acao + ".",
+                    "CARTAO_ARQUIVADO");
+        }
+        return cartao;
     }
 
     /** Conta de um item que já existe: arquivada, o item fica só leitura (decisões 23 e 28). */
@@ -156,6 +199,21 @@ public class RegrasDosLancamentos {
                 throw new RegraDeNegocioException("Esta importação passaria do limite de " + String.format(PT_BR, "%,d", LIMITE_POR_MES)
                         + " lançamentos em " + doMes.atDay(1).format(MES_E_ANO)
                         + ". Desmarque linhas desse mês ou importe um período menor.", "LIMITE_DE_LANCAMENTOS");
+            }
+        }
+    }
+
+    /**
+     * Fatia 05a (decisão 21): cada parcela conta 1 no mês do vencimento dela. {@code novosPorMes} é o que entra em
+     * cada mês (0 depois de mover parcelas já gravadas); {@code quem} começa a frase: "Esta compra passaria".
+     */
+    void exigirLimiteDosMeses(Long usuarioId, Map<YearMonth, Long> novosPorMes, String quem) {
+        for (Map.Entry<YearMonth, Long> mes : new TreeMap<>(novosPorMes).entrySet()) {
+            YearMonth doMes = mes.getKey();
+            if (repositorio.countByUsuarioIdAndDataBetween(usuarioId, doMes.atDay(1), doMes.atEndOfMonth()) + mes.getValue()
+                    > LIMITE_POR_MES) {
+                throw new RegraDeNegocioException(quem + " do limite de " + String.format(PT_BR, "%,d", LIMITE_POR_MES)
+                        + " lançamentos em " + doMes.atDay(1).format(MES_E_ANO) + ".", "LIMITE_DE_LANCAMENTOS");
             }
         }
     }

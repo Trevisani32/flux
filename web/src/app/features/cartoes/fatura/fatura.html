@@ -1,0 +1,101 @@
+<app-cabecalho-pagina [titulo]="titulo()">
+  <p complemento class="fatura__trilha"><a class="flux-link" routerLink="/cartoes">Cartões</a>@if (fatura(); as atual) { › {{ atual.cartaoNome }}}</p>
+  @if (podeLancar()) {
+    <button mat-stroked-button type="button" class="flux-so-desktop" (click)="ajustar()"><app-icone nome="calendario" [tamanho]="18" />Ajustar fechamento</button>
+    <button mat-stroked-button type="button" class="flux-so-desktop" (click)="novoEstorno()">Novo estorno</button>
+    <button mat-stroked-button type="button" class="flux-so-celular" [matMenuTriggerFor]="menuDaFatura">Mais</button>
+    <button mat-flat-button type="button" (click)="novaCompra()"><app-icone nome="mais" [tamanho]="18" [traco]="2.2" />Nova compra</button>
+  }
+</app-cabecalho-pagina>
+<div class="flux-conteudo">
+  @if (falha(); as erro) {
+    <app-alerta tipo="erro" icone="alerta" [titulo]="erro.mensagem">
+      <div class="flux-alerta__acoes">
+        @if (erro.deNovo) {
+          <button mat-stroked-button type="button" (click)="carregar()">Tentar de novo</button>
+        }
+        <a mat-stroked-button routerLink="/cartoes">Ver cartões</a>
+      </div>
+    </app-alerta>
+  } @else if (fatura(); as atual) {
+    <div class="fatura__navegacao">
+      <div class="fatura__mes" role="group" aria-label="Mês da fatura">
+        <button type="button" class="fatura__seta" [attr.aria-label]="'Fatura de ' + rotuloDaSeta(anterior())" [disabled]="mes() <= atual.primeiroMes" (click)="mudarMes(-1)"><app-icone nome="anterior" /></button>
+        <span class="fatura__nome-do-mes" aria-live="polite"><app-icone nome="cartao" [tamanho]="16" />{{ nomeDoMesComMaiuscula(mes()) }}</span>
+        <button type="button" class="fatura__seta" [attr.aria-label]="'Fatura de ' + rotuloDaSeta(seguinte())" [disabled]="mes() >= atual.ultimoMes" (click)="mudarMes(1)"><app-icone nome="proximo" /></button>
+      </div>
+      <span [class]="'fatura__situacao fatura__situacao--' + atual.situacao.toLowerCase()">{{ rotuloDaSituacao[atual.situacao] }}</span>
+      <span class="fatura__nota-da-situacao">{{ notaDaSituacao() }}</span>
+    </div>
+
+    @if (atual.cartaoArquivado) {
+      <app-alerta tipo="info" icone="arquivar" [titulo]="atual.cartaoNome + ' está arquivado'"><p class="flux-alerta__texto">Reative o cartão em Cartões, na seção "Arquivados", para lançar, editar ou ajustar o fechamento.</p></app-alerta>
+    }
+
+    <section class="flux-card fatura__periodo" aria-label="Período da fatura">
+      <div class="fatura__linha-do-tempo">
+        <div class="fatura__marco fatura__marco--inicio"><b>{{ diaEMes(atual.inicio) }}</b>começa</div>
+        <div class="fatura__marco fatura__marco--fecha"><b>{{ diaEMes(atual.fechamento) }}</b>fecha@if (atual.fechamentoAjustado) { · ajustado}</div>
+        <div class="fatura__marco fatura__marco--vence"><b>{{ diaEMes(atual.vencimento) }}</b>vence</div>
+      </div>
+      @if (atual.fechamentoAjustado && !atual.cartaoArquivado) {
+        <button type="button" class="fatura__voltar-ao-normal" (click)="voltarAoNormal()">Voltar ao fechamento normal ({{ diaEMes(atual.fechamentoNormal) }})</button>
+      }
+    </section>
+
+    <section class="flux-card fatura__totais" aria-label="Totais da fatura">
+      <div><span class="fatura__rotulo">Compras</span><app-valor class="fatura__numero" [valor]="atual.compras" tipo="saldo" /><span class="fatura__nota">{{ notaDasCompras() }}</span></div>
+      <div><span class="fatura__rotulo">Estornos</span><app-valor class="fatura__numero" [valor]="atual.estornos" /><span class="fatura__nota">{{ notaDosEstornos() }}</span></div>
+      <div><span class="fatura__rotulo">Total da fatura</span><span class="fatura__numero flux-num">{{ textoDoTotal(atual.total) }}</span><span class="fatura__nota">{{ notaDoTotal() }}</span></div>
+      <div><span class="fatura__rotulo">Depois desta</span><span class="fatura__numero fatura__numero--depois flux-num">{{ textoDoTotal(atual.depois) }}</span><span class="fatura__nota">{{ notaDeDepois() }}</span></div>
+    </section>
+
+    @if (atual.itens.length === 0) {
+      <app-estado-vazio icone="cartao" [titulo]="'Nada na fatura de ' + nomeDoMesMinusculo(mes())" [texto]="textoDoVazio()">
+        @if (podeLancar()) {
+          <button mat-flat-button type="button" (click)="novaCompra()">Nova compra</button>
+        }
+      </app-estado-vazio>
+    } @else {
+      <section class="flux-card fatura__lista" aria-labelledby="fatura-lancamentos">
+        <div class="fatura__cabecalho-da-lista"><h2 id="fatura-lancamentos" class="fatura__titulo-da-lista">Lançamentos da fatura</h2><span class="fatura__nota">Em Lançamentos, todos aparecem em {{ diaEMes(atual.vencimento) }}, o vencimento.</span></div>
+        <table class="fatura__tabela flux-so-desktop">
+          <thead><tr><th class="fatura__c-data">Data</th><th>Descrição</th><th class="fatura__c-parcela">Parcela</th><th class="fatura__c-categoria">Categoria</th><th class="fatura__c-valor">Valor</th></tr></thead>
+          <tbody>
+            @for (item of atual.itens; track item.lancamentoId) {
+              <tr>
+                <td class="fatura__c-data">{{ diaEMes(item.dataCompra) }}</td>
+                <td><button type="button" class="fatura__abrir" (click)="abrirItem(item)"><b [title]="item.descricao">{{ item.descricao }}</b><span class="fatura__meta">{{ metaDoItem(item) }}</span></button></td>
+                <td class="fatura__c-parcela">
+                  @if (item.tipo === 'ESTORNO') {
+                    <span class="fatura__pilula fatura__pilula--estorno">Estorno</span>
+                  } @else if (rotuloDaParcela(item.parcela, item.parcelas); as parcela) {
+                    <span class="fatura__pilula">{{ parcela }}</span>
+                  } @else {
+                    —
+                  }
+                </td>
+                <td class="fatura__c-categoria">{{ textoDaCategoria(item.categoriaNome, item.categoriaMaeNome) }}</td>
+                <td class="fatura__c-valor"><app-valor [valor]="item.valor" /></td>
+              </tr>
+            }
+          </tbody>
+          <tfoot><tr><td></td><td colspan="3">Total da fatura</td><td class="fatura__c-valor flux-num">{{ textoDoTotal(atual.total) }}</td></tr></tfoot>
+        </table>
+        <ul class="flux-lista flux-so-celular">
+          @for (item of atual.itens; track item.lancamentoId) {
+            <li><button type="button" class="fatura__item" (click)="abrirItem(item)">
+              <span class="fatura__textos"><b>{{ item.descricao }}</b><span class="fatura__meta">@if (item.tipo === 'ESTORNO') {<span class="fatura__pilula fatura__pilula--estorno">Estorno</span>} @else if (rotuloDaParcela(item.parcela, item.parcelas); as parcela) {<span class="fatura__pilula">{{ parcela }}</span>}{{ diaEMes(item.dataCompra) }} · {{ textoDaCategoria(item.categoriaNome, item.categoriaMaeNome) }}</span></span>
+              <app-valor [valor]="item.valor" />
+            </button></li>
+          }
+        </ul>
+      </section>
+    }
+  }
+</div>
+
+<mat-menu #menuDaFatura="matMenu" class="flux-menu" xPosition="before">
+  <button mat-menu-item type="button" (click)="novoEstorno()"><app-icone matMenuItemIcon nome="entrada" />Novo estorno</button>
+  <button mat-menu-item type="button" (click)="ajustar()"><app-icone matMenuItemIcon nome="calendario" />Ajustar fechamento</button>
+</mat-menu>

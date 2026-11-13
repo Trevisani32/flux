@@ -524,3 +524,192 @@ test('a convertida muda só o texto; desfazer devolve a despesa e a receita, e d
   await expect(linha(page, 'Reserva outra vez').locator('.valor__texto')).toHaveText('+R$ 300,00');
   await expect(linha(page, 'TED 341.0001 RESERVA')).toHaveCount(0);
 });
+
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+/** O mês de hoje no fuso do negócio ("2026-11"), ou o que fica `passo` meses depois: as faturas dependem da data real. */
+function mesDeHoje(passo = 0): string {
+  const [ano, mes] = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit' }).format(new Date())
+    .split('-').map(Number);
+  const contagem = ano * 12 + mes - 1 + passo;
+  return `${Math.floor(contagem / 12)}-${String((contagem % 12) + 1).padStart(2, '0')}`;
+}
+
+/** "novembro". */
+function mesSemAno(mes: string): string {
+  return MESES[Number(mes.slice(5, 7)) - 1];
+}
+
+/** "novembro de 2026". */
+function mesComAno(mes: string): string {
+  return `${mesSemAno(mes)} de ${mes.slice(0, 4)}`;
+}
+
+/** "dezembro a fevereiro" ou, cruzando anos, "dezembro de 2026 a janeiro de 2027", como a fatura deste mês escreve. */
+function faixaDeMeses(de: string, ate: string): string {
+  return de.slice(0, 4) === ate.slice(0, 4) ? `${mesSemAno(de)} a ${mesSemAno(ate)}` : `${mesComAno(de)} a ${mesComAno(ate)}`;
+}
+
+/** "10/11": o dia `dia` do mês. */
+function diaDoMes(dia: number, mes: string): string {
+  return `${String(dia).padStart(2, '0')}/${mes.slice(5, 7)}`;
+}
+
+/** No celular, "Novo estorno" e "Ajustar fechamento" ficam no menu "Mais" da fatura. */
+async function acaoDaFatura(page: Page, acao: 'Novo estorno' | 'Ajustar fechamento'): Promise<void> {
+  if (ehDesktop(page)) {
+    await page.getByRole('button', { name: acao }).click();
+  } else {
+    await page.getByRole('button', { name: 'Mais', exact: true }).click();
+    await page.getByRole('menuitem', { name: acao }).click();
+  }
+}
+
+function itemDaFatura(page: Page, descricao: string): Locator {
+  return page.locator('.fatura__abrir, .fatura__item').filter({ visible: true }).filter({ hasText: descricao });
+}
+
+function totalDaFatura(page: Page): Locator {
+  return page.locator('.fatura__totais > div').nth(2).locator('.fatura__numero');
+}
+
+// Fatia 05a: o cartão fecha dia 10 e vence dia 20. A compra é do dia 10 deste mês (M), o próprio fechamento:
+// cai na fatura de M, e as 3 parcelas vão para M, M+1 e M+2, qualquer que seja o dia de hoje.
+test('cadastra o cartão e lança uma compra em 3x, que se espalha pelas faturas e aparece em Lançamentos (Fatia 05a)', async ({ page }) => {
+  const mes = mesDeHoje();
+  await entrar(page);
+  await irPeloMenu(page, 'Cartões');
+  await expect(page.getByRole('heading', { name: 'Cartões', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Nenhum cartão ainda', level: 2 })).toBeVisible();
+  await page.getByRole('button', { name: 'Novo cartão' }).first().click();
+  const dialogo = page.getByRole('dialog');
+  await expect(dialogo.getByRole('heading', { name: 'Novo cartão' })).toBeVisible();
+  // A conta arquivada não paga fatura (decisão 4).
+  await expect(dialogo.getByLabel('Conta de pagamento', { exact: true })).not.toContainText('Banco Horizonte');
+  await dialogo.getByLabel('Nome', { exact: true }).fill('Cartão Horizonte');
+  await dialogo.getByLabel('Limite', { exact: true }).fill('5.000');
+  await dialogo.getByLabel('Dia de fechamento', { exact: true }).fill('10');
+  await dialogo.getByLabel('Dia de vencimento', { exact: true }).fill('20');
+  await dialogo.getByLabel('Conta de pagamento', { exact: true }).selectOption({ label: 'Conta Itaú' });
+  await dialogo.getByRole('button', { name: 'Salvar' }).click();
+  await expect(dialogo).toBeHidden();
+  await expect(page.getByText('Cartão criado.')).toBeVisible();
+  await expect(page.locator('.cartoes__nome')).toHaveText(['Cartão Horizonte']);
+  await expect(page.locator('.cartoes__meta span').filter({ visible: true })).toHaveText(
+    ehDesktop(page) ? 'Fecha dia 10 · vence dia 20 · paga com Conta Itaú' : 'Fecha 10 · vence 20 · Conta Itaú');
+  expect(await semRolagemHorizontal(page)).toBe(true);
+
+  await page.locator('.cartoes__ver').click();
+  await expect(page.getByRole('heading', { name: /^Fatura de /, level: 1 })).toBeVisible();
+  await page.getByRole('button', { name: 'Nova compra' }).first().click();
+  const compra = page.getByRole('dialog');
+  await expect(compra.getByRole('heading', { name: 'Nova compra' })).toBeVisible();
+  await expect(compra.getByLabel('Cartão', { exact: true }).locator('option:checked')).toHaveText('Cartão Horizonte');
+  await compra.getByLabel('Data da compra', { exact: true }).fill(`${mes}-10`);
+  await compra.getByLabel('Descrição', { exact: true }).fill('Sapataria Passo Firme');
+  await compra.getByLabel('Valor total', { exact: true }).fill('450');
+  await compra.getByLabel('Parcelas', { exact: true }).selectOption({ label: '3x' });
+  await compra.getByLabel('Categoria (opcional)', { exact: true }).selectOption({ label: 'Compras' });
+  // A prévia vem da API (decisão 18).
+  await expect(compra.locator('.compra__titulo-previa')).toHaveText('3x de R$ 150,00');
+  await expect(compra.locator('.compra__previa')).toContainText(
+    `1ª na fatura de ${mesSemAno(mes)} (vence 20/${mes.slice(5, 7)}/${mes.slice(0, 4)}) · última em ${mesComAno(mesDeHoje(2))}.`);
+  if (!ehDesktop(page)) {
+    expect(await dialogoDasRegrasSemRolagemHorizontal(page, '.compra')).toBe(true);
+  }
+  await compra.getByRole('button', { name: 'Lançar 3 parcelas' }).click();
+  await expect(compra).toBeHidden();
+  await expect(page.getByText('Compra lançada em 3 parcelas.')).toBeVisible();
+  await page.getByRole('button', { name: 'Ver fatura' }).click();
+  await expect(page).toHaveURL(new RegExp(`/cartoes/\\d+/faturas/${mes}$`));
+  await expect(page.getByRole('heading', { name: `Fatura de ${mesComAno(mes)}`, level: 1 })).toBeVisible();
+  await expect(itemDaFatura(page, 'Sapataria Passo Firme')).toHaveCount(1);
+  await expect(page.locator('.fatura__pilula').filter({ visible: true })).toHaveText(['1/3']);
+  await expect(page.locator('.fatura__marco')).toHaveText([`${diaDoMes(11, mesDeHoje(-1))}começa`, `${diaDoMes(10, mes)}fecha`, `${diaDoMes(20, mes)}vence`]);
+  await expect(totalDaFatura(page)).toHaveText('R$ 150,00');
+  await expect(page.locator('.fatura__totais > div').nth(3).locator('.fatura__nota'))
+    .toHaveText(`parcelas de ${faixaDeMeses(mesDeHoje(1), mesDeHoje(2))}`);
+  expect(await semRolagemHorizontal(page)).toBe(true);
+  await page.getByRole('button', { name: `Fatura de ${mesSemAno(mesDeHoje(1))}` }).click();
+  await expect(page.getByRole('heading', { name: `Fatura de ${mesComAno(mesDeHoje(1))}`, level: 1 })).toBeVisible();
+  await expect(page.locator('.fatura__pilula').filter({ visible: true })).toHaveText(['2/3']);
+
+  // Em Lançamentos, a parcela aparece no vencimento da fatura, com o cartão (decisão 22).
+  await irPeloMenu(page, 'Lançamentos');
+  const parcela = linha(page, 'Sapataria Passo Firme');
+  await expect(parcela.locator('.linha__pilula--parcela')).toHaveText('1/3');
+  await expect(parcela.locator('.valor__texto')).toHaveText('−R$ 150,00');
+  await expect(parcela.locator('.linha__meta-texto').filter({ visible: true })).toHaveText(
+    ehDesktop(page) ? `Compras · Cartão Horizonte · compra em ${diaDoMes(10, mes)}` : `Cartão Horizonte · compra em ${diaDoMes(10, mes)}`);
+  await page.locator('.lancamentos__filtro select').first().selectOption({ label: 'Cartão Horizonte' });
+  await expect(page).toHaveURL(/[?&]cartao=\d+/);
+  await expect(page.locator('.linha__titulo')).toHaveText(['Sapataria Passo Firme']);
+  await expect(page.locator('.lancamentos__subtitulo')).toContainText('Cartão Horizonte · 1 lançamento');
+  await expect(page.locator('.lancamentos__fatura')).toContainText(
+    `Fatura de ${mesSemAno(mes)} · fecha ${diaDoMes(10, mes)} · vence ${diaDoMes(20, mes)} · R$ 150,00`);
+  expect(await semRolagemHorizontal(page)).toBe(true);
+  await parcela.click();
+  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Editar compra' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('ajusta o fechamento e volta ao normal, lança um estorno e exclui a compra (Fatia 05a)', async ({ page }) => {
+  const mes = mesDeHoje();
+  await entrar(page);
+  await irPeloMenu(page, 'Lançamentos');
+  await page.locator('.lancamentos__filtro select').first().selectOption({ label: 'Cartão Horizonte' });
+  await page.locator('.lancamentos__fatura').getByRole('link', { name: 'Ver fatura' }).click();
+  await expect(page.getByRole('heading', { name: `Fatura de ${mesComAno(mes)}`, level: 1 })).toBeVisible();
+
+  // Decisão 12: o ajuste para o dia 9 tira desta fatura a compra do dia 10, e as parcelas andam junto.
+  await acaoDaFatura(page, 'Ajustar fechamento');
+  const ajuste = page.getByRole('dialog');
+  await expect(ajuste.getByRole('heading', { name: `Ajustar o fechamento de ${mesSemAno(mes)}` })).toBeVisible();
+  await expect(ajuste.locator('#ajuste-data-dica')).toHaveText(`De ${diaDoMes(11, mesDeHoje(-1))} a ${diaDoMes(19, mes)}: depois do fechamento de `
+    + `${mesSemAno(mesDeHoje(-1))} e antes do vencimento, ${diaDoMes(20, mes)}.`);
+  await ajuste.getByLabel('Fecha em', { exact: true }).fill(`${mes}-09`);
+  await expect(ajuste.locator('.flux-alerta__titulo')).toHaveText(`Compras de ${diaDoMes(10, mes)} passam desta fatura para ${mesSemAno(mesDeHoje(1))}.`);
+  if (!ehDesktop(page)) {
+    expect(await dialogoDasRegrasSemRolagemHorizontal(page, '.ajuste')).toBe(true);
+  }
+  await ajuste.getByRole('button', { name: 'Ajustar', exact: true }).click();
+  await expect(ajuste).toBeHidden();
+  await expect(page.getByText('Fechamento ajustado. 1 compra mudou de fatura.')).toBeVisible();
+  await expect(page.locator('.fatura__marco').nth(1)).toHaveText(`${diaDoMes(9, mes)}fecha · ajustado`);
+  await expect(page.getByRole('heading', { name: `Nada na fatura de ${mesComAno(mes)}`, level: 2 })).toBeVisible();
+  await page.getByRole('button', { name: `Voltar ao fechamento normal (${diaDoMes(10, mes)})` }).click();
+  await expect(page.getByText('O fechamento voltou ao normal.')).toBeVisible();
+  await expect(page.locator('.fatura__pilula').filter({ visible: true })).toHaveText(['1/3']);
+
+  // Decisão 20: o estorno é um crédito na fatura da data dele.
+  await acaoDaFatura(page, 'Novo estorno');
+  const estorno = page.getByRole('dialog');
+  await expect(estorno.getByRole('heading', { name: 'Novo estorno' })).toBeVisible();
+  await estorno.getByLabel('Data do estorno', { exact: true }).fill(`${mes}-10`);
+  await estorno.getByLabel('Descrição', { exact: true }).fill('Estorno Sapataria');
+  await estorno.getByLabel('Valor', { exact: true }).fill('50');
+  await estorno.getByLabel('Categoria (opcional)', { exact: true }).selectOption({ label: 'Reembolsos' });
+  await estorno.getByRole('button', { name: 'Lançar estorno' }).click();
+  await expect(estorno).toBeHidden();
+  await expect(page.getByText('Estorno lançado.')).toBeVisible();
+  await expect(page.locator('.fatura__pilula').filter({ visible: true })).toHaveText(['Estorno', '1/3']);
+  await expect(totalDaFatura(page)).toHaveText('R$ 100,00');
+
+  // Decisão 19: excluir a compra tira as 3 parcelas; fica só o crédito do estorno.
+  await itemDaFatura(page, 'Sapataria Passo Firme').click();
+  const editar = page.getByRole('dialog');
+  await expect(editar.getByRole('heading', { name: 'Editar compra' })).toBeVisible();
+  await editar.getByRole('button', { name: 'Excluir', exact: true }).click();
+  const confirmacao = page.getByRole('dialog').filter({ hasText: 'Excluir Sapataria Passo Firme?' });
+  await expect(confirmacao).toContainText(`As 3 parcelas saem das faturas de ${mesComAno(mes)} a ${mesComAno(mesDeHoje(2))}. Isso não pode ser desfeito.`);
+  await confirmacao.getByRole('button', { name: 'Excluir compra' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByText('Compra excluída.')).toBeVisible();
+  await expect(page.locator('.fatura__pilula').filter({ visible: true })).toHaveText(['Estorno']);
+  await expect(totalDaFatura(page)).toHaveText('Crédito de R$ 50,00');
+  expect(await semRolagemHorizontal(page)).toBe(true);
+
+  await irPeloMenu(page, 'Início');
+  await expect(page.locator('.inicio-cartao__nome')).toHaveText(['Cartão Horizonte']);
+});

@@ -180,15 +180,18 @@ describe('Contas', () => {
     expect(bloqueio?.codigo).toBe('CONTA_EM_USO');
     expect(bloqueio?.titulo).toBe('Esta conta não pode ser excluída');
     expect(bloqueio?.alternativa).toBe('Arquivar conta');
-    expect(bloqueio?.paragrafo('34 lançamentos e 3 transferências')).toEqual([{ forte: 'Banco Horizonte' },
+    expect(bloqueio?.propriedade).toBe('motivo');
+    expect(bloqueio?.paragrafo('tem 34 lançamentos e 3 transferências')).toEqual([{ forte: 'Banco Horizonte' },
       ' tem 34 lançamentos e 3 transferências. Para tirá-la do saldo total e dos seletores sem perder o histórico, arquive a conta.']);
+    expect(bloqueio?.paragrafo('é a conta de pagamento de 1 cartão')).toEqual([{ forte: 'Banco Horizonte' },
+      ' é a conta de pagamento de 1 cartão. Para tirá-la do saldo total e dos seletores sem perder o histórico, arquive a conta.']);
     fechamentos[0].next('alternativa');
     expect((dialogo.open.mock.calls[1] as unknown as [unknown, { data: DadosDaConfirmacao }])[1].data.titulo).toBe('Arquivar Banco Horizonte?');
 
     componente.excluir(lista.arquivadas[0]);
     const daArquivada = (dialogo.open.mock.calls[2] as unknown as [unknown, { data: DadosDaConfirmacao }])[1].data.bloqueio;
     expect(daArquivada?.alternativa).toBeUndefined();
-    expect(daArquivada?.paragrafo('1 lançamento')).toEqual([{ forte: 'Conta salário' }, ' tem 1 lançamento. Ela continua arquivada, com o histórico nos relatórios.']);
+    expect(daArquivada?.paragrafo('tem 1 lançamento')).toEqual([{ forte: 'Conta salário' }, ' tem 1 lançamento. Ela continua arquivada, com o histórico nos relatórios.']);
   });
 
   it('mostra o erro de reativar dentro das arquivadas e as abre', () => {

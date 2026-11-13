@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AuthService } from '../../core/auth/auth.service';
 import { Usuario } from '../../core/auth/sessao';
 import { AGORA } from '../../core/tempo/agora';
+import { Cartao, CartoesService, ListaDeCartoes } from '../cartoes/cartoes.service';
 import { CategoriasService, ListaDeCategorias } from '../categorias/categorias.service';
 import { ContasService, ListaDeContas } from '../contas/contas.service';
 import { ItemDaLista, LancamentosService, ListaDoMes } from '../lancamentos/lancamentos.service';
@@ -24,6 +25,16 @@ const comContas: ListaDeContas = {
 };
 
 const categorias: ListaDeCategorias = { despesas: { ativas: [], arquivadas: [] }, receitas: { ativas: [], arquivadas: [] } };
+
+const horizonte: Cartao = {
+  id: 7, nome: 'Cartão Horizonte', limite: 5000, diaFechamento: 3, diaVencimento: 10, contaPagamentoId: 1, contaPagamentoNome: 'Banco Horizonte',
+  contaPagamentoArquivada: false, cor: 'OURO', arquivadoEm: null,
+  faturaAberta: { mes: '2026-12', inicio: '2026-11-04', fechamento: '2026-12-03', vencimento: '2026-12-10', total: 1113.69, lancamentos: 7 },
+  proximaFatura: { mes: '2027-01', inicio: '2026-12-04', fechamento: '2027-01-03', vencimento: '2027-01-10', total: 631.33, lancamentos: 4 },
+  emAberto: 4267.35, lancamentosEmAberto: 30,
+};
+
+const comCartao: ListaDeCartoes = { ativos: [horizonte], arquivados: [] };
 
 const padaria: ItemDaLista = {
   tipo: 'DESPESA', id: 30, data: '2026-11-06', descricao: 'Padaria Central', valor: -18.5, observacao: null, contaId: 1,
@@ -41,7 +52,8 @@ const semNada: ListaDoMes = { ...novembro, quantidadeLancamentos: 0, quantidadeT
   totais: { entradas: 0, quantidadeEntradas: 0, saidas: 0, quantidadeSaidas: 0, resultado: 0 } };
 
 describe('Inicio', () => {
-  function criar(resposta: () => Observable<ListaDeContas>, mes: ListaDoMes = novembro, ultimos: ItemDaLista[] = [padaria]) {
+  function criar(resposta: () => Observable<ListaDeContas>, mes: ListaDoMes = novembro, ultimos: ItemDaLista[] = [padaria],
+                 cartoes: () => Observable<ListaDeCartoes> = () => of(comCartao)) {
     const auth = { usuario: signal<Usuario | null>({ id: 1, nome: 'Dev', email: 'dev@flux.local' }) };
     const restaurado = new Subject<void>();
     const lancamentos = { listar: vi.fn(() => of(mes)), ultimos: vi.fn(() => of(ultimos)), ultimaConta: null,
@@ -55,6 +67,7 @@ describe('Inicio', () => {
         { provide: AuthService, useValue: auth },
         { provide: AGORA, useValue: () => new Date('2026-11-07T02:30:00Z') },
         { provide: ContasService, useValue: { listar: resposta } },
+        { provide: CartoesService, useValue: { listar: cartoes } },
         { provide: LancamentosService, useValue: lancamentos },
         { provide: CategoriasService, useValue: { listar: () => of(categorias) } },
         { provide: MatDialog, useValue: dialogo },
@@ -69,13 +82,28 @@ describe('Inicio', () => {
     return [...elemento.querySelectorAll(seletor)].map((no) => no.textContent?.trim().replace(/\s+/g, ' ') ?? '');
   }
 
-  it('mostra a saudação, a data e o item em breve (a importação saiu do em breve na 04a)', () => {
+  it('mostra a saudação, a data e o card Cartões com a fatura aberta de cada cartão (Fatia 05a, decisão 26)', () => {
     const { elemento } = criar(() => of(comContas));
     expect(elemento.querySelector('h1')?.textContent).toBe('Olá, Dev');
     expect(elemento.querySelector('p.cabecalho__subtitulo')?.textContent).toBe('Sexta-feira, 6 de novembro de 2026');
-    expect(textos(elemento, '.em-breve h3')).toEqual(['Cartões de crédito']);
-    expect(textos(elemento, '.em-breve .flux-pilula')).toEqual(['Em breve']);
+    expect(elemento.querySelector('.em-breve')).toBeNull();
+    expect(textos(elemento, '.inicio-cartoes .card__titulo')).toEqual(['Cartões']);
+    expect(textos(elemento, '.inicio-cartoes__nota')).toEqual(['Faturas abertas']);
+    expect(textos(elemento, '.inicio-cartao__nome')).toEqual(['Cartão Horizonte']);
+    expect(elemento.querySelector('a.inicio-cartao__nome')?.getAttribute('href')).toBe('/cartoes/7/faturas/2026-12');
+    expect(textos(elemento, '.inicio-cartao__meta')).toEqual(['Dezembro · fecha 03/12 · vence 10/12']);
+    expect(elemento.querySelector('.inicio-cartao .flux-num')?.textContent?.replace(/\s/g, ' ')).toBe('R$ 1.113,69');
+    expect(elemento.querySelector('.inicio-cartoes a.flux-link')?.getAttribute('href')).toBe('/cartoes');
     expect(elemento.querySelector('.cabecalho__acoes a[href="/importacao"]')?.textContent?.trim()).toBe('Importar extrato');
+  });
+
+  it('sem cartão, o card Cartões convida a cadastrar; sem a lista de cartões, ele some', () => {
+    const semCartao = criar(() => of(comContas), novembro, [padaria], () => of({ ativos: [], arquivados: [] }));
+    expect(textos(semCartao.elemento, '.inicio-cartoes__vazio')).toEqual(['Cadastre um cartão para ver as faturas aqui.']);
+    expect(semCartao.elemento.querySelector('.inicio-cartoes a[href="/cartoes?novo=cartao"]')?.textContent?.trim()).toBe('Novo cartão');
+    TestBed.resetTestingModule();
+    const comErro = criar(() => of(comContas), novembro, [padaria], () => throwError(() => new HttpErrorResponse({ status: 500 })));
+    expect(comErro.elemento.querySelector('.inicio-cartoes')).toBeNull();
   });
 
   it('com contas, mostra o saldo total, os investimentos e a lista, com cada conta levando aos lançamentos dela', () => {
@@ -109,7 +137,7 @@ describe('Inicio', () => {
 
   it('mostra o mês e os últimos lançamentos, com os totais da API', () => {
     const { elemento, lancamentos } = criar(() => of(comContas));
-    expect(lancamentos.listar).toHaveBeenCalledWith({ mes: '2026-11', conta: null, categoria: null, tipo: null, busca: '' });
+    expect(lancamentos.listar).toHaveBeenCalledWith({ mes: '2026-11', conta: null, cartao: null, categoria: null, tipo: null, busca: '' });
     expect(textos(elemento, '.inicio-mes .card__titulo')).toEqual(['Novembro']);
     expect(textos(elemento, '.inicio-mes .valor__texto')).toEqual(['+R$ 4.769,13', '+R$ 8.491,28', '−R$ 3.722,15']);
     expect(textos(elemento, '.inicio-mes__rotulo')).toEqual(['Entradas · 3', 'Saídas · 11']);
@@ -149,6 +177,6 @@ describe('Inicio', () => {
   it('se a lista de contas falhar, avisa e continua mostrando o resto', () => {
     const { elemento } = criar(() => throwError(() => new HttpErrorResponse({ status: 500 })));
     expect(elemento.querySelector('[role="alert"]')?.textContent).toContain('Não foi possível carregar o saldo das contas.');
-    expect(elemento.querySelectorAll('.em-breve h3')).toHaveLength(1);
+    expect(elemento.querySelectorAll('.inicio-cartoes')).toHaveLength(1);
   });
 });

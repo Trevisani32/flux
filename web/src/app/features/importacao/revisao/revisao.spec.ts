@@ -63,7 +63,7 @@ describe('Revisao', () => {
     return Array.from(elemento.querySelectorAll(seletor)).map((no) => no.textContent?.trim().replace(/\s+/g, ' ') ?? '');
   }
 
-  /** A caixa pelo texto do <label> dela (AGENTS.md: todo campo tem label). */
+  /** A caixa pelo texto do <label> dela (todo campo tem label). */
   function caixa(elemento: HTMLElement, rotulo: string): HTMLInputElement {
     const label = Array.from(elemento.querySelectorAll('label.revisao__caixa')).find((item) => item.textContent?.trim() === rotulo);
     return label?.querySelector('input') as HTMLInputElement;
@@ -234,7 +234,7 @@ describe('Revisao', () => {
     expect(textos(elemento, '#revisao-ja .revisao__curta-descricao')).toEqual(['LINHA 20', 'LINHA 21', 'LINHA 22']);
   });
 
-  it('no celular, a pílula "Ficam de fora" aparece sempre; sem nenhuma linha de fora, diz isso (mockup, linha 1288)', () => {
+  it('no celular, a pílula "Ficam de fora" aparece sempre; sem nenhuma linha de fora, diz isso', () => {
     const { elemento, atualizar } = criar({ ...previa, linhas: [linha({ linha: 7 })] });
     expect(textos(elemento, '.revisao__nota')[0]).toBe('1 nova e 0 prováveis duplicadas');
     expect(textos(elemento, '.revisao__nota-do-grupo')).toEqual([]);
