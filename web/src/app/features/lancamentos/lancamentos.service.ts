@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, Subject, map, tap } from 'rxjs';
 
+import { CorConta } from '../contas/contas.service';
 import { Filtros, parametrosDaApi } from './filtros';
 
 export type TipoLancamento = 'RECEITA' | 'DESPESA' | 'TRANSFERENCIA';
@@ -22,7 +23,8 @@ export interface LadoDaTransferencia {
 /**
  * Uma linha da lista (receita, despesa ou a transferência inteira), como a API devolve.
  * Na transferência, `valor` é o valor movido, positivo; `contaId`/`contaNome` são a origem
- * e `contaDestinoId`/`contaDestinoNome`, o destino.
+ * e `contaDestinoId`/`contaDestinoNome`, o destino. No lançamento de fatura (Fatia 05a), `contaId` e
+ * `contaNome` vêm nulos: o tipo continua o das fatias anteriores, e a tela olha `compraId` antes de usá-los.
  */
 export interface ItemDaLista {
   readonly tipo: TipoLancamento;
@@ -52,6 +54,31 @@ export interface ItemDaLista {
    * despesa); é opcional aqui porque os objetos de teste das fatias anteriores não o trazem.
    */
   readonly lados?: readonly LadoDaTransferencia[] | null;
+  /**
+   * Fatia 05a: só no lançamento de fatura (a parcela e o estorno, sem conta: `contaId` e `contaNome` nulos), o cartão, a
+   * compra, o número da parcela e a data da compra; a `data` é o vencimento da fatura (decisão 22). A API manda sempre
+   * (nulos fora da fatura); opcionais aqui porque os objetos de teste das fatias anteriores não os trazem.
+   */
+  readonly cartaoId?: number | null;
+  readonly cartaoNome?: string | null;
+  readonly cartaoCor?: CorConta | null;
+  readonly compraId?: number | null;
+  readonly estorno?: boolean;
+  readonly parcela?: number | null;
+  readonly parcelas?: number | null;
+  readonly dataCompra?: string | null;
+}
+
+/** Fatia 05a (decisão 23): a fatura do mês, com o filtro de um cartão. `total` positivo é a pagar. */
+export interface FaturaDoFiltro {
+  readonly cartaoId: number;
+  readonly cartaoNome: string;
+  readonly cartaoCor: CorConta | null;
+  readonly mes: string;
+  readonly fechamento: string;
+  readonly vencimento: string;
+  readonly situacao: 'FUTURA' | 'ABERTA' | 'FECHADA';
+  readonly total: number;
 }
 
 /** Um par possível para a conversão (Fatia 04c, decisão 27): `valor` com sinal, oposto ao do importado. */
@@ -104,6 +131,8 @@ export interface ListaDoMes {
   readonly quantidadeLancamentos: number;
   readonly quantidadeTransferencias: number;
   readonly dias: readonly DiaDaLista[];
+  /** Fatia 05a: só com o filtro de um cartão; opcional pelos objetos de teste das fatias anteriores. */
+  readonly fatura?: FaturaDoFiltro | null;
 }
 
 /** Corpo de POST /api/lancamentos e PUT /api/lancamentos/{id}. O valor vai positivo. */

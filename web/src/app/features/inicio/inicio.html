@@ -66,16 +66,27 @@
       </app-estado-vazio>
     }
   }
-  <section class="em-breve" aria-label="Em breve">
-    @for (item of emBreve; track item.titulo) {
-      <app-card>
-        <div class="em-breve__topo">
-          <span class="flux-selo-icone"><app-icone [nome]="item.icone" /></span>
-          <span class="flux-pilula">Em breve</span>
-        </div>
-        <h3 class="em-breve__titulo">{{ item.titulo }}</h3>
-        <p class="em-breve__texto">{{ item.texto }}</p>
-      </app-card>
-    }
-  </section>
+  @if (cartoes(); as lista) {
+    <app-card class="inicio-cartoes" titulo="Cartões">
+      <a acao class="flux-link" routerLink="/cartoes">Ver cartões</a>
+      @if (lista.ativos.length > 0) {
+        <p class="inicio-cartoes__nota">Faturas abertas</p>
+        <ul class="flux-lista">
+          @for (cartao of lista.ativos; track cartao.id) {
+            <li class="inicio-cartao">
+              <span class="inicio-cartao__selo" [style.--flux-cor]="corDaConta(cartao.cor)" aria-hidden="true"><app-icone nome="cartao" [tamanho]="14" [traco]="2" /></span>
+              <span class="inicio-cartao__textos">
+                <a class="inicio-cartao__nome" [routerLink]="['/cartoes', cartao.id, 'faturas', cartao.faturaAberta.mes]">{{ cartao.nome }}</a>
+                <span class="inicio-cartao__meta">{{ nomeDoMesSemAno(cartao.faturaAberta.mes) }} · fecha {{ diaEMes(cartao.faturaAberta.fechamento) }} · vence {{ diaEMes(cartao.faturaAberta.vencimento) }}</span>
+              </span>
+              <span class="flux-num">{{ textoDoTotal(cartao.faturaAberta.total) }}</span>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="inicio-cartoes__vazio">Cadastre um cartão para ver as faturas aqui.</p>
+        <a mat-stroked-button class="inicio-ultimos__novo" routerLink="/cartoes" [queryParams]="{ novo: 'cartao' }">Novo cartão</a>
+      }
+    </app-card>
+  }
 </div>

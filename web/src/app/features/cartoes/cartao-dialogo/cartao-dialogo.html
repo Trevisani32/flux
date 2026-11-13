@@ -1,0 +1,98 @@
+<form class="cartao-dialogo" [formGroup]="formulario" (ngSubmit)="salvar()">
+  <h2 mat-dialog-title class="cartao-dialogo__titulo">{{ editando ? 'Editar cartão' : 'Novo cartão' }}</h2>
+
+  <div class="flux-campo">
+    <label for="cartao-nome">Nome</label>
+    <div class="flux-entrada" [class.flux-entrada--invalida]="erro('nome') !== null">
+      <input id="cartao-nome" type="text" formControlName="nome" maxlength="60" autocomplete="off" [attr.aria-invalid]="erro('nome') !== null ? 'true' : null" [attr.aria-describedby]="erro('nome') !== null ? 'cartao-nome-erro' : null" />
+    </div>
+    @if (erro('nome'); as mensagem) {
+      <p id="cartao-nome-erro" class="flux-campo__erro">{{ mensagem }}</p>
+    }
+  </div>
+
+  <div class="flux-campo">
+    <label for="cartao-limite">Limite</label>
+    <div class="flux-entrada" [class.flux-entrada--invalida]="erro('limite') !== null">
+      <span class="flux-entrada__prefixo" aria-hidden="true">R$</span>
+      <input id="cartao-limite" type="text" inputmode="decimal" formControlName="limite" placeholder="0,00" autocomplete="off" (blur)="formatarLimite()" [attr.aria-invalid]="erro('limite') !== null ? 'true' : null" [attr.aria-describedby]="erro('limite') !== null ? 'cartao-limite-erro' : null" />
+    </div>
+    @if (erro('limite'); as mensagem) {
+      <p id="cartao-limite-erro" class="flux-campo__erro">{{ mensagem }}</p>
+    }
+  </div>
+
+  <div class="cartao-dialogo__duas">
+    <div class="flux-campo">
+      <label for="cartao-fechamento">Dia de fechamento</label>
+      <div class="flux-entrada" [class.flux-entrada--invalida]="erro('diaFechamento') !== null">
+        <input id="cartao-fechamento" type="text" inputmode="numeric" maxlength="2" formControlName="diaFechamento" autocomplete="off" [attr.aria-invalid]="erro('diaFechamento') !== null ? 'true' : null" [attr.aria-describedby]="erro('diaFechamento') !== null ? 'cartao-fechamento-erro' : null" />
+      </div>
+      @if (erro('diaFechamento'); as mensagem) {
+        <p id="cartao-fechamento-erro" class="flux-campo__erro">{{ mensagem }}</p>
+      }
+    </div>
+    <div class="flux-campo">
+      <label for="cartao-vencimento">Dia de vencimento</label>
+      <div class="flux-entrada" [class.flux-entrada--invalida]="erro('diaVencimento') !== null">
+        <input id="cartao-vencimento" type="text" inputmode="numeric" maxlength="2" formControlName="diaVencimento" autocomplete="off" [attr.aria-invalid]="erro('diaVencimento') !== null ? 'true' : null" [attr.aria-describedby]="erro('diaVencimento') !== null ? 'cartao-vencimento-erro' : null" />
+      </div>
+    </div>
+  </div>
+  @if (erro('diaVencimento'); as mensagem) {
+    <p id="cartao-vencimento-erro" class="flux-campo__erro cartao-dialogo__erro-dos-dias">{{ mensagem }}</p>
+  } @else if (dicaDosDias(); as dica) {
+    <p id="cartao-dias-dica" class="flux-dica cartao-dialogo__dica-dos-dias">{{ dica }}</p>
+  }
+
+  @if (avisoDaTroca(); as aviso) {
+    <app-alerta tipo="info" icone="info" [titulo]="aviso.titulo">
+      @if (aviso.texto; as texto) {
+        <p class="flux-alerta__texto">{{ texto }}</p>
+      }
+    </app-alerta>
+  }
+
+  <div class="flux-campo">
+    <label for="cartao-conta">Conta de pagamento</label>
+    <div class="flux-entrada" [class.flux-entrada--invalida]="erro('conta') !== null">
+      <select id="cartao-conta" formControlName="conta" [attr.aria-invalid]="erro('conta') !== null ? 'true' : null" [attr.aria-describedby]="erro('conta') !== null ? 'cartao-conta-erro' : 'cartao-conta-dica'">
+        <option [ngValue]="null" disabled>Escolha</option>
+        @for (opcao of opcoesDeConta; track opcao.id) {
+          <option [ngValue]="opcao.id">{{ opcao.rotulo }}</option>
+        }
+      </select>
+      <app-icone class="flux-entrada__seta" nome="baixo" />
+    </div>
+    @if (erro('conta'); as mensagem) {
+      <p id="cartao-conta-erro" class="flux-campo__erro">{{ mensagem }}</p>
+    } @else {
+      <p id="cartao-conta-dica" class="flux-dica">Corrente, poupança ou carteira. Vem preenchida no pagamento da fatura.</p>
+    }
+  </div>
+
+  <fieldset class="flux-grupo">
+    <legend>Cor <span class="flux-grupo__opcional">(opcional)</span></legend>
+    <div class="flux-cores">
+      <label class="flux-cor">
+        <input type="radio" name="cor" formControlName="cor" [value]="null" aria-label="Sem cor" />
+        <span class="flux-cor__amostra flux-cor__amostra--sem"></span>
+      </label>
+      @for (cor of cores; track cor.valor) {
+        <label class="flux-cor">
+          <input type="radio" name="cor" formControlName="cor" [value]="cor.valor" [attr.aria-label]="cor.nome" />
+          <span class="flux-cor__amostra" [style.background]="'var(--flux-cor-conta-' + cor.valor.toLowerCase() + ')'"></span>
+        </label>
+      }
+    </div>
+  </fieldset>
+
+  @if (erroGeral(); as mensagem) {
+    <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem" />
+  }
+
+  <div class="cartao-dialogo__acoes">
+    <button mat-stroked-button type="button" [disabled]="enviando()" (click)="cancelar()">Cancelar</button>
+    <button mat-flat-button type="submit" [disabled]="enviando()">Salvar</button>
+  </div>
+</form>

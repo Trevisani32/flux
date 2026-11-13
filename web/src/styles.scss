@@ -15,6 +15,7 @@
 @use 'styles/importacao';
 @use 'styles/regras';
 @use 'styles/conversao';
+@use 'styles/cartoes';
 
 html {
   @include mat.theme(
