@@ -69,6 +69,7 @@ O que isso exige do produto:
 | Cartão | Cartão de crédito com limite, dia de fechamento e dia de vencimento |
 | Fatura | O conjunto de lançamentos de um cartão que vencem num mesmo mês |
 | Parcelamento | Compra no cartão dividida em N parcelas, uma por fatura |
+| Estorno | Crédito numa fatura de cartão, que abate o total dela |
 | Importação | Leitura de um extrato OFX ou CSV que vira lançamentos |
 | Regra de categorização | "Se a descrição contém X, use a categoria Y" |
 | Recorrência | Lançamento que se repete (salário, aluguel, assinatura) |
@@ -194,15 +195,17 @@ O que isso exige do produto:
 - **Arquivar:** a conta some dos seletores e do saldo total, mas o histórico continua
   nos relatórios. Se o saldo não for zero, o sistema avisa antes de arquivar; com saldo
   zero, arquiva direto e oferece "Desfazer". As regras de categorização só desta conta ficam
-  pausadas até ela ser reativada.
+  pausadas até ela ser reativada. O cartão que ela paga continua com ela, e a tela de Cartões
+  avisa (módulo 8).
 - **Reativar:** a conta arquivada volta pela seção "Arquivadas". Se já houver uma conta
   ativa com o mesmo nome, a reativação é recusada. Conta arquivada não se edita.
-- **Excluir:** só é permitido em conta sem lançamentos e sem transferências. Com eles, o
-  sistema diz quantos são e oferece arquivar. As regras de categorização só desta conta saem
-  junto, e as outras regras sobem de posição.
+- **Excluir:** só é permitido em conta sem lançamentos, sem transferências e que não seja a
+  conta de pagamento de um cartão. Senão, o sistema diz o motivo ("…porque tem 34 lançamentos e
+  é a conta de pagamento de 1 cartão") e oferece arquivar. As regras de categorização só
+  desta conta saem junto, e as outras regras sobem de posição.
 - As contas aparecem em ordem alfabética. Cada usuário pode ter até 50 contas,
   contando as arquivadas.
-- Cartão de crédito não é conta. Ele tem módulo próprio.
+- Cartão de crédito não é conta. Ele tem módulo próprio (módulo 8).
 ### 3. Categorias — Fatia 03a
 - Cada categoria tem natureza `RECEITA` ou `DESPESA`, que nunca muda.
 - São dois níveis: categoria principal e subcategoria. A subcategoria herda a natureza
@@ -232,8 +235,8 @@ O que isso exige do produto:
   pode ter até 200, contando as arquivadas.
 ### 4. Lançamentos — Fatia 03b
 
-- Receita ou despesa numa conta. Na Fatia 05 passam a existir também lançamentos
-  em fatura de cartão.
+- Receita ou despesa numa conta ou numa fatura de cartão. Os de fatura, as parcelas das
+  compras e os estornos, seguem as regras do módulo 8 (Fatia 05a).
 - Campos: data, descrição (até 255 caracteres), valor, tipo (`RECEITA` ou `DESPESA`),
   categoria (opcional), conta e observação (opcional, até 1.000 caracteres).
 - O usuário sempre digita o valor positivo. O sistema guarda com sinal: entrada
@@ -254,14 +257,14 @@ O que isso exige do produto:
 - A origem é `MANUAL` ou `IMPORTADO` (Fatia 04a).
 - **Lista:** um mês por vez, começando no mês atual e indo até 12 meses à frente,
   agrupada por dia, com o mais recente primeiro (no mesmo dia, o último cadastrado em
-  cima). Há filtros por conta, categoria (a principal inclui as subcategorias, e há
-  "Sem categoria"), tipo (receitas, despesas ou transferências) e texto da descrição,
-  sem diferenciar maiúsculas e acentos. O mês e os filtros ficam no endereço da página.
-- **Totais do filtro:** entradas, saídas e resultado, só de receitas e despesas. Os
-  lançamentos futuros do mês entram.
+  cima). Há filtros por conta ou cartão (módulo 8), categoria (a principal inclui as
+  subcategorias, e há "Sem categoria"), tipo (receitas, despesas ou transferências) e texto da
+  descrição, sem diferenciar maiúsculas e acentos. O mês e os filtros ficam no endereço da página.
+- **Totais do filtro:** entradas, saídas e resultado, só de receitas e despesas, inclusive as
+  parcelas e os estornos dos cartões. Os lançamentos futuros do mês entram.
 - Com o filtro de uma conta, cada dia mostra o saldo da conta no fim do dia.
 - Cada usuário pode ter até 1.000 lançamentos com data no mesmo mês e 100.000 no total;
-  a transferência conta dois.
+  a transferência conta dois, e cada parcela de uma compra conta um, no mês dela.
 - Lançamentos manuais podem ser editados e excluídos, com confirmação, menos os de conta
   arquivada. As regras dos importados estão no módulo de importação.
 
@@ -277,7 +280,8 @@ O que isso exige do produto:
 - Editar ou excluir uma transferência altera os dois lançamentos juntos, e a edição
   pode trocar as contas. Com uma das contas arquivada, a transferência fica só para
   leitura.
-- A conta de origem precisa ser diferente da de destino.
+- A conta de origem precisa ser diferente da de destino. Fatura de cartão não entra em
+  transferência: o pagamento da fatura é da Fatia 05b (módulo 8).
 - Na lista, cada transferência é uma linha, sem sinal e em cor neutra. Ficam fora dos
   totais de receita e despesa e dos gastos por categoria, mas entram no saldo das contas.
 - **Conversão de importados (Fatia 04c),** ver [ADR 0016](decisoes/0016-conversao-de-importados-em-transferencia.md):
@@ -301,6 +305,7 @@ O que isso exige do produto:
   - um lado de transferência nunca fica excluído;
   - o resultado da importação mostra "Parecem transferências entre suas contas": cada linha
     importada com um só par possível, com "Converter". Nada é convertido sozinho;
+  - lançamento de fatura de cartão não se converte nem serve de par (Fatia 05a);
   - converter e desfazer contam como edição do importado no histórico da importação.
 
 ### 6. Importação de extratos — Fatia 04a
@@ -314,7 +319,7 @@ Ver [ADR 0006](decisoes/0006-importacao-idempotente.md) e [ADR 0014](decisoes/00
   - Descrição: o `MEMO`, senão o `NAME`, senão "Sem descrição", cortada em 255 caracteres. A
     descrição original do banco fica guardada.
   - Fatura de cartão (OFX de cartão ou o CSV da fatura do Nubank) e extrato de mais de uma conta
-    são recusados. A importação de fatura entra na Fatia 05.
+    são recusados. A importação de fatura entra na Fatia 05c (módulo 8).
 - **Conta:** escolhida à mão, antes do arquivo; vem preenchida pelo atalho da conta ou pela última
   usada na sessão. Se o mesmo extrato OFX já foi importado em outra conta ativa, a revisão avisa e
   oferece trocar. Do OFX fica só um hash protegido por um segredo do servidor e os 4 últimos dígitos da conta,
@@ -374,7 +379,7 @@ Ver [ADR 0006](decisoes/0006-importacao-idempotente.md) e [ADR 0014](decisoes/00
 - **Transferência entre contas próprias** aparece nos dois extratos e entra como despesa numa conta
   e receita na outra. O lançamento importado pode ser convertido em transferência, ligado ao da outra
   conta, com o mesmo valor e o sinal oposto (módulo 5).
-- A importação de fatura de cartão em CSV entra na Fatia 05.
+- A importação de fatura de cartão entra na Fatia 05c (módulo 8).
 
 ### 7. Regras de categorização — Fatia 04b
 
@@ -386,7 +391,8 @@ Ver [ADR 0015](decisoes/0015-regras-de-categorizacao.md).
   "PAG*UBERTRIP 8812". O texto tem até 255 caracteres e ao menos 2 letras ou números.
 - **Categoria:** obrigatória e ativa. A natureza dela define o tipo: uma regra com categoria de
   despesa só pega despesas, e uma de receita, só receitas.
-- **Conta:** todas as contas ou uma conta ativa. O cartão entra na Fatia 05.
+- **Conta:** todas as contas ou uma conta ativa. O cartão entra na Fatia 05c; até lá, as regras
+  não olham os lançamentos de fatura.
 - **Descrição legível**, opcional: troca a descrição do lançamento importado ("PAG*UBERTRIP 8812" →
   "Uber"); a do extrato continua guardada. No lançamento manual, a regra só põe a categoria.
 - **Ordem:** a lista é numerada, e vale a primeira regra que casar. A regra nova entra em 1º lugar;
@@ -415,39 +421,138 @@ Ver [ADR 0015](decisoes/0015-regras-de-categorizacao.md).
   Excluir a conta exclui as regras só dela.
 - Excluir uma regra não muda os lançamentos que ela já categorizou.
 
-### 8. Cartões de crédito — Fatia 05
+### 8. Cartões de crédito — Fatias 05a, 05b e 05c
 
-Ver [ADR 0005](decisoes/0005-cartao-fatura-parcelas.md).
+Ver [ADR 0017](decisoes/0017-cartao-de-credito-faturas-e-parcelas.md), que substitui o
+[ADR 0005](decisoes/0005-cartao-fatura-parcelas.md).
 
-- **Cartão:** nome, limite, dia de fechamento, dia de vencimento e conta de
-  pagamento padrão.
-- **Fatura:** existe uma por cartão por mês de referência. O mês de referência é o
-  mês do vencimento ("fatura de novembro" vence em novembro).
-- Quando o dia de fechamento ou de vencimento não existe no mês (31 em fevereiro),
-  vale o último dia do mês.
-- Uma fatura pode ter a data de fechamento ajustada só para ela, porque os bancos
-  às vezes mudam o fechamento de um mês.
-- **Fatura de uma compra:** se a compra foi feita até o fechamento, entra na fatura
-  que fecha naquele mês. Se foi depois, entra na fatura seguinte.
-- **Compra:** data, descrição, valor total, categoria e número de parcelas (1 a 48).
-- **Parcelamento:**
-  - a parcela 1 entra na fatura da compra, e a parcela k entra k−1 faturas depois;
-  - o valor de cada parcela é o total dividido por N, truncado no centavo. A
-    diferença vai para a 1ª parcela. Exemplo: R$ 100,00 em 3x dá 33,34 + 33,33 + 33,33.
-- Editar ou excluir uma compra parcelada altera todas as parcelas. Se alguma
-  parcela já está numa fatura paga, só é possível editar descrição e categoria.
-- **Estorno ou crédito** é um lançamento positivo na fatura e abate o total.
-- **Situação da fatura:**
-  - aberta: o período ainda está em curso;
-  - fechada: já passou o fechamento e falta pagar;
-  - paga: os pagamentos cobrem o total.
-- **Pagamento:** sai de uma conta e abate a fatura. Pode ser parcial, e o restante
-  fica como pendente. Não há cálculo automático de juros no MVP. Pagamento de
-  fatura não é despesa, porque a despesa já foi contada na compra.
-- **Limite disponível** = limite − tudo o que está pendente nas faturas não
-  quitadas, inclusive as futuras.
-- **Relatórios:** o gasto no cartão conta no mês de referência da fatura, que é
-  quando o dinheiro sai. Cada parcela conta no mês da sua fatura.
+**Fatia 05a: cartões, faturas, compras e estornos.**
+
+- **Cartão:**
+  - campos: nome (até 60 caracteres), limite, dia de fechamento, dia de vencimento, conta de
+    pagamento e cor (opcional, a paleta das contas). Nenhum número, bandeira ou final de cartão é
+    pedido ou guardado;
+  - nome: único entre os cartões ativos, com a mesma comparação dos nomes de conta;
+  - limite: obrigatório, maior que zero, com até 2 casas decimais e até 13 dígitos antes da vírgula.
+    Uma compra nunca é recusada por passar dele: o banco já aprovou;
+  - dias de 1 a 31. Se o vencimento é maior que o fechamento, a fatura vence no mesmo mês em que
+    fecha; senão, no mês seguinte. Com o vencimento no mesmo mês, o fechamento vai até o dia 27, porque
+    em fevereiro os dias 28 a 31 empatariam com o vencimento: "fecha 28 e vence 30" é recusado, e
+    "fecha 25 e vence 5" e "fecha 31 e vence 31" valem;
+  - conta de pagamento: obrigatória, uma conta ativa corrente, poupança ou carteira. Ao editar o
+    cartão, a conta que ele já tem pode ficar, mesmo arquivada, e a tela de Cartões avisa "Conta de
+    pagamento arquivada";
+  - até 20 cartões por usuário, contando os arquivados, em ordem alfabética.
+- **Mudar os dias** vale da fatura seguinte à aberta em diante, como nos bancos: a aberta e as
+  anteriores ficam como estão; as futuras já gravadas são recalculadas (perdem um ajuste), e as compras
+  delas mudam de fatura quando for o caso. Na primeira fatura com os dias novos, o fechamento nunca fica
+  antes do dia seguinte ao fechamento da aberta. O diálogo avisa a partir de qual fatura os dias novos
+  valem. A exceção é o cartão vazio, sem nenhuma compra ou estorno lançado e sem ajuste de fechamento,
+  como o cartão novo ou aquele cujas compras foram todas excluídas: nele, os dias novos valem já,
+  inclusive na fatura aberta, as faturas vazias que restaram são apagadas, e o diálogo avisa "O cartão
+  ainda não tem lançamentos: os dias novos valem já.".
+- **Arquivar, reativar e excluir:**
+  - arquivar sempre pode. Com lançamentos em faturas abertas e futuras, a confirmação diz quanto; sem
+    eles, arquiva direto e oferece "Desfazer";
+  - arquivado, o cartão sai dos seletores, e as compras, os estornos, as faturas e os ajustes dele
+    ficam só para leitura até ele ser reativado;
+  - reativar é recusado se já houver um cartão ativo com o mesmo nome. Cartão arquivado não se edita;
+  - excluir só é permitido sem compras e sem estornos; com eles, o sistema diz quantos são e oferece
+    arquivar. As faturas vazias saem junto.
+- **Fatura:**
+  - existe uma por cartão por mês de referência, que é o mês do vencimento ("fatura de dezembro"
+    vence em dezembro);
+  - quando o dia de fechamento ou de vencimento não existe no mês (31 em fevereiro), vale o último dia
+    do mês;
+  - a compra feita até o fechamento, inclusive, entra na fatura que fecha naquele mês; depois dele, na
+    seguinte. Com fechamento no dia 3 e vencimento no dia 10, a compra de 03/11 entra na fatura de
+    novembro (fecha 03/11, vence 10/11), e a de 04/11, na de dezembro;
+  - é gravada, com as datas do momento, quando a primeira compra ou estorno cai nela, quando o
+    fechamento dela é ajustado ou quando a troca de dias precisa guardar as datas antigas. Não é
+    apagada sozinha e sai com o cartão; a exceção é a troca de dias do cartão vazio, que apaga as faturas
+    sem nada dentro. Até ser gravada, a fatura mostra as datas pelos dias do cartão;
+  - a situação é calculada: futura (o período ainda não começou), aberta (hoje está no período) ou
+    fechada (já passou do fechamento). Na 05b, paga;
+  - totais: compras, estornos e total = compras − estornos. Com mais estorno que compra, o total
+    aparece como "Crédito de R$ 30,00". "Depois desta" soma as faturas seguintes, também como crédito
+    quando é o caso. Os meses levam o ano quando a fatura não é do ano corrente ou quando o intervalo
+    passa de um ano para o outro;
+  - o endereço é /cartoes/2/faturas/2026-12. As setas andam de mês em mês, da fatura mais antiga com
+    lançamento até a mais distante entre a última com parcela e 12 meses depois da aberta. Um mês sem
+    lançamento mostra as datas, o estado vazio e "Nova compra".
+- **Ajuste de fechamento:** vale só para aquela fatura. A data nova fica entre o dia seguinte ao
+  fechamento da anterior e a véspera do vencimento dela e do fechamento da seguinte. A fatura seguinte
+  começa no dia seguinte ao fechamento ajustado. Compras e estornos com data no trecho que mudou trocam
+  de fatura, com todas as parcelas, e o aviso diz quantos de cada mudaram ("Fechamento ajustado. 2
+  compras e 1 estorno mudaram de fatura."). "Voltar ao fechamento normal" desfaz, com o fechamento
+  pelos dias que valiam para aquela fatura: depois de uma troca de dias, a aberta e as anteriores voltam
+  aos dias de antes. Cartão arquivado não ajusta.
+- **Compra:**
+  - campos: cartão ativo, data, descrição (até 255 caracteres), valor total, parcelas de 1 a 48 (1 é
+    à vista), categoria de despesa (opcional) e observação (opcional, até 1.000 caracteres). A
+    categoria arquivada que a compra já tem continua com ela;
+  - data de 10 anos antes de hoje até 12 meses depois de hoje; as duas pontas valem ("A data precisa ser
+    12/11/2016 ou depois."). A faixa vale para a data que se lança: a compra que passou de 10 anos ainda se
+    edita com a data que tem. A compra no passado cai na fatura daquela data, mesmo fechada, pelos dias que
+    o cartão tinha na época;
+  - cada parcela vale o total dividido por N, truncado no centavo, e o resto vai para a 1ª: R$ 100,00
+    em 3x dá 33,34 + 33,33 + 33,33. O mínimo é 1 centavo por parcela ("Em 48x, o valor precisa ser de
+    pelo menos R$ 0,48.");
+  - a parcela 1 entra na fatura da compra, e a parcela k, k−1 faturas depois. As parcelas podem passar
+    dos 12 meses;
+  - **compra em andamento:** "Começa na parcela" (a 5ª de 10) cria só as parcelas 5 a 10, nas faturas
+    certas pela data da compra e com os valores da divisão do total. Serve para quem começa a usar o
+    Flux com parcelamentos correndo;
+  - o diálogo mostra a prévia das parcelas, calculada pelo servidor;
+  - editar pode mudar tudo. Mudar o cartão, a data, o valor, as parcelas ou a primeira parcela regrava
+    as parcelas; descrição, categoria e observação só atualizam as que existem. Excluir pede
+    confirmação e diz de quais faturas as parcelas saem.
+- **Estorno:** uma receita positiva na fatura da data dele, solta (não ligada a uma compra), com
+  categoria de receita opcional e a mesma faixa de datas da compra. Abate o total da fatura, e o diálogo
+  diz em qual fatura ele cai. Para a devolução da compra inteira antes de pagar, o certo é excluir a compra.
+- **Limites:** cada parcela e cada estorno é um lançamento. Conta 1 no total e 1 no mês do vencimento
+  da fatura dele ("Esta compra passaria do limite de 1.000 lançamentos em março de 2027.").
+- **Em Lançamentos:**
+  - uma linha por parcela e por estorno, na data do vencimento da fatura, com o cartão, a data da
+    compra e a parcela ("1/3");
+  - o filtro de conta vira "Conta ou cartão", nunca os dois juntos. Com um cartão, a lista do mês é a
+    fatura daquele mês, com a faixa "Fatura de dezembro · fecha 03/12 · vence 10/12 · R$ 1.113,69 · Ver
+    fatura" e sem o saldo do dia;
+  - entradas e saídas contam as parcelas e os estornos. O saldo das contas não muda com a compra;
+  - abrir uma parcela ou um estorno abre o diálogo da compra (ou do estorno).
+- **Início:** o card "Cartões" mostra cada cartão ativo com a fatura aberta. "Últimos lançamentos" fica
+  só com os lançamentos de conta.
+- **Usos:** a parcela é uso da categoria, como o lançamento. A conta de pagamento é uso da conta. A
+  compra e o estorno são uso do cartão ("Este cartão não pode ser excluído porque tem 12 compras e 1
+  estorno.").
+- Até a 05c, as regras de categorização não olham os lançamentos de fatura, e a conversão em
+  transferência só vê lançamentos de conta.
+
+**Fatia 05b: pagamento da fatura e limite disponível.**
+
+- **Pagamento:** "Pagar fatura" grava um lançamento na conta, ligado à fatura: conta (a de pagamento vem
+  preenchida; qualquer corrente, poupança ou carteira ativa), data (do saldo inicial da conta até hoje),
+  valor (vem o pendente; parcial pode, e maior que o pendente também, com "Pago a mais") e observação.
+  Fica fora de receitas e despesas, porque a despesa já foi contada na compra, e entra no saldo da conta.
+- **Situação paga:** depois do fechamento, quando os pagamentos cobrem o total. A compra com parcela em
+  fatura paga só muda descrição, categoria e observação, e não se exclui; o ajuste não mexe em fatura
+  paga.
+- **Paga fora do Flux:** numa fatura fechada, "Marcar como paga fora do Flux" zera o pendente sem
+  lançamento.
+- **Converter em pagamento de fatura:** o importado "PAG FATURA" da conta vira o pagamento, para não
+  contar o cartão em dobro.
+- **Limite disponível** = limite − pendente de todas as faturas, inclusive as futuras. Negativo, aparece
+  "Acima do limite". Não bloqueia nada. Não há cálculo de juros.
+
+**Fatia 05c: importação de fatura e regras com cartão.**
+
+- Formatos: o CSV da fatura do Nubank, CSV de outro banco com perfil e OFX de cartão. O usuário escolhe
+  o cartão, e a fatura vem sugerida pelas datas e pode ser trocada.
+- "Parcela 3/10" no arquivo cria a compra com as parcelas 3 a 10; as seguintes são reconhecidas nas
+  próximas importações.
+- O pagamento no arquivo fica de fora, e as outras linhas negativas viram estorno.
+- A data de cada linha segue a mesma faixa da compra: de 10 anos antes de hoje a 12 meses depois.
+- As regras ganham "Conta ou cartão", e "Aplicar regras" passa a pegar compras sem categoria.
 
 ### 9. Dashboard e relatórios — Fatia 06
 
@@ -457,6 +562,9 @@ Ver [ADR 0005](decisoes/0005-cartao-fatura-parcelas.md).
 - Receitas × despesas dos últimos 12 meses.
 - Evolução do saldo total, no fim de cada mês, nos últimos 12 meses.
 - Próximas faturas, com valor e vencimento.
+- O gasto no cartão conta no mês do vencimento da fatura, e cada parcela no mês da sua fatura.
+  O estorno é receita: um tênis devolvido aparece em Compras e em Reembolsos, e o resultado do
+  mês fica certo (módulo 8).
 - Clicar num número abre a lista de lançamentos já filtrada.
 - Transferências e pagamentos de fatura ficam fora de receitas e despesas.
 
@@ -517,7 +625,6 @@ Ver [ADR 0005](decisoes/0005-cartao-fatura-parcelas.md).
 
 | Ponto | Decidir em |
 |---|---|
-| Importar fatura de cartão que já lista as parcelas ("3/10") | Fatia 05 |
 | Biblioteca de gráficos | Fatia 06 |
 | Recorrência: gravar as ocorrências no banco ou calcular quando precisar | Fatia 07 |
 | Demo: conta compartilhada, usuário temporário por visitante ou cadastro com dados de exemplo | Fatia 08 |
@@ -539,7 +646,9 @@ Ver [ADR 0005](decisoes/0005-cartao-fatura-parcelas.md).
 | 04a | Importação de extratos OFX e CSV: revisão, histórico, ignorar e desfazer | Concluída |
 | 04b | Regras de categorização: cadastro, sugestão na revisão da importação, "Aplicar regras" e "Criar regra" | Concluída |
 | 04c | Conversão de importados em transferência: pares, lado novo, desfazer e sugestão no resultado da importação | Concluída |
-| 05 | Cartão de crédito: faturas e parcelamento | — |
+| 05a | Cartões, faturas, compras parceladas, estornos e ajuste de fechamento | Implementada, aguardando publicação |
+| 05b | Pagamento da fatura e limite disponível | — |
+| 05c | Importação de fatura de cartão e regras com cartão | — |
 | 06 | Dashboard, relatórios e exportação dos dados | — |
 | 07 | Recorrências, orçamento e projeção de saldo | — |
 | 08 | Deploy, demo pública e README completo | — |
