@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AGORA } from '../../core/tempo/agora';
 import { Cartao, CartoesService, ListaDeCartoes } from '../cartoes/cartoes.service';
 import { CompraDialogo } from '../cartoes/compra-dialogo/compra-dialogo';
+import { PagamentoDialogo } from '../cartoes/pagamento-dialogo/pagamento-dialogo';
 import { Categoria, CategoriasService, ListaDeCategorias } from '../categorias/categorias.service';
 import { Conta, ContasService, ListaDeContas } from '../contas/contas.service';
 import { FluxoDeRegras } from '../regras/fluxo-de-regras';
@@ -265,6 +266,29 @@ describe('Lancamentos', () => {
     fechamentos[0].next('excluido');
     expect(servico.listar).toHaveBeenCalledTimes(2);
   });
+
+  it('o pagamento de fatura: a linha com o título da fatura, o valor neutro, o filtro "Pagamentos de fatura" e o diálogo dele (Fatia 05b, decisão 32)',
+    () => {
+      const pagamento = item({ id: 40, tipo: 'PAGAMENTO_FATURA', data: '2026-11-10', descricao: 'Pagamento da fatura de novembro de 2026', valor: -265.2,
+        categoriaId: null, categoriaNome: null, categoriaMaeNome: null, cartaoId: 7, cartaoNome: 'Cartão Horizonte', faturaPagaMes: '2026-11' });
+      const novembro: ListaDoMes = { ...vazia('2026-11'), quantidadeLancamentos: 1, dias: [{ data: '2026-11-10', saldoNoFimDoDia: null,
+        itens: [pagamento] }] };
+      const { elemento, dialogo, fechamentos, servico } = criar({ tipo: 'pagamento' }, () => of(novembro));
+      expect(servico.listar).toHaveBeenCalledWith({ mes: '2026-11', conta: null, cartao: null, categoria: null, tipo: 'pagamento', busca: '' });
+      expect(textos(elemento, '.linha__titulo')).toEqual(['Pagamento da fatura de novembro']);
+      // Correções do QA: o título do pagamento quebra a linha no celular, para o mês aparecer.
+      expect(elemento.querySelector('.linha__titulo')?.classList.contains('linha__titulo--pagamento')).toBe(true);
+      expect(textos(elemento, '.linha__meta-texto.flux-so-desktop')).toEqual(['Cartão Horizonte · Banco Horizonte']);
+      expect(textos(elemento, '.linha__meta-texto.flux-so-celular')).toEqual(['Banco Horizonte']);
+      expect(elemento.querySelector('.linha__sem-categoria')).toBeNull();
+      expect(elemento.querySelector('.linha app-valor')?.classList.contains('flux-valor--neutro')).toBe(true);
+      elemento.querySelector<HTMLButtonElement>('.linha')?.click();
+      const [componente, configuracao] = dialogo.open.mock.lastCall as unknown as [unknown, { data: { pagamentoId: number; hoje: string } }];
+      expect(componente).toBe(PagamentoDialogo);
+      expect(configuracao.data).toEqual({ cartaoId: null, mes: null, pagamentoId: 40, hoje: '2026-11-09' });
+      fechamentos[0].next('excluido');
+      expect(servico.listar).toHaveBeenCalledTimes(2);
+    });
 
   it('um importado restaurado pelo aviso curto recarrega a lista, e "Importar" leva à importação (Fatia 04a)', () => {
     const { elemento, servico, restaurado } = criar({ mes: '2026-10' });

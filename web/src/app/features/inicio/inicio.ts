@@ -18,6 +18,7 @@ import { Valor } from '../../shared/valor/valor';
 import { diaEMes, textoDoTotal } from '../cartoes/apresentacao';
 import { CartoesService, ListaDeCartoes } from '../cartoes/cartoes.service';
 import { abrirCompra } from '../cartoes/compra-dialogo/compra-dialogo';
+import { abrirPagamento } from '../cartoes/pagamento-dialogo/pagamento-dialogo';
 import { CategoriasService, ListaDeCategorias } from '../categorias/categorias.service';
 import { corDaConta, quantidadeDeContasAtivas, tipoDaConta } from '../contas/apresentacao';
 import { ContasService, ListaDeContas } from '../contas/contas.service';
@@ -78,11 +79,22 @@ export class Inicio {
     });
   }
 
-  /** Novo (item null) ou Editar, com o mesmo diálogo da tela de Lançamentos; a parcela e o estorno abrem a compra (05a). */
+  /**
+   * Novo (item null) ou Editar, com o mesmo diálogo da tela de Lançamentos; a parcela e o estorno abrem a compra (05a), e o
+   * pagamento de fatura, o diálogo dele (05b).
+   */
   abrir(item: ItemDaLista | null): void {
     const contas = this.contas();
     const categorias = this.categorias();
     if (contas === null || categorias === null) {
+      return;
+    }
+    if (item !== null && item.tipo === 'PAGAMENTO_FATURA') {
+      abrirPagamento(this.dialogo, { cartaoId: null, mes: null, pagamentoId: item.id, hoje: this.hojeIso }).subscribe((resultado) => {
+        if (resultado !== undefined) {
+          this.carregar();
+        }
+      });
       return;
     }
     if (item !== null && item.compraId !== undefined && item.compraId !== null) {

@@ -77,6 +77,12 @@ export const ICONES = {
   cima: ['m6 15 6-6 6 6'],
   // Fatia 05a (cartões): as parcelas da compra, na prévia.
   parcelas: ['M4 6h16M4 12h10M4 18h6', 'm16 15 3 3-3 3', 'M19 18h-6'],
+  // Fatia 05b (cartões): o pagamento da fatura.
+  pagar: [
+    'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0',
+    'M14.8 9.2c-.4-1-1.5-1.7-2.8-1.7-1.6 0-2.8.9-2.8 2.1 0 2.9 5.8 1.5 5.8 4.4 0 1.2-1.2 2.1-2.9 2.1-1.4 0-2.6-.7-3-1.8',
+    'M12 6v1.5M12 16.5V18',
+  ],
 } as const satisfies Record<string, readonly string[]>;
 
 export type NomeIcone = keyof typeof ICONES;

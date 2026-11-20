@@ -5,14 +5,16 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, finalize } from 'rxjs';
 
 import { AGORA } from '../../../core/tempo/agora';
 import { Alerta } from '../../../shared/alerta/alerta';
 import { CabecalhoPagina } from '../../../shared/cabecalho-pagina/cabecalho-pagina';
+import { abrirConfirmacao } from '../../../shared/confirmacao/confirmacao-dialogo';
 import { dataIsoNoFuso } from '../../../shared/datas/data-curta';
 import { EstadoVazio } from '../../../shared/estado-vazio/estado-vazio';
 import { Icone } from '../../../shared/icone/icone';
+import { formatarMoeda, partesDaMoeda } from '../../../shared/moeda/moeda';
 import { Valor } from '../../../shared/valor/valor';
 import { camposDoErro, detalheDoErro, statusDoErro } from '../../auth/erros-http';
 import { CategoriasService, ListaDeCategorias } from '../../categorias/categorias.service';
@@ -20,19 +22,23 @@ import { nomeDoMes } from '../../lancamentos/apresentacao';
 import { mesVizinho } from '../../lancamentos/filtros';
 import { abrirAjuste } from '../ajuste-dialogo/ajuste-dialogo';
 import {
-  comAno, diaEMes, faixaDeMeses, metaDoItemDaFatura, mesSemAno, quandoFecha, ROTULO_DA_SITUACAO, rotuloDaParcela, textoDaCategoria,
-  textoDoTotal,
+  comAno, diaEMes, faixaDeMeses, metaDoItemDaFatura, mesSemAno, nomeDaFatura, quandoFecha, ROTULO_DA_SITUACAO, rotuloDaParcela,
+  textoDaCategoria, textoDoTotal,
 } from '../apresentacao';
-import { CartoesService, Fatura, ItemDaFatura } from '../cartoes.service';
+import { CartoesService, Fatura, ItemDaFatura, PagamentoNaFatura } from '../cartoes.service';
 import { abrirCompra } from '../compra-dialogo/compra-dialogo';
 import { TipoDaCompra } from '../compras.service';
+import { abrirPagamento } from '../pagamento-dialogo/pagamento-dialogo';
 
 /** O mês da URL: "2026-12". Fora disso, a página nem pede a fatura. */
 const MES_VALIDO = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 /**
  * A fatura de um mês (decisões 8 a 13 da 05a), em /cartoes/:id/faturas/:mes: as setas andam de mês em mês, até onde a
- * API diz; a linha do tempo, os totais e os lançamentos, a compra mais recente primeiro. Os números vêm da API.
+ * API diz; a linha do tempo, os totais e os lançamentos, a compra mais recente primeiro. Desde a 05b (decisões 30 a 38):
+ * o disponível na trilha; "Pagar fatura" e "Marcar como paga fora do Flux" no topo quando há pendente; o card do
+ * pagamento (o pago, o pendente, o limite disponível e "Desmarcar"); o card "Pagamentos"; e a situação paga, com a nota
+ * da trava na lista. Os números vêm da API.
  */
 @Component({
   selector: 'app-fatura',
@@ -64,6 +70,8 @@ export class PaginaDaFatura {
   readonly fatura = signal<Fatura | null>(null);
   readonly falha = signal<{ readonly mensagem: string; readonly deNovo: boolean } | null>(null);
   readonly categorias = signal<ListaDeCategorias | null>(null);
+  /** Correções do QA (05b): "Desmarcar paga fora do Flux" e "Voltar ao fechamento normal" ficam travados durante o pedido. */
+  readonly enviando = signal(false);
   readonly titulo = computed(() => MES_VALIDO.test(this.mes()) ? `Fatura de ${nomeDoMes(this.mes())}` : 'Fatura');
   readonly anterior = computed(() => mesVizinho(this.mes(), -1));
   readonly seguinte = computed(() => mesVizinho(this.mes(), 1));
@@ -71,20 +79,111 @@ export class PaginaDaFatura {
     const fatura = this.fatura();
     return fatura !== null && !fatura.cartaoArquivado && this.categorias() !== null;
   });
-  /** "Fecha em 21 dias", "Fechou em 03/11 · venceu em 10/11" ou "Começa em 04/12". */
+  /** Decisões 12 e 35 (05b): a fatura paga não se ajusta. */
+  readonly podeAjustar = computed(() => this.podeLancar() && this.fatura()?.situacao !== 'PAGA');
+  /** Decisão 30: "Pagar fatura" na aberta e nas que já fecharam, com pendente e o cartão ativo. */
+  readonly podePagar = computed(() => {
+    const fatura = this.fatura();
+    return fatura !== null && !fatura.cartaoArquivado && (fatura.situacao === 'ABERTA' || fatura.situacao === 'FECHADA')
+      && (fatura.pendente ?? 0) > 0;
+  });
+  /** Decisão 36: "Marcar como paga fora do Flux" só na fechada com pendente; "Desmarcar" na marcada. */
+  readonly podeMarcarPagaFora = computed(() => {
+    const fatura = this.fatura();
+    return fatura !== null && !fatura.cartaoArquivado && fatura.situacao === 'FECHADA' && (fatura.pendente ?? 0) > 0;
+  });
+  readonly podeDesmarcarPagaFora = computed(() => {
+    const fatura = this.fatura();
+    return fatura !== null && !fatura.cartaoArquivado && fatura.pagaFora === true;
+  });
+  /** O card do pagamento: na aberta, nas que já fecharam e em qualquer uma com pagamento. */
+  readonly mostraOPagamento = computed(() => {
+    const fatura = this.fatura();
+    return fatura !== null && (fatura.situacao !== 'FUTURA' || (fatura.quantidadePagamentos ?? 0) > 0);
+  });
+  /** "Fecha em 21 dias" (com "· R$ 300,00 pagos" no antecipado, decisão 34), "Fechou em 03/11 · " ou "Começa em 04/12". */
   readonly notaDaSituacao = computed(() => {
     const fatura = this.fatura();
     if (fatura === null) {
       return '';
     }
     if (fatura.situacao === 'ABERTA') {
-      return quandoFecha(this.hoje, fatura.fechamento);
+      const fecha = quandoFecha(this.hoje, fatura.fechamento);
+      return (fatura.pago ?? 0) > 0 ? `${fecha} · ${formatarMoeda(fatura.pago)} pagos` : fecha;
     }
     if (fatura.situacao === 'FUTURA') {
       return `Começa em ${diaEMes(fatura.inicio)}`;
     }
-    return `Fechou em ${diaEMes(fatura.fechamento)} · ${fatura.vencimento < this.hoje ? 'venceu' : 'vence'} em ${diaEMes(fatura.vencimento)}`;
+    return `Fechou em ${diaEMes(fatura.fechamento)} · `;
   });
+  /** Na fechada e na paga: "venceu em 10/11" ou "vence em 10/12"; em laranja quando venceu com pendente (decisão 34). */
+  readonly notaDoVencimento = computed(() => {
+    const fatura = this.fatura();
+    if (fatura === null || fatura.situacao === 'ABERTA' || fatura.situacao === 'FUTURA') {
+      return null;
+    }
+    const venceu = fatura.vencimento < this.hoje;
+    return { texto: `${venceu ? 'venceu' : 'vence'} em ${diaEMes(fatura.vencimento)}`, atrasada: venceu && (fatura.pendente ?? 0) > 0 };
+  });
+  /** "1 pagamento", "2 pagamentos", "paga fora do Flux" ou "nenhum pagamento". */
+  readonly notaDoPago = computed(() => {
+    const fatura = this.fatura();
+    if (fatura === null) {
+      return '';
+    }
+    if (fatura.pagaFora === true) {
+      return 'paga fora do Flux';
+    }
+    const quantos = fatura.quantidadePagamentos ?? 0;
+    return quantos === 0 ? 'nenhum pagamento' : quantos === 1 ? '1 pagamento' : `${quantos} pagamentos`;
+  });
+  /** "nada a pagar", "venceu em 10/11" ou "vence em 10/12". */
+  readonly notaDoPendente = computed(() => {
+    const fatura = this.fatura();
+    if (fatura === null) {
+      return '';
+    }
+    if ((fatura.pendente ?? 0) <= 0) {
+      return 'nada a pagar';
+    }
+    return `${fatura.vencimento < this.hoje ? 'venceu' : 'vence'} em ${diaEMes(fatura.vencimento)}`;
+  });
+  /** "de R$ 5.000,00" ou, negativo, "acima do limite em R$ 120,00" (decisão 38). */
+  readonly notaDoDisponivel = computed(() => {
+    const fatura = this.fatura();
+    const disponivel = partesDaMoeda(fatura?.disponivel);
+    if (fatura === null || disponivel === null) {
+      return '';
+    }
+    return disponivel.negativo ? `acima do limite em ${disponivel.absoluto}` : `de ${formatarMoeda(fatura.limite)}`;
+  });
+  /** Decisão 38 na trilha: "disponível R$ 732,65 de R$ 5.000,00" ou, negativo, "acima do limite em R$ 120,00". */
+  readonly trilhaDoDisponivel = computed(() => {
+    const fatura = this.fatura();
+    const disponivel = partesDaMoeda(fatura?.disponivel);
+    if (fatura === null || disponivel === null) {
+      return null;
+    }
+    return disponivel.negativo ? { acima: true, valor: disponivel.absoluto, de: '' }
+      : { acima: false, valor: formatarMoeda(fatura.disponivel), de: formatarMoeda(fatura.limite) };
+  });
+  /** A nota da lista: na paga, a trava (decisão 35); nas outras, a data em que tudo aparece em Lançamentos (decisão 13). */
+  readonly notaDaLista = computed(() => {
+    const fatura = this.fatura();
+    if (fatura === null) {
+      return '';
+    }
+    return fatura.situacao === 'PAGA' ? 'Paga: só descrição, categoria e observação mudam.'
+      : `Em Lançamentos, todos aparecem em ${diaEMes(fatura.vencimento)}, o vencimento.`;
+  });
+  /** Decisão 38: o disponível negativo deixa a nota da célula em vermelho, como a trilha e Cartões. */
+  readonly acimaDoLimite = computed(() => partesDaMoeda(this.fatura()?.disponivel)?.negativo === true);
+  /** Decisão 31: "Pago a mais: R$ 50,00.", com o valor da API. */
+  readonly pagoAMais = computed(() => {
+    const fatura = this.fatura();
+    return fatura !== null && (fatura.pagoAMais ?? 0) > 0 ? `Pago a mais: ${formatarMoeda(fatura.pagoAMais)}.` : null;
+  });
+  readonly formatarMoeda = formatarMoeda;
   readonly notaDasCompras = computed(() => {
     const quantas = this.fatura()?.quantidadeCompras ?? 0;
     return quantas === 1 ? '1 compra ou parcela' : `${quantas} compras e parcelas`;
@@ -93,12 +192,14 @@ export class PaginaDaFatura {
     const quantos = this.fatura()?.quantidadeEstornos ?? 0;
     return quantos === 1 ? '1 estorno' : `${quantos} estornos`;
   });
+  /** "fechou em 03/11" na fechada e na paga (05b); "até agora; fecha em 03/12" na aberta e na futura. */
   readonly notaDoTotal = computed(() => {
     const fatura = this.fatura();
     if (fatura === null) {
       return '';
     }
-    return fatura.situacao === 'FECHADA' ? `fechou em ${diaEMes(fatura.fechamento)}` : `até agora; fecha em ${diaEMes(fatura.fechamento)}`;
+    return fatura.situacao === 'FECHADA' || fatura.situacao === 'PAGA' ? `fechou em ${diaEMes(fatura.fechamento)}`
+      : `até agora; fecha em ${diaEMes(fatura.fechamento)}`;
   });
   /**
    * "parcelas de janeiro a setembro", "parcelas de janeiro" ou "nada nas próximas faturas"; com crédito (decisão 11),
@@ -142,7 +243,8 @@ export class PaginaDaFatura {
     return nome.charAt(0).toLocaleUpperCase('pt-BR') + nome.slice(1);
   }
 
-  carregar(): void {
+  /** {@code avisarPagamento}: depois de "Pagar fatura", o aviso diz se a fatura ficou paga. */
+  carregar(avisarPagamento = false): void {
     this.pedido?.unsubscribe();
     this.falha.set(null);
     this.fatura.set(null);
@@ -156,7 +258,13 @@ export class PaginaDaFatura {
       return;
     }
     this.pedido = this.servico.fatura(this.cartaoId(), this.mes()).subscribe({
-      next: (fatura) => this.fatura.set(fatura),
+      next: (fatura) => {
+        this.fatura.set(fatura);
+        if (avisarPagamento) {
+          this.snackBar.open(fatura.situacao === 'PAGA' ? `Pagamento registrado. A fatura de ${nomeDaFatura(fatura.mes, this.hoje)} está paga.`
+            : 'Pagamento registrado.', 'Fechar', { duration: 5000 });
+        }
+      },
       error: (erro: unknown) => {
         const status = statusDoErro(erro);
         this.falha.set(status === 404 ? { mensagem: detalheDoErro(erro, 'Cartão não encontrado.'), deNovo: false }
@@ -196,7 +304,11 @@ export class PaginaDaFatura {
 
   /** Decisão 12: "Voltar ao fechamento normal" desfaz o ajuste. */
   voltarAoNormal(): void {
-    this.servico.voltarAoFechamentoNormal(this.cartaoId(), this.mes()).subscribe({
+    if (this.enviando()) {
+      return;
+    }
+    this.enviando.set(true);
+    this.servico.voltarAoFechamentoNormal(this.cartaoId(), this.mes()).pipe(finalize(() => this.enviando.set(false))).subscribe({
       next: () => {
         this.snackBar.open('O fechamento voltou ao normal.', 'Fechar', { duration: 5000 });
         this.carregar();
@@ -204,6 +316,64 @@ export class PaginaDaFatura {
       error: (erro: unknown) => this.snackBar.open(statusDoErro(erro) === 422
         ? detalheDoErro(erro, 'Não foi possível voltar ao fechamento normal. Tente novamente.')
         : 'Não foi possível voltar ao fechamento normal. Tente novamente.', 'Fechar', { duration: 6000 }),
+    });
+  }
+
+  /** Decisão 30: "Pagar fatura". */
+  pagar(): void {
+    abrirPagamento(this.dialogo, { cartaoId: this.cartaoId(), mes: this.mes(), pagamentoId: null, hoje: this.hoje }).subscribe((resultado) => {
+      if (resultado !== undefined) {
+        this.carregar(resultado === 'pago');
+      }
+    });
+  }
+
+  /** Decisão 33: o pagamento abre o diálogo dele. */
+  abrirPagamento(pagamento: PagamentoNaFatura): void {
+    abrirPagamento(this.dialogo, { cartaoId: null, mes: null, pagamentoId: pagamento.id, hoje: this.hoje }).subscribe((resultado) => {
+      if (resultado !== undefined) {
+        this.carregar();
+      }
+    });
+  }
+
+  /** Decisão 36: a confirmação diz que nenhuma conta muda e quanto deixa de contar no limite. */
+  marcarPagaFora(): void {
+    const fatura = this.fatura();
+    if (fatura === null) {
+      return;
+    }
+    abrirConfirmacao(this.dialogo, {
+      titulo: `Marcar a fatura de ${nomeDaFatura(fatura.mes, this.hoje)} como paga?`,
+      icone: 'sucesso',
+      perigo: false,
+      paragrafos: [['Use para faturas pagas antes de você usar o Flux: nenhuma conta muda, e os ', { forte: formatarMoeda(fatura.pendente) },
+        ' pendentes deixam de contar no limite. Dá para desmarcar depois.']],
+      confirmar: 'Marcar como paga',
+      falha: 'Não foi possível marcar a fatura. Tente novamente.',
+      acao: () => this.servico.marcarPagaFora(this.cartaoId(), this.mes()),
+    }).subscribe((marcada) => {
+      if (marcada === true) {
+        this.snackBar.open('Fatura marcada como paga fora do Flux.', 'Fechar', { duration: 4000 });
+        this.carregar();
+      }
+    });
+  }
+
+  /** Decisão 36: "Desmarcar"; a fatura volta a ter o pendente. */
+  desmarcarPagaFora(): void {
+    if (this.enviando()) {
+      return;
+    }
+    this.enviando.set(true);
+    this.servico.desmarcarPagaFora(this.cartaoId(), this.mes()).pipe(finalize(() => this.enviando.set(false))).subscribe({
+      next: () => {
+        this.snackBar.open('A fatura voltou a ter o pendente.', 'Fechar', { duration: 4000 });
+        this.carregar();
+      },
+      error: (erro: unknown) => this.snackBar.open(statusDoErro(erro) === 422
+        ? detalheDoErro(erro, 'Não foi possível desmarcar a fatura. Tente novamente.')
+        : 'Não foi possível desmarcar a fatura. Tente novamente.', 'Fechar', { duration: 6000 }),
     });
   }
 
