@@ -5,7 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { Observable, catchError, debounceTime, distinctUntilChanged, forkJoin, map, merge, of, switchMap } from 'rxjs';
+import { Observable, catchError, debounceTime, distinctUntilChanged, filter, forkJoin, map, merge, of, switchMap, take } from 'rxjs';
 
 import { Alerta } from '../../../shared/alerta/alerta';
 import { abrirConfirmacao, TrechoDeTexto } from '../../../shared/confirmacao/confirmacao-dialogo';
@@ -32,8 +32,11 @@ export interface DadosDoDialogoDeCompra {
   readonly categorias: ListaDeCategorias;
 }
 
-/** Como o diálogo fecha quando algo mudou; sem mudança, fecha sem resultado. */
-export type ResultadoDaCompra = 'salvo' | 'excluido';
+/**
+ * Como o diálogo fecha quando algo mudou; sem mudança, fecha sem resultado. "inexistente" (Correções do QA da 05b): a
+ * compra não existe mais, excluída em outra aba, ao carregar ou ao salvar, e quem abriu recarrega.
+ */
+export type ResultadoDaCompra = 'salvo' | 'excluido' | 'inexistente';
 
 type CampoDaCompra = 'cartao' | 'data' | 'descricao' | 'valor' | 'parcelas' | 'parcelaInicial' | 'categoria' | 'observacao';
 
@@ -73,7 +76,9 @@ interface Carregado {
 /**
  * Nova compra, Editar compra, Novo estorno e Editar estorno (decisões 14 a 20 da 05a). A prévia das parcelas vem da
  * API, 300 ms depois de mudar cartão, data, valor, parcelas ou a primeira parcela (decisão 18): o web não faz conta
- * com dinheiro. Com o cartão arquivado, só leitura. No celular, ocupa a tela.
+ * com dinheiro. Com o cartão arquivado, só leitura. No celular, ocupa a tela. Fatia 05b: com uma parcela numa fatura
+ * paga, só a descrição, a categoria e a observação mudam, e não há "Excluir" (decisão 35); a prévia da compra nova diz
+ * o disponível depois dela (decisão 38).
  */
 @Component({
   selector: 'app-compra-dialogo',
@@ -120,6 +125,7 @@ export class CompraDialogo {
   /** Erros que vieram da API, por campo; somem quando o campo muda. O da prévia vem por aqui também. */
   readonly errosDaApi = signal<Partial<Record<CampoDaCompra, string>>>({});
   readonly previa = signal<PreviaDaCompra | null>(null);
+  private inexistente = false;
   private readonly parcelas = toSignal(this.formulario.controls.parcelas.valueChanges, { initialValue: 1 });
   private readonly andamento = toSignal(this.formulario.controls.andamento.valueChanges, { initialValue: false });
   private readonly inicial = toSignal(this.formulario.controls.parcelaInicial.valueChanges, { initialValue: '1' });
@@ -149,6 +155,19 @@ export class CompraDialogo {
   });
   /** Decisão 20: "Cai na fatura de dezembro (vence 10/12) e abate o total…", com a fatura da prévia, quando há. */
   readonly dicaDoEstorno = computed(() => dicaDoEstorno(this.previa()?.primeiraFatura ?? null, this.dados.hoje));
+  /** Decisão 35 (05b): a frase da trava, com uma parcela numa fatura paga; nula sem ela. */
+  readonly travaDaFaturaPaga = computed(() => this.carregado()?.compra?.travaDaFaturaPaga ?? null);
+  /**
+   * Decisão 35 (05b, dono em 2026-11-20): a frase da prévia quando o lançamento vai ficar travado numa fatura paga, na
+   * compra e no estorno novos e na edição (a que diminui o valor e deixa a fatura paga). Com a trava, só o alerta dela.
+   */
+  readonly avisoDaFaturaPaga = computed(() => this.travaDaFaturaPaga() !== null ? null : this.previa()?.avisoDaFaturaPaga ?? null);
+  readonly tituloDoAviso = this.editando ? 'Vai ficar numa fatura paga' : 'Vai entrar numa fatura paga';
+  /** Decisão 38 (05b): só na compra nova, o disponível que a prévia trouxe. */
+  readonly disponivelDepois = computed(() => {
+    const disponivel = this.previa()?.disponivelDepois;
+    return this.editando || this.estorno || disponivel === undefined ? null : { valor: disponivel };
+  });
   /** Os cartões ativos (o da compra que se edita é ativo: com ele arquivado, o diálogo é só leitura). */
   readonly cartoes = computed(() => this.carregado()?.cartoes ?? []);
   /** As categorias da natureza (despesa na compra, receita no estorno); na edição, a arquivada que a compra já tem. */
@@ -205,9 +224,14 @@ export class CompraDialogo {
           this.formulario.controls.cartao.setValue(ativos[0].id);
         }
       },
-      error: (erro: unknown) => this.falhaAoCarregar.set(statusDoErro(erro) === 404
-        ? detalheDoErro(erro, this.estorno ? 'Estorno não encontrado.' : 'Compra não encontrada.')
-        : this.estorno ? 'Não foi possível carregar o estorno.' : 'Não foi possível carregar a compra.'),
+      error: (erro: unknown) => {
+        if (statusDoErro(erro) === 404) {
+          this.marcarInexistente();
+        }
+        this.falhaAoCarregar.set(statusDoErro(erro) === 404
+          ? detalheDoErro(erro, this.estorno ? 'Estorno não encontrado.' : 'Compra não encontrada.')
+          : this.estorno ? 'Não foi possível carregar o estorno.' : 'Não foi possível carregar a compra.');
+      },
     });
   }
 
@@ -228,9 +252,20 @@ export class CompraDialogo {
     }
   }
 
-  /** Fecha sem resultado, como o Esc. */
+  /** Fecha sem resultado, como o Esc; com a compra que não existe mais, "inexistente". */
   cancelar(): void {
-    this.referencia.close();
+    this.referencia.close(this.inexistente ? 'inexistente' : undefined);
+  }
+
+  /** Correções do QA (05b): depois do 404, o Esc e o clique fora também fecham com "inexistente". */
+  private marcarInexistente(): void {
+    if (this.inexistente) {
+      return;
+    }
+    this.inexistente = true;
+    this.referencia.disableClose = true;
+    merge(this.referencia.backdropClick(), this.referencia.keydownEvents().pipe(filter((evento) => evento.key === 'Escape')))
+      .pipe(take(1)).subscribe(() => this.cancelar());
   }
 
   salvar(): void {
@@ -276,7 +311,8 @@ export class CompraDialogo {
       error: (erro: unknown) => {
         this.tratarErro(erro);
         this.enviando.set(false);
-        this.referencia.disableClose = false;
+        // Depois do 404, o Esc e o clique fora continuam presos ao "inexistente" (marcarInexistente).
+        this.referencia.disableClose = this.inexistente;
       },
     });
   }
@@ -320,6 +356,12 @@ export class CompraDialogo {
     controles.parcelaInicial.setValue(String(compra.parcelaInicial));
     controles.categoria.setValue(compra.categoriaId);
     controles.observacao.setValue(compra.observacao ?? '');
+    // Decisão 35 (05b): com uma parcela numa fatura paga, o que regrava as parcelas fica travado.
+    if ((compra.travaDaFaturaPaga ?? null) !== null) {
+      for (const controle of [controles.cartao, controles.data, controles.valor, controles.parcelas, controles.andamento, controles.parcelaInicial]) {
+        controle.disable({ emitEvent: false });
+      }
+    }
   }
 
   /** "Compra lançada em 10 parcelas." com "Ver fatura" (a da 1ª parcela no Flux); na edição, "Compra salva.". */
@@ -354,8 +396,10 @@ export class CompraDialogo {
       || erros.parcelaInicial !== undefined || valores.data < this.minima || valores.data > this.limite) {
       return of({ previa: null, erroDoValor: null });
     }
-    return this.servico.previa({ cartaoId: valores.cartao, data: valores.data, valorTotal: lido.valor, parcelas: valores.parcelas,
-      parcelaInicial: inicial }).pipe(
+    // O estorno manda o tipo; a edição, o id (a API desconta as parcelas que a compra já tem).
+    const pedido = { cartaoId: valores.cartao, data: valores.data, valorTotal: lido.valor, parcelas: valores.parcelas, parcelaInicial: inicial,
+      ...(this.estorno ? { tipo: 'ESTORNO' as const } : {}), ...(this.dados.id !== null ? { compraId: this.dados.id } : {}) };
+    return this.servico.previa(pedido).pipe(
       map((previa) => ({ previa, erroDoValor: null })),
       catchError((erro: unknown) => of({ previa: null, erroDoValor: statusDoErro(erro) === 400 ? (camposDoErro(erro)['valorTotal'] ?? null) : null })),
     );
@@ -404,8 +448,12 @@ export class CompraDialogo {
     return erros;
   }
 
+  /** O 404 é a compra ou o estorno excluído em outra aba: a mensagem fica no alerta, e o diálogo fecha com "inexistente". */
   private tratarErro(erro: unknown): void {
     const status = statusDoErro(erro);
+    if (status === 404) {
+      this.marcarInexistente();
+    }
     if (status === 400) {
       const conhecidos: Partial<Record<CampoDaCompra, string>> = {};
       for (const [campoDaApi, mensagem] of Object.entries(camposDoErro(erro))) {

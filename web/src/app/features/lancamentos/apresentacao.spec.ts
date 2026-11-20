@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { Categoria } from '../categorias/categorias.service';
-import { marcaDoDia, metaDoItem, nomeDoMes, nomeDoMesSemAno, opcoesDeCategoria, opcoesDeCategoriasArquivadas, quantidadeDeItens, rotuloDoDia } from './apresentacao';
+import {
+  marcaDoDia, metaDoItem, nomeDoMes, nomeDoMesSemAno, opcoesDeCategoria, opcoesDeCategoriasArquivadas, quantidadeDeItens, rotuloDoDia,
+  tituloDoPagamento,
+} from './apresentacao';
 import { ItemDaLista } from './lancamentos.service';
 
 function item(parcial: Partial<ItemDaLista>): ItemDaLista {
@@ -59,6 +62,17 @@ describe('apresentação dos lançamentos', () => {
     expect(metaDoItem(parcela, false, true)).toBe('Compras · compra em 05/11');
     const estorno = { ...parcela, tipo: 'RECEITA' as const, estorno: true, categoriaNome: null, categoriaId: null, dataCompra: '2026-11-11' };
     expect(metaDoItem(estorno, false, false)).toBe('Cartão Horizonte · em 11/11');
+  });
+
+  it('o pagamento de fatura: o título com o mês da fatura e a meta com o cartão e a conta; no celular, só a conta (Fatia 05b, decisão 32)', () => {
+    const pagamento = item({ tipo: 'PAGAMENTO_FATURA', valor: -265.2, categoriaId: null, categoriaNome: null, categoriaMaeNome: null,
+      cartaoId: 7, cartaoNome: 'Cartão Horizonte', faturaPagaMes: '2026-11' });
+    expect(tituloDoPagamento('2026-11', '2026-11-10')).toBe('Pagamento da fatura de novembro');
+    expect(tituloDoPagamento('2025-12', '2026-01-10')).toBe('Pagamento da fatura de dezembro de 2025');
+    expect(metaDoItem(pagamento, false, false)).toBe('Cartão Horizonte · Banco Horizonte');
+    expect(metaDoItem(pagamento, true, false)).toBe('Banco Horizonte');
+    expect(metaDoItem(pagamento, false, true)).toBe('Cartão Horizonte');
+    expect(metaDoItem(pagamento, true, true)).toBe('Cartão Horizonte');
   });
 
   it('lista as categorias com as subcategorias recuadas e as arquivadas à parte', () => {

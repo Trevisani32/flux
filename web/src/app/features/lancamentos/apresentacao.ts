@@ -14,6 +14,15 @@ export function nomeDoMes(mes: string): string {
   return `${MESES[numero - 1]} de ${ano}`;
 }
 
+/**
+ * Fatia 05b (decisão 32): o título da linha do pagamento, "Pagamento da fatura de novembro", com o ano quando a fatura
+ * não é do ano do pagamento ("Pagamento da fatura de dezembro de 2025", pago em janeiro).
+ */
+export function tituloDoPagamento(faturaMes: string, dataDoPagamento: string): string {
+  const nome = nomeDoMes(faturaMes);
+  return `Pagamento da fatura de ${faturaMes.slice(0, 4) === dataDoPagamento.slice(0, 4) ? nome.split(' ')[0] : nome}`;
+}
+
 /** "2026-11" vira "Novembro". */
 export function nomeDoMesSemAno(mes: string): string {
   const nome = MESES[Number(mes.slice(5, 7)) - 1];
@@ -54,9 +63,17 @@ export function quantidadeDeItens(lancamentos: number, transferencias: number): 
  * "Mercado"); sem a conta quando a lista já é dela. Transferência: "Banco Horizonte →
  * Poupança" ou, com o filtro de uma das contas, "Para Poupança"/"De Banco Horizonte"; fora do
  * celular, com "· fora dos totais" (decisão 26). Lançamento de fatura (Fatia 05a): a categoria, o cartão
- * (sem ele quando a lista já é dele, `contaFiltrada`) e "compra em 02/11"; curto, sem a categoria.
+ * (sem ele quando a lista já é dele, `contaFiltrada`) e "compra em 02/11"; curto, sem a categoria. Pagamento de fatura
+ * (Fatia 05b, decisão 32): "Cartão Horizonte · Banco Horizonte", sem a conta quando a lista já é dela; curto (o celular),
+ * só a conta, ou só o cartão quando a lista já é da conta.
  */
 export function metaDoItem(item: ItemDaLista, curto: boolean, contaFiltrada: boolean): string {
+  if (item.tipo === 'PAGAMENTO_FATURA') {
+    if (curto) {
+      return contaFiltrada ? item.cartaoNome ?? '' : item.contaNome;
+    }
+    return [item.cartaoNome ?? null, contaFiltrada ? null : item.contaNome].filter((parte) => parte !== null).join(' · ');
+  }
   if (item.tipo === 'TRANSFERENCIA') {
     const contas = item.direcao === 'SAIDA' ? `Para ${item.contaDestinoNome}`
       : item.direcao === 'ENTRADA' ? `De ${item.contaNome}`

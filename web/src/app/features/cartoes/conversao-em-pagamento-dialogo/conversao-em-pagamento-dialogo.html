@@ -1,0 +1,69 @@
+<div class="conversao-pagamento">
+  <div class="conversao-pagamento__cabecalho">
+    <button type="button" class="conversao-pagamento__voltar flux-so-celular" aria-label="Voltar" [disabled]="enviando()" (click)="cancelar()"><app-icone nome="esquerda" /></button>
+    <span class="conversao-pagamento__selo flux-so-desktop" aria-hidden="true"><app-icone nome="pagar" /></span>
+    <h2 mat-dialog-title class="conversao-pagamento__titulo">Converter em pagamento de fatura</h2>
+  </div>
+
+  @if (falhaAoCarregar(); as falha) {
+    <app-alerta tipo="erro" icone="alerta" [titulo]="falha.mensagem">
+      @if (falha.deNovo) {
+        <div class="flux-alerta__acoes"><button mat-stroked-button type="button" (click)="carregar()">Tentar de novo</button></div>
+      }
+    </app-alerta>
+    <div class="conversao-pagamento__acoes"><button mat-stroked-button type="button" (click)="cancelar()">Fechar</button></div>
+  } @else if (opcoes(); as atual) {
+    <div class="conversao-pagamento__lado">
+      <span class="conversao-pagamento__textos"><b>{{ atual.lancamento.descricaoBanco ?? atual.lancamento.descricao }}</b><span class="conversao-pagamento__meta">{{ atual.lancamento.contaNome }} · {{ diaEMes(atual.lancamento.data) }} · importado</span></span>
+      <app-valor [valor]="atual.lancamento.valor" />
+    </div>
+
+    @if (atual.cartoes.length === 0) {
+      <app-alerta tipo="info" icone="cartao" titulo="Nenhum cartão ativo"><p class="flux-alerta__texto">Cadastre o cartão em Cartões para registrar o pagamento da fatura dele.</p></app-alerta>
+      <div class="conversao-pagamento__acoes"><button mat-stroked-button type="button" (click)="cancelar()">Fechar</button></div>
+    } @else {
+      <div class="flux-campo">
+        <label for="conversao-pagamento-cartao">Cartão</label>
+        <div class="flux-entrada" [class.flux-entrada--invalida]="erroDoCartao() !== null">
+          <select id="conversao-pagamento-cartao" [formControl]="cartao" [attr.aria-invalid]="erroDoCartao() !== null ? 'true' : null" [attr.aria-describedby]="erroDoCartao() !== null ? 'conversao-pagamento-cartao-erro' : null">
+            @for (opcao of atual.cartoes; track opcao.id) {
+              <option [ngValue]="opcao.id">{{ opcao.nome }}</option>
+            }
+          </select>
+          <app-icone class="flux-entrada__seta" nome="baixo" />
+        </div>
+        @if (erroDoCartao(); as mensagem) {
+          <p id="conversao-pagamento-cartao-erro" class="flux-campo__erro">{{ mensagem }}</p>
+        }
+      </div>
+
+      <fieldset class="conversao-pagamento__faturas" [attr.aria-describedby]="erroDaFatura() !== null ? 'conversao-pagamento-fatura-erro' : null">
+        <legend>Fatura</legend>
+        @for (opcao of faturas(); track opcao.mes) {
+          <label class="conversao-pagamento__opcao">
+            <input type="radio" name="conversao-pagamento-fatura" [formControl]="fatura" [value]="opcao.mes" />
+            <span class="conversao-pagamento__textos"><b>{{ nomeDoMes(opcao.mes) }}</b><span class="conversao-pagamento__meta">{{ metaDaFatura(opcao) }}</span></span>
+            <app-valor [valor]="opcao.pendente" tipo="saldo" />
+          </label>
+        } @empty {
+          <p class="conversao-pagamento__vazio">Nenhuma fatura deste cartão fechou ou está aberta perto desta data.</p>
+        }
+        @if (erroDaFatura(); as mensagem) {
+          <p id="conversao-pagamento-fatura-erro" class="flux-campo__erro">{{ mensagem }}</p>
+        }
+      </fieldset>
+      <p class="flux-dica">Deixa de ser despesa e perde a categoria. Data, valor e conta não mudam, e reimportar o extrato continua reconhecendo o lançamento.</p>
+
+      @if (erroGeral(); as mensagem) {
+        <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem" />
+      }
+
+      <div class="conversao-pagamento__acoes">
+        <button mat-stroked-button type="button" class="flux-so-desktop" [disabled]="enviando()" (click)="cancelar()">Cancelar</button>
+        <button mat-flat-button type="button" [disabled]="enviando() || faturas().length === 0" (click)="converter()">Converter</button>
+      </div>
+    }
+  } @else {
+    <p class="conversao-pagamento__carregando" role="status">Carregando…</p>
+  }
+</div>

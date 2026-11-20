@@ -25,11 +25,16 @@ public final class CalendarioDoCartao {
     public record Limites(LocalDate de, LocalDate ate, boolean ateOVencimento) {
     }
 
-    /** Decisão 10: calculada, nunca gravada. */
+    /**
+     * Decisão 10: calculada, nunca gravada. O calendário só dá FUTURA, ABERTA e FECHADA, pelas datas; PAGA (Fatia 05b,
+     * decisão 34) é a fechada com pagamento que cobre o total ou marcada como paga fora do Flux, e quem a decide são os
+     * lançamentos, que guardam os pagamentos (ADR 0018).
+     */
     public enum Situacao {
         FUTURA,
         ABERTA,
-        FECHADA
+        FECHADA,
+        PAGA
     }
 
     private final int diaFechamento;

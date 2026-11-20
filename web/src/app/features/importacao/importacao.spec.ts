@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -245,7 +245,7 @@ describe('Importacao', () => {
     await vi.waitFor(() => httpTesting.expectOne({ method: 'GET', url: '/api/importacoes' }).flush(historico));
   });
 
-  it('o perfil salvo que não lê o arquivo abre o passo do perfil, com o perfil e o alerta (mockup, linha 623)', () => {
+  it('o perfil salvo que não lê o arquivo abre o passo do perfil, com o perfil e o alerta', () => {
     const { fixture, componente, elemento } = criar('1');
     componente.escolherArquivo(lista(new File(['Data;Valor'], 'outro-banco.csv')));
     httpTesting.expectOne('/api/importacoes/previa').flush({ codigo: 'PERFIL_NAO_LE',
@@ -464,6 +464,46 @@ describe('Importacao', () => {
     expect(aviso.querySelector('.confirmacao__texto')?.textContent).toBe('A transferência de 02/11 liga esta importação a Conta conjunta, que está '
       + 'arquivada. Reative a conta para desfazer esta importação.');
     expect(Array.from(aviso.querySelectorAll('button')).map((item) => item.textContent?.trim())).toEqual(['Fechar', 'Ir para Contas']);
+    httpTesting.expectNone({ method: 'POST', url: '/api/importacoes/12/desfazer' });
+  });
+
+  it('desfazer com pagamento de fatura convertido avisa que ele sai e a fatura volta a ter o pendente (Fatia 05b)', async () => {
+    const { componente } = criar();
+    const pagamento = { data: '2026-11-09', cartaoId: 7, cartaoNome: 'Cartão Horizonte', cartaoArquivado: false, faturaMes: '2026-10' } as const;
+    componente.desfazer({ ...historico[0], pagamentos: [pagamento] });
+    TestBed.tick();
+    let confirmacao = document.querySelector('app-confirmacao-dialogo') as HTMLElement;
+    expect(confirmacao.querySelector('h2')?.textContent).toBe('Desfazer a importação de extrato-outubro.ofx?');
+    expect(confirmacao.querySelector('.flux-alerta--atencao .flux-alerta__titulo')?.textContent).toBe('1 deles é pagamento de fatura');
+    expect(confirmacao.querySelector('.flux-alerta--atencao .flux-alerta__texto')?.textContent).toBe('O pagamento de 09/11 sai, e a fatura de '
+      + 'outubro de Cartão Horizonte volta a ter esse valor pendente.');
+    TestBed.inject(MatDialog).closeAll();
+    await vi.waitFor(() => expect(document.querySelector('app-confirmacao-dialogo')).toBeNull());
+
+    componente.desfazer({ ...historico[0], transferencias: [{ data: '2026-11-02', contaId: 2, contaNome: 'Conta conjunta', contaArquivada: false,
+      tipo: 'RECEITA' }], pagamentos: [pagamento, { ...pagamento, data: '2026-11-03', cartaoId: 8, cartaoNome: 'Cartão Lua', faturaMes: '2025-12' }] });
+    TestBed.tick();
+    confirmacao = document.querySelector('app-confirmacao-dialogo') as HTMLElement;
+    expect(confirmacao.querySelector('.flux-alerta--atencao .flux-alerta__titulo')?.textContent)
+      .toBe('3 deles estão em transferências ou são pagamentos de fatura');
+    expect(confirmacao.querySelector('.flux-alerta--atencao .flux-alerta__texto')?.textContent).toBe('A transferência de 02/11 com Conta conjunta é '
+      + 'desfeita, e o lançamento de Conta conjunta volta a ser uma receita, sem categoria. Os pagamentos saem, e as faturas de Cartão '
+      + 'Horizonte e Cartão Lua voltam a ter esses valores pendentes.');
+  });
+
+  it('com o cartão de um pagamento convertido arquivado, desfazer só avisa e leva a Cartões, sem chamar a API (Fatia 05b)', async () => {
+    const { componente } = criar();
+    const navegar = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    componente.desfazer({ ...historico[0], pagamentos: [{ data: '2026-11-09', cartaoId: 8, cartaoNome: 'Cartão Lua', cartaoArquivado: true,
+      faturaMes: '2026-10' }] });
+    TestBed.tick();
+    const aviso = document.querySelector('app-confirmacao-dialogo') as HTMLElement;
+    expect(aviso.querySelector('h2')?.textContent).toBe('Esta importação não pode ser desfeita agora');
+    expect(aviso.querySelector('.confirmacao__texto')?.textContent).toBe('O pagamento de 09/11 liga esta importação a Cartão Lua, que está '
+      + 'arquivado. Reative o cartão para desfazer esta importação.');
+    expect(Array.from(aviso.querySelectorAll('button')).map((item) => item.textContent?.trim())).toEqual(['Fechar', 'Ir para Cartões']);
+    Array.from(aviso.querySelectorAll('button'))[1].click();
+    await vi.waitFor(() => expect(navegar).toHaveBeenCalledWith(['/cartoes']));
     httpTesting.expectNone({ method: 'POST', url: '/api/importacoes/12/desfazer' });
   });
 });

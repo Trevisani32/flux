@@ -22,9 +22,10 @@ import org.springframework.transaction.annotation.Transactional;
  * entre a primeira fatura com lançamento e o mês de 10 anos atrás até a aberta, as que ainda não existem são gravadas
  * com as datas de agora (assim nenhuma data que tem ou ainda pode ter lançamento muda de fatura); as futuras gravadas
  * voltam às datas dos dias novos (o ON UPDATE CASCADE leva a data das parcelas junto) e as compras com data depois do
- * fechamento da aberta trocam de fatura se for o caso. No cartão vazio, sem lançamento e sem fatura com o fechamento
- * ajustado, os dias novos valem já, inclusive na aberta, e as faturas que restaram, sem nada dentro, saem (exceção das
- * decisões 7 e 9, aprovada pelo dono).
+ * fechamento da aberta trocam de fatura se for o caso. No cartão vazio, sem lançamento, sem fatura com o fechamento
+ * ajustado e, desde a Fatia 05b, sem pagamento e sem fatura marcada como paga fora do Flux, os dias novos valem já,
+ * inclusive na aberta, e as faturas que restaram, sem nada dentro, saem (exceção das decisões 7 e 9, aprovada pelo dono).
+ * A troca nunca mexe numa fatura paga: só a fechada pode estar paga, e a troca recalcula só as seguintes à aberta.
  */
 @Component
 public class TrocaDeDiasNasFaturas implements TrocaDeDias {
@@ -48,7 +49,7 @@ public class TrocaDeDiasNasFaturas implements TrocaDeDias {
     @Transactional(readOnly = true)
     public Optional<Previa> previa(Long usuarioId, CartaoResumo cartao, int diaFechamento, int diaVencimento, LocalDate hoje) {
         FaturasDoCartao antes = FaturasDoCartao.carregar(faturas, usuarioId, cartao);
-        if (vazio(antes, lancamentos.totaisDoCartao(usuarioId, cartao.id()))) {
+        if (vazio(antes, lancamentos.totaisDoCartao(usuarioId, cartao.id()), lancamentos.pagosDoCartao(usuarioId, cartao.id()))) {
             return Optional.empty();
         }
         YearMonth aberta = antes.faturaDe(hoje);
@@ -71,7 +72,7 @@ public class TrocaDeDiasNasFaturas implements TrocaDeDias {
     public void aplicar(Long usuarioId, CartaoResumo cartao, int diaFechamento, int diaVencimento, LocalDate hoje) {
         FaturasDoCartao antes = FaturasDoCartao.carregar(faturas, usuarioId, cartao);
         List<TotalDaFatura> totais = lancamentos.totaisDoCartao(usuarioId, cartao.id());
-        if (vazio(antes, totais)) {
+        if (vazio(antes, totais, lancamentos.pagosDoCartao(usuarioId, cartao.id()))) {
             // As faturas que restaram (de compras excluídas, de um ajuste desfeito ou de uma troca anterior) não têm nada
             // dentro: saem, dentro da trava de cartões, e a próxima compra grava as dela com os dias novos. Nenhum
             // lançamento aponta para elas; se apontasse, a FK recusaria.
@@ -108,11 +109,13 @@ public class TrocaDeDiasNasFaturas implements TrocaDeDias {
     }
 
     /**
-     * Exceção da decisão 7: o cartão vazio, sem nenhum lançamento (parcela ou estorno) e sem nenhuma fatura com o
-     * fechamento ajustado. A fatura gravada só por uma compra que foi excluída, por uma troca ou por um ajuste desfeito
-     * ("Voltar ao fechamento normal") não conta.
+     * Exceção da decisão 7: o cartão vazio, sem nenhum lançamento (parcela ou estorno), sem nenhuma fatura com o
+     * fechamento ajustado e, desde a Fatia 05b, sem nenhum pagamento e sem nenhuma fatura marcada como paga fora do Flux
+     * (ADR 0017). A fatura gravada só por uma compra que foi excluída, por uma troca, por um ajuste desfeito ("Voltar ao
+     * fechamento normal"), por um pagamento excluído ou por uma marca desfeita ("Desmarcar") não conta.
      */
-    private static boolean vazio(FaturasDoCartao doCartao, List<TotalDaFatura> totais) {
-        return totais.isEmpty() && doCartao.porMes().values().stream().noneMatch(Fatura::isFechamentoAjustado);
+    private static boolean vazio(FaturasDoCartao doCartao, List<TotalDaFatura> totais, List<PagoDaFatura> pagos) {
+        return totais.isEmpty() && pagos.isEmpty()
+                && doCartao.porMes().values().stream().noneMatch(fatura -> fatura.isFechamentoAjustado() || fatura.pagaFora());
     }
 }

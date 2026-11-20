@@ -12,7 +12,7 @@ import { abrirConfirmacao, TrechoDeTexto } from '../../shared/confirmacao/confir
 import { dataCurtaDoInstante } from '../../shared/datas/data-curta';
 import { EstadoVazio } from '../../shared/estado-vazio/estado-vazio';
 import { Icone } from '../../shared/icone/icone';
-import { partesDaMoeda } from '../../shared/moeda/moeda';
+import { formatarMoeda, partesDaMoeda } from '../../shared/moeda/moeda';
 import { Valor } from '../../shared/valor/valor';
 import { detalheDoErro, statusDoErro } from '../auth/erros-http';
 import { corDaConta } from '../contas/apresentacao';
@@ -22,8 +22,9 @@ import { CartaoDialogo, DadosDoDialogoDeCartao } from './cartao-dialogo/cartao-d
 import { Cartao, CartoesService, ListaDeCartoes } from './cartoes.service';
 
 /**
- * A tela de Cartões (decisões 1 a 6, 26 e 29 da 05a): um card por cartão ativo, com os dias, a conta de pagamento, o
- * limite e a fatura aberta; os arquivados embaixo. O cartão precisa de uma conta corrente, poupança ou carteira.
+ * A tela de Cartões (decisões 1 a 6, 26 e 29 da 05a): um card por cartão ativo, com os dias, a conta de pagamento, a
+ * fatura aberta e, desde a 05b, o limite disponível com a barra (decisão 38); os arquivados embaixo. O cartão precisa de
+ * uma conta corrente, poupança ou carteira.
  */
 @Component({
   selector: 'app-cartoes',
@@ -45,6 +46,7 @@ export class Cartoes {
   readonly mesSemAno = mesSemAno;
   readonly textoDoTotal = textoDoTotal;
   readonly dataCurtaDoInstante = dataCurtaDoInstante;
+  readonly formatarMoeda = formatarMoeda;
   readonly lista = signal<ListaDeCartoes | null>(null);
   readonly contas = signal<ListaDeContas | null>(null);
   readonly falhaAoCarregar = signal(false);
@@ -169,6 +171,12 @@ export class Cartoes {
         this.arquivar(cartao);
       }
     });
+  }
+
+  /** Decisão 38: com o disponível negativo, "R$ 120,00" para "Acima do limite em R$ 120,00"; senão, null. */
+  acimaDoLimite(cartao: Cartao): string | null {
+    const partes = partesDaMoeda(cartao.disponivel);
+    return partes !== null && partes.negativo ? partes.absoluto : null;
   }
 
   alternarArquivados(): void {

@@ -306,6 +306,41 @@ describe('LancamentoDialogo', () => {
     await vi.waitFor(() => expect(resultado).toBe('salvo'));
   });
 
+  it('a despesa importada oferece "Converter em pagamento de fatura", e a conversão feita fecha com "convertido" (Fatia 05b)', async () => {
+    abrir(item({ origem: 'IMPORTADO', descricao: 'PAG FATURA', descricaoBanco: 'PAG FATURA', valor: -265.2, data: '2026-11-09',
+      categoriaId: null, categoriaNome: null, categoriaArquivada: false }));
+    expect(Array.from(painel().querySelectorAll('.lancamento-dialogo__converter')).map((item) => item.textContent?.trim()))
+      .toEqual(['Converter em transferência', 'Converter em pagamento de fatura']);
+    expect(Array.from(painel().querySelectorAll('app-alerta .flux-alerta__texto')).map((item) => item.textContent?.trim())[1])
+      .toBe('Se é o pagamento da fatura de um cartão:');
+    botao('Converter em pagamento de fatura').click();
+    TestBed.tick();
+    expect(document.querySelector('app-conversao-em-pagamento-dialogo h2')?.textContent).toBe('Converter em pagamento de fatura');
+    httpTesting.expectOne('/api/lancamentos/10/faturas-para-pagamento').flush({
+      lancamento: item({ origem: 'IMPORTADO', descricaoBanco: 'PAG FATURA', valor: -265.2 }),
+      cartoes: [{ id: 7, nome: 'Cartão Horizonte', cor: null, faturas: [{ mes: '2026-10', situacao: 'FECHADA', vencimento: '2026-10-10',
+        total: 265.2, pendente: 265.2, sugerida: true }] }],
+    });
+    TestBed.tick();
+    botao('Converter').click();
+    TestBed.tick();
+    httpTesting.expectOne('/api/lancamentos/10/converter-em-pagamento').flush({ id: 10, faturaMes: '2026-10' });
+    await vi.waitFor(() => expect(resultado).toBe('convertido'));
+    TestBed.inject(MatDialog).closeAll();
+    // A receita importada e o lançado à mão não oferecem o pagamento.
+    abrir(item({ id: 11, tipo: 'RECEITA', origem: 'IMPORTADO', descricaoBanco: 'PIX', valor: 50, categoriaId: null, categoriaNome: null,
+      categoriaArquivada: false }));
+    expect(Array.from(document.querySelectorAll('app-lancamento-dialogo .lancamento-dialogo__converter')).map((item) => item.textContent?.trim()))
+      .not.toContain('Converter em pagamento de fatura');
+  });
+
+  it('a despesa importada com data futura não oferece "Converter em pagamento de fatura": a API recusaria (Correções do QA)', () => {
+    abrir(item({ origem: 'IMPORTADO', descricao: 'PAG FATURA', descricaoBanco: 'PAG FATURA', valor: -265.2, data: '2026-11-25', futuro: true,
+      categoriaId: null, categoriaNome: null, categoriaArquivada: false }));
+    expect(Array.from(painel().querySelectorAll('.lancamento-dialogo__converter')).map((item) => item.textContent?.trim()))
+      .toEqual(['Converter em transferência']);
+  });
+
   it('excluir o importado diz que ele não volta na reimportação, e "Desfazer" restaura com a categoria (Fatia 04a)', async () => {
     abrir(item({ origem: 'IMPORTADO', descricao: 'Padaria Central', descricaoBanco: 'PADARIA CENTRAL', valor: -12.5, data: '2026-11-09',
       categoriaId: 1, categoriaNome: 'Alimentação', categoriaArquivada: false }));

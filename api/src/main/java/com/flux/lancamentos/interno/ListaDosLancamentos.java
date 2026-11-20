@@ -34,7 +34,8 @@ import org.springframework.transaction.annotation.Transactional;
  * 1.000 lançamentos (decisão 34): os filtros, os totais e o saldo do dia são feitos em
  * memória, sobre os lançamentos do mês. Os importados ignorados ficam de fora (Fatia 04a). Desde a
  * Fatia 05a, a lista tem as parcelas e os estornos do cartão, na data do vencimento da fatura (decisão 22),
- * e o filtro de um cartão, que mostra a fatura do mês (decisão 23).
+ * e o filtro de um cartão, que mostra a fatura do mês (decisão 23). Desde a Fatia 05b, o pagamento de fatura: uma linha
+ * na conta, fora das entradas e saídas e de qualquer filtro de categoria, que entra no saldo do dia (decisão 32).
  */
 @Service
 public class ListaDosLancamentos {
@@ -68,7 +69,7 @@ public class ListaDosLancamentos {
                 mes.atEndOfMonth());
         List<CategoriaResumo> todasAsCategorias = categorias.listar(usuarioId);
         Montagem montagem = new Montagem(contas.listar(usuarioId), cartoes.listar(usuarioId), todasAsCategorias,
-                comprasDe(usuarioId, doMes), hoje);
+                comprasDe(usuarioId, doMes), faturasPagasDe(usuarioId, doMes), hoje);
         Set<Long> categoriasDoFiltro = filtro.categoriaId() == null ? Set.of()
                 : idsComSubcategorias(todasAsCategorias, filtro.categoriaId());
         String chaveDaBusca = filtro.busca() == null ? null : TextoComparavel.chave(filtro.busca());
@@ -122,7 +123,7 @@ public class ListaDosLancamentos {
         LocalDate hoje = LocalDate.now(clock);
         List<Lancamento> recentes =
                 repositorio.findTop10ByUsuarioIdAndContaIdIsNotNullAndDataLessThanEqualAndIgnoradoEmIsNullOrderByDataDescIdDesc(usuarioId, hoje);
-        Montagem montagem = montagem(usuarioId, List.of());
+        Montagem montagem = montagem(usuarioId, recentes);
         Map<Long, List<Lancamento>> lados = ladosDasTransferencias(usuarioId, recentes);
         List<ItemDaLista> itens = new ArrayList<>();
         Set<Long> transferenciasVistas = new HashSet<>();
@@ -155,7 +156,14 @@ public class ListaDosLancamentos {
 
     private Montagem montagem(Long usuarioId, List<Lancamento> lancamentos) {
         return new Montagem(contas.listar(usuarioId), cartoes.listar(usuarioId), categorias.listar(usuarioId),
-                comprasDe(usuarioId, lancamentos), LocalDate.now(clock));
+                comprasDe(usuarioId, lancamentos), faturasPagasDe(usuarioId, lancamentos), LocalDate.now(clock));
+    }
+
+    /** As faturas dos pagamentos (Fatia 05b), por id. */
+    private Map<Long, Fatura> faturasPagasDe(Long usuarioId, List<Lancamento> lancamentos) {
+        Set<Long> ids = lancamentos.stream().filter(Lancamento::pagamento).map(Lancamento::getFaturaPagaId).collect(Collectors.toSet());
+        return ids.isEmpty() ? Map.of() : faturas.findAllByUsuarioIdAndIdIn(usuarioId, ids).stream()
+                .collect(Collectors.toMap(Fatura::getId, fatura -> fatura));
     }
 
     /** As compras dos lançamentos de fatura (Fatia 05a), por id. */
@@ -178,8 +186,9 @@ public class ListaDosLancamentos {
         FaturasDoCartao doCartao = FaturasDoCartao.carregar(faturas, usuarioId, cartao);
         CalendarioDoCartao.Datas datas = doCartao.datas(mes);
         BigDecimal soma = somar(doMes.stream().filter(lancamento -> cartaoId.equals(lancamento.getCartaoId())).map(Lancamento::getValor));
+        String situacao = PagamentosDasFaturas.carregar(repositorio, usuarioId, doCartao).resumo(mes, hoje).situacao().name();
         return new ListaDoMesResponse.FaturaDoFiltro(cartao.id(), cartao.nome(), cartao.cor(), mes.toString(), datas.fechamento(),
-                datas.vencimento(), doCartao.situacao(mes, hoje).name(), soma.negate().setScale(2, RoundingMode.UNNECESSARY));
+                datas.vencimento(), situacao, soma.negate().setScale(2, RoundingMode.UNNECESSARY));
     }
 
     private Map<Long, List<Lancamento>> ladosDasTransferencias(Long usuarioId, List<Lancamento> lancamentos) {
@@ -193,7 +202,8 @@ public class ListaDosLancamentos {
         return (filtro.contaId() == null || filtro.contaId().equals(lancamento.getContaId()))
                 && (filtro.cartaoId() == null || filtro.cartaoId().equals(lancamento.getCartaoId()))
                 && (filtro.categoriaId() == null || categoriasDoFiltro.contains(lancamento.getCategoriaId()))
-                && (!filtro.semCategoria() || lancamento.getCategoriaId() == null)
+                // Fatia 05b: o pagamento não tem categoria, mas não é "Sem categoria" (não é despesa).
+                && (!filtro.semCategoria() || (lancamento.getCategoriaId() == null && !lancamento.pagamento()))
                 && (filtro.tipo() == null || filtro.tipo() == lancamento.getTipo())
                 && (chaveDaBusca == null || lancamento.getDescricaoChave().contains(chaveDaBusca));
     }

@@ -216,14 +216,14 @@ function extratoDeHoje(): Buffer {
 async function escolherOExtrato(page: Page): Promise<void> {
   await irPeloMenu(page, 'Importação');
   await expect(page.getByRole('heading', { name: 'Importação', level: 1 })).toBeVisible();
-  await page.getByLabel('Conta', { exact: true }).selectOption({ label: 'Conta Itaú' });
+  await page.getByLabel('Conta', { exact: true }).selectOption({ label: 'Conta Aurora' });
   await page.locator('#importacao-arquivo').setInputFiles({ name: 'extrato.ofx', mimeType: 'application/x-ofx', buffer: extratoDeHoje() });
 }
 
 test('importa um OFX: revisão, categoria nas linhas iguais, resultado e a lista', async ({ page }) => {
   await entrar(page);
   await irPeloMenu(page, 'Contas');
-  await novaConta(page, 'Conta Itaú', 'Conta corrente', '0');
+  await novaConta(page, 'Conta Aurora', 'Conta corrente', '0');
   await escolherOExtrato(page);
 
   await expect(page.getByRole('heading', { name: 'Revisar importação', level: 1 })).toBeVisible();
@@ -240,8 +240,8 @@ test('importa um OFX: revisão, categoria nas linhas iguais, resultado e a lista
   }
   await page.getByRole('button', { name: 'Importar 3 lançamentos' }).click();
 
-  await expect(page.getByRole('heading', { name: '3 lançamentos importados em Conta Itaú', level: 2 })).toBeVisible();
-  await expect(page.locator('.importacao__texto-pronto').last()).toHaveText('Saldo de hoje de Conta Itaú: R$ 238,00');
+  await expect(page.getByRole('heading', { name: '3 lançamentos importados em Conta Aurora', level: 2 })).toBeVisible();
+  await expect(page.locator('.importacao__texto-pronto').last()).toHaveText('Saldo de hoje de Conta Aurora: R$ 238,00');
   await page.getByRole('button', { name: 'Ver lançamentos' }).click();
   await expect(page.getByRole('heading', { name: 'Lançamentos', level: 1 })).toBeVisible();
   await expect(linha(page, 'CAFE DA ESQUINA')).toHaveCount(2);
@@ -272,7 +272,7 @@ test('reimportar avisa e não duplica; excluir o importado o ignora, e desfazer 
   await page.getByRole('button', { name: 'Ações da importação extrato.ofx' }).click();
   await page.getByRole('menuitem', { name: 'Desfazer importação' }).click();
   const desfazer = page.getByRole('dialog').filter({ hasText: 'Desfazer a importação de extrato.ofx?' });
-  await expect(desfazer).toContainText('Os 3 lançamentos que ela trouxe saem de Conta Itaú. O saldo muda na hora.');
+  await expect(desfazer).toContainText('Os 3 lançamentos que ela trouxe saem de Conta Aurora. O saldo muda na hora.');
   await desfazer.getByRole('button', { name: 'Desfazer importação' }).click();
   await expect(page.locator('.importacao__item--desfeita')).toContainText('extrato.ofx');
   if (!ehDesktop(page)) {
@@ -314,7 +314,7 @@ test('o resultado da importação sugere a regra das escolhas à mão, e ela apa
   await expect(seletor).toBeHidden();
   await page.getByRole('button', { name: 'Importar 3 lançamentos' }).click();
 
-  await expect(page.getByRole('heading', { name: '3 lançamentos importados em Conta Itaú', level: 2 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '3 lançamentos importados em Conta Aurora', level: 2 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Criar regras com as suas escolhas', level: 2 })).toBeVisible();
   await page.getByRole('button', { name: 'Criar regra para CAFE DA ESQUINA' }).click();
   const dialogo = page.getByRole('dialog');
@@ -362,7 +362,7 @@ test('a revisão seguinte vem categorizada pelas regras, e "Aplicar regras" de L
     '2ª: Contém pix recebido, categoria Outras receitas']);
 
   await irPeloMenu(page, 'Importação');
-  await page.getByLabel('Conta', { exact: true }).selectOption({ label: 'Conta Itaú' });
+  await page.getByLabel('Conta', { exact: true }).selectOption({ label: 'Conta Aurora' });
   await page.locator('#importacao-arquivo').setInputFiles({ name: 'extrato-2.ofx', mimeType: 'application/x-ofx', buffer: segundoExtratoDeHoje() });
   await expect(page.getByRole('heading', { name: 'Revisar importação', level: 1 })).toBeVisible();
   await expect(page.locator('.revisao__descricao b')).toHaveText(['Pix recebido', 'CAFE DA ESQUINA']);
@@ -382,7 +382,7 @@ test('a revisão seguinte vem categorizada pelas regras, e "Aplicar regras" de L
     expect(await semRolagemHorizontal(page)).toBe(true);
   }
   await page.getByRole('button', { name: 'Importar 2 lançamentos' }).click();
-  await expect(page.getByRole('heading', { name: '2 lançamentos importados em Conta Itaú', level: 2 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '2 lançamentos importados em Conta Aurora', level: 2 })).toBeVisible();
   await expect(page.locator('.importacao__texto-pronto').first()).toContainText('2 categorizados por regras');
   await expect(page.getByRole('heading', { name: 'Criar regras com as suas escolhas', level: 2 })).toHaveCount(0);
 
@@ -404,7 +404,7 @@ test('a revisão seguinte vem categorizada pelas regras, e "Aplicar regras" de L
 });
 
 // Fatia 04c: a conversão de importados em transferência, com o mesmo usuário (decisão 42 da 04b). A TED
-// sai da Conta Itaú, e a receita que ela casa, lançada à mão, entra na Poupança, no mesmo dia.
+// sai da Conta Aurora, e a receita que ela casa, lançada à mão, entra na Poupança, no mesmo dia.
 function terceiroExtratoDeHoje(): Buffer {
   const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()).replaceAll('-', '');
   return Buffer.from('OFXHEADER:100\nDATA:OFXSGML\nVERSION:102\nCHARSET:1252\n\n<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><CURDEF>BRL\n'
@@ -431,11 +431,11 @@ test('o resultado da importação sugere o par, "Converter" liga os dois, e a co
   await expect(novo).toBeHidden();
 
   await irPeloMenu(page, 'Importação');
-  await page.getByLabel('Conta', { exact: true }).selectOption({ label: 'Conta Itaú' });
+  await page.getByLabel('Conta', { exact: true }).selectOption({ label: 'Conta Aurora' });
   await page.locator('#importacao-arquivo').setInputFiles({ name: 'extrato-3.ofx', mimeType: 'application/x-ofx', buffer: terceiroExtratoDeHoje() });
   await expect(page.getByRole('heading', { name: 'Revisar importação', level: 1 })).toBeVisible();
   await page.getByRole('button', { name: 'Importar 1 lançamento' }).click();
-  await expect(page.getByRole('heading', { name: '1 lançamento importado em Conta Itaú', level: 2 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '1 lançamento importado em Conta Aurora', level: 2 })).toBeVisible();
   await expect(page.getByRole('heading', { name: ehDesktop(page) ? 'Parecem transferências entre suas contas' : 'Parecem transferências',
     level: 2 })).toBeVisible();
   await expect(page.locator('.importacao__lado-do-par b')).toHaveText(['TED 341.0001 RESERVA', 'Reserva']);
@@ -447,7 +447,7 @@ test('o resultado da importação sugere o par, "Converter" liga os dois, e a co
   const conversao = page.locator('app-conversao-dialogo');
   await expect(conversao.getByRole('heading', { name: 'Converter em transferência' })).toBeVisible();
   await expect(conversao.getByRole('radio', { name: /^Reserva/ })).toBeChecked();
-  await expect(conversao.locator('.conversao__fixo .conversao__meta')).toHaveText(/^Sai de Conta Itaú em \d{2}\/\d{2} · importado$/);
+  await expect(conversao.locator('.conversao__fixo .conversao__meta')).toHaveText(/^Sai de Conta Aurora em \d{2}\/\d{2} · importado$/);
   await conversao.getByLabel('Descrição (opcional)', { exact: true }).fill('Reserva da viagem');
   if (!ehDesktop(page)) {
     await expect(conversao.getByRole('button', { name: 'Voltar' })).toBeVisible();
@@ -463,7 +463,7 @@ test('o resultado da importação sugere o par, "Converter" liga os dois, e a co
   await expect(convertida.locator('.valor__texto')).toHaveText('R$ 300,00');
   await expect(convertida.locator('app-valor')).toHaveClass(/flux-valor--neutro/);
   await expect(convertida.locator('.linha__meta-texto').filter({ visible: true })).toHaveText(
-    ehDesktop(page) ? 'Conta Itaú → Poupança · fora dos totais' : 'Conta Itaú → Poupança');
+    ehDesktop(page) ? 'Conta Aurora → Poupança · fora dos totais' : 'Conta Aurora → Poupança');
   await expect(linha(page, 'Reserva')).toHaveCount(0);
   await expect(linha(page, 'TED 341.0001 RESERVA')).toHaveCount(0);
 });
@@ -490,7 +490,7 @@ test('a convertida muda só o texto; desfazer devolve a despesa e a receita, e d
   await linha(page, 'Viagem').click();
   await page.getByRole('dialog').getByRole('button', { name: 'Desfazer transferência' }).click();
   const confirmacao = page.getByRole('dialog').filter({ hasText: 'Desfazer a transferência?' });
-  await expect(confirmacao).toContainText('Os dois lançamentos voltam a ser uma despesa em Conta Itaú e uma receita em Poupança, sem categoria.');
+  await expect(confirmacao).toContainText('Os dois lançamentos voltam a ser uma despesa em Conta Aurora e uma receita em Poupança, sem categoria.');
   await confirmacao.getByRole('button', { name: 'Desfazer transferência' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByText('Transferência desfeita.')).toBeVisible();
@@ -590,13 +590,13 @@ test('cadastra o cartão e lança uma compra em 3x, que se espalha pelas faturas
   await dialogo.getByLabel('Limite', { exact: true }).fill('5.000');
   await dialogo.getByLabel('Dia de fechamento', { exact: true }).fill('10');
   await dialogo.getByLabel('Dia de vencimento', { exact: true }).fill('20');
-  await dialogo.getByLabel('Conta de pagamento', { exact: true }).selectOption({ label: 'Conta Itaú' });
+  await dialogo.getByLabel('Conta de pagamento', { exact: true }).selectOption({ label: 'Conta Aurora' });
   await dialogo.getByRole('button', { name: 'Salvar' }).click();
   await expect(dialogo).toBeHidden();
   await expect(page.getByText('Cartão criado.')).toBeVisible();
   await expect(page.locator('.cartoes__nome')).toHaveText(['Cartão Horizonte']);
   await expect(page.locator('.cartoes__meta span').filter({ visible: true })).toHaveText(
-    ehDesktop(page) ? 'Fecha dia 10 · vence dia 20 · paga com Conta Itaú' : 'Fecha 10 · vence 20 · Conta Itaú');
+    ehDesktop(page) ? 'Fecha dia 10 · vence dia 20 · paga com Conta Aurora' : 'Fecha 10 · vence 20 · Conta Aurora');
   expect(await semRolagemHorizontal(page)).toBe(true);
 
   await page.locator('.cartoes__ver').click();
@@ -712,4 +712,99 @@ test('ajusta o fechamento e volta ao normal, lança um estorno e exclui a compra
 
   await irPeloMenu(page, 'Início');
   await expect(page.locator('.inicio-cartao__nome')).toHaveText(['Cartão Horizonte']);
+});
+
+/** O mês da fatura como o pagamento escreve: "setembro" no ano de hoje; "dezembro de 2025" em outro ano. */
+function nomeDaFatura(mes: string): string {
+  return mes.slice(0, 4) === mesDeHoje().slice(0, 4) ? mesSemAno(mes) : mesComAno(mes);
+}
+
+/** "21/11": hoje no fuso do negócio, como a lista do pagamento escreve. */
+function hojeDiaEMes(): string {
+  return new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' }).format(new Date());
+}
+
+// Fatia 05b: a compra do dia 10 de dois meses atrás (M-2) cai na fatura de M-2, que fecha no dia 10 e vence no dia 20
+// de M-2: ela já fechou e venceu em qualquer dia de hoje. O pagamento é de hoje, pela conta de pagamento do cartão,
+// criada hoje na jornada (a data do pagamento vai do saldo inicial até hoje, decisão 30).
+test('paga a fatura fechada, que fica paga, trava a compra dela e devolve o limite (Fatia 05b)', async ({ page }) => {
+  const fechada = mesDeHoje(-2);
+  await entrar(page);
+  await irPeloMenu(page, 'Cartões');
+  await page.locator('.cartoes__ver').click();
+  await expect(page.getByRole('heading', { name: /^Fatura de /, level: 1 })).toBeVisible();
+  await page.getByRole('button', { name: 'Nova compra' }).first().click();
+  const compra = page.getByRole('dialog');
+  await expect(compra.getByRole('heading', { name: 'Nova compra' })).toBeVisible();
+  await compra.getByLabel('Data da compra', { exact: true }).fill(`${fechada}-10`);
+  await compra.getByLabel('Descrição', { exact: true }).fill('Livraria Fictícia');
+  await compra.getByLabel('Valor total', { exact: true }).fill('265,20');
+  // Decisão 38: a prévia diz o disponível depois desta compra (o limite de R$ 5.000,00; o estorno da fatura deste mês é
+  // um crédito e não conta).
+  await expect(compra.locator('.compra__disponivel')).toHaveText(/^Disponível depois desta compra:\sR\$\s4\.734,80$/);
+  await compra.getByRole('button', { name: 'Lançar compra' }).click();
+  await expect(compra).toBeHidden();
+  await page.getByRole('button', { name: 'Ver fatura' }).click();
+  await expect(page).toHaveURL(new RegExp(`/cartoes/\\d+/faturas/${fechada}$`));
+  await expect(page.locator('.fatura__situacao')).toHaveText('Fechada');
+  await expect(page.locator('.fatura__nota-da-situacao .fatura__venceu')).toHaveText(`venceu em ${diaDoMes(20, fechada)}`);
+  const valores = page.locator('.fatura__valores-do-pagamento > div');
+  await expect(valores.nth(0).locator('.fatura__nota')).toHaveText('nenhum pagamento');
+  await expect(valores.nth(1).locator('.valor__texto')).toHaveText(/^R\$\s265,20$/);
+  // Decisão 38: o disponível também na trilha.
+  await expect(page.locator('.fatura__trilha')).toHaveText(/^Cartões › Cartão Horizonte · disponível R\$\s4\.734,80 de R\$\s5\.000,00$/);
+  expect(await semRolagemHorizontal(page)).toBe(true);
+
+  // Decisão 30: "Pagar fatura", no topo enquanto há pendente, vem com a conta de pagamento do cartão, hoje e o pendente.
+  await page.getByRole('button', { name: 'Pagar fatura' }).click();
+  const pagar = page.getByRole('dialog');
+  await expect(pagar.getByRole('heading', { name: `Pagar a fatura de ${nomeDaFatura(fechada)}` })).toBeVisible();
+  await expect(pagar.getByLabel('Sai da conta', { exact: true }).locator('option:checked')).toHaveText('Conta Aurora');
+  await expect(pagar.getByLabel('Valor', { exact: true })).toHaveValue('265,20');
+  if (!ehDesktop(page)) {
+    expect(await dialogoDasRegrasSemRolagemHorizontal(page, '.pagamento')).toBe(true);
+  }
+  await pagar.getByRole('button', { name: 'Registrar pagamento' }).click();
+  await expect(pagar).toBeHidden();
+  await expect(page.getByText(`Pagamento registrado. A fatura de ${nomeDaFatura(fechada)} está paga.`)).toBeVisible();
+  await expect(page.locator('.fatura__situacao')).toHaveText('Paga');
+  await expect(valores.nth(1).locator('.fatura__nota')).toHaveText('nada a pagar');
+  await expect(page.locator('.fatura__pagamentos .fatura__nota')).toHaveText('Saem da conta; não são despesa.');
+  await expect(page.locator('.fatura__pagamento-item .fatura__textos')).toHaveText(`${hojeDiaEMes()} · Conta AuroraLançado à mão`);
+  await expect(page.locator('.fatura__lista .fatura__nota')).toHaveText('Paga: só descrição, categoria e observação mudam.');
+  await expect(page.locator('.fatura__trilha')).toHaveText(/^Cartões › Cartão Horizonte · disponível R\$\s5\.000,00 de R\$\s5\.000,00$/);
+  await expect(page.getByRole('button', { name: 'Pagar fatura' })).toHaveCount(0);
+  expect(await semRolagemHorizontal(page)).toBe(true);
+
+  // Decisão 35: a compra da fatura paga só muda os textos, e não se exclui.
+  await itemDaFatura(page, 'Livraria Fictícia').click();
+  const editar = page.getByRole('dialog');
+  await expect(editar.getByRole('heading', { name: 'Editar compra' })).toBeVisible();
+  await expect(editar.locator('app-alerta .flux-alerta__texto')).toHaveText(`A compra está na fatura de ${nomeDaFatura(fechada)}, que já foi paga: `
+    + 'só a descrição, a categoria e a observação mudam.');
+  await expect(editar.getByLabel('Valor total', { exact: true })).toBeDisabled();
+  await expect(editar.locator('.compra__cadeado')).toHaveCount(4);
+  await expect(editar.getByRole('button', { name: 'Excluir', exact: true })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  // Decisão 32: na conta, uma linha neutra, fora das entradas e saídas; o filtro "Pagamentos de fatura".
+  await irPeloMenu(page, 'Lançamentos');
+  await page.locator('.lancamentos__tipos').getByRole('button', { name: 'Pagamentos de fatura' }).click();
+  await expect(page).toHaveURL(/[?&]tipo=pagamento/);
+  const pago = linha(page, `Pagamento da fatura de ${nomeDaFatura(fechada)}`);
+  await expect(pago.locator('.valor__texto')).toHaveText(/^−R\$\s265,20$/);
+  // No celular, a meta curta tem só a conta.
+  await expect(pago.locator('.linha__meta-texto').filter({ visible: true }))
+    .toHaveText(ehDesktop(page) ? 'Cartão Horizonte · Conta Aurora' : 'Conta Aurora');
+  await pago.click();
+  await expect(page.getByRole('dialog').getByRole('heading', { name: `Pagamento da fatura de ${nomeDaFatura(fechada)}` })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  // Decisão 38: sem nada a pagar, o disponível é o limite inteiro.
+  await irPeloMenu(page, 'Cartões');
+  await expect(page.locator('.cartoes__disponivel .valor__texto')).toHaveText(/^R\$\s5\.000,00$/);
+  await expect(page.locator('.cartoes__rodape > span').nth(1)).toHaveText(/^de\sR\$\s5\.000,00\s·\sR\$\s0,00\sem faturas a pagar$/);
+  expect(await semRolagemHorizontal(page)).toBe(true);
 });

@@ -1,5 +1,5 @@
-// Fatia 05a: cartões, faturas, compras e estornos. As regras ficam aqui, e não no .scss de cada
-// componente, pelo orçamento de 4 kB por componente (Plano B da Fatia 01): o seletor leva a tag do host.
+// Fatias 05a e 05b: cartões, faturas, compras, estornos e o pagamento da fatura. As regras ficam aqui, e não no .scss
+// de cada componente, pelo orçamento de 4 kB por componente (Plano B da Fatia 01): o seletor leva a tag do host.
 
 // Tela de Cartões
 app-cartoes .cartoes__grade {
@@ -333,11 +333,27 @@ app-ajuste-dialogo .ajuste__texto {
   font-size: 13px;
 }
 
-// Página da fatura
+// Página da fatura. O conteúdo é um contêiner: os cards dos totais e do pagamento mudam de colunas pela largura dele,
+// e não pela da janela (o menu lateral come uns 334 px no desktop).
+app-fatura .flux-conteudo {
+  container: fatura / inline-size;
+}
+
 app-fatura .fatura__trilha {
   margin: 0;
+  overflow-wrap: anywhere;
   color: var(--flux-texto-3);
   font-size: 13px;
+}
+
+// Fatia 05b (decisão 38): o disponível na trilha, em destaque; acima do limite, em vermelho.
+app-fatura .fatura__trilha b {
+  color: var(--flux-texto);
+  font-weight: 700;
+}
+
+app-fatura .fatura__trilha .fatura__acima-do-limite {
+  color: var(--flux-negativo);
 }
 
 app-fatura .fatura__navegacao {
@@ -389,7 +405,8 @@ app-fatura .fatura__nome-do-mes app-icone {
 }
 
 app-fatura .fatura__situacao--fechada,
-app-fatura .fatura__situacao--futura {
+app-fatura .fatura__situacao--futura,
+app-fatura .fatura__situacao--paga {
   height: 22px;
   display: inline-flex;
   align-items: center;
@@ -407,6 +424,12 @@ app-fatura .fatura__situacao--fechada {
 app-fatura .fatura__situacao--futura {
   border: 1px solid var(--flux-borda-2);
   color: var(--flux-texto-2);
+}
+
+// Fatia 05b (decisão 34): a pílula da fatura paga, em verde.
+app-fatura .fatura__situacao--paga {
+  background: color-mix(in srgb, var(--flux-positivo) 14%, transparent);
+  color: var(--flux-positivo);
 }
 
 app-fatura .fatura__nota-da-situacao {
@@ -612,8 +635,8 @@ app-fatura .fatura__c-valor {
 
 // No card estreito (o desktop de uns 960 a 1.130 px), as colunas fixas encolhem até o conteúdo delas ("12/11", a
 // pílula "Estorno", "−R$ 12.345,67"; a categoria longa quebra a linha), e a descrição, a informação principal da
-// linha, fica com pelo menos uns 190 px de texto: uma descrição comum, de uns 25 caracteres, cabe inteira. Abaixo
-// de 960 px, a página mostra a lista, e não a tabela.
+// linha, fica com pelo menos 190 px de texto a 960 px, com a barra de rolagem da página (medido: 193 px): uma
+// descrição comum, de uns 25 caracteres, cabe inteira. Abaixo de 960 px, a página mostra a lista, e não a tabela.
 @container fatura-lista (max-width: 799.98px) {
   app-fatura .fatura__c-data {
     width: 68px;
@@ -623,8 +646,10 @@ app-fatura .fatura__c-valor {
     width: 82px;
   }
 
+  // 104 px: "Alimentação" e "Combustível" ainda cabem numa linha; a palavra mais longa que isso quebra.
   app-fatura .fatura__c-categoria {
-    width: 120px;
+    width: 104px;
+    overflow-wrap: anywhere;
   }
 
   app-fatura .fatura__c-valor {
@@ -817,14 +842,8 @@ app-inicio .inicio-cartoes__vazio {
 }
 
 @media (max-width: 959.98px) {
-  app-cartoes .cartoes__grade,
-  app-fatura .fatura__totais {
+  app-cartoes .cartoes__grade {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  app-fatura .fatura__totais > div + div {
-    border-top: 1px solid var(--flux-borda);
-    border-left: 0;
   }
 
   app-fatura .fatura__nota-da-situacao {
@@ -867,5 +886,383 @@ app-inicio .inicio-cartoes__vazio {
 
   app-cartao-dialogo .cartao-dialogo__duas {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+// Fatia 05b: os totais e o pagamento da fatura (decisões 30 a 38). Os números cabem sem corte até R$ 999.999,99, com
+// sinal ou "Crédito de" (medido: "−R$ 999.999,99" tem 162 px; "Crédito de R$ 999.999,99", 263 px numa linha e 150 px
+// quebrado depois de "de"). Cada coluna precisa de 162 px mais os 44 px de margem: com o conteúdo abaixo de 860 px (o
+// desktop de até uns 1.200 px), os totais vão a duas colunas; abaixo de 480 px (o celular), a uma.
+app-fatura .fatura__pagamento {
+  gap: 0;
+  padding: 0;
+}
+
+app-fatura .fatura__valores-do-pagamento {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+app-fatura .fatura__valores-do-pagamento > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 22px;
+}
+
+app-fatura .fatura__valores-do-pagamento > div + div {
+  border-left: 1px solid var(--flux-borda);
+}
+
+app-fatura .fatura__venceu {
+  color: var(--flux-cor-conta-laranja);
+  font-weight: 700;
+}
+
+app-fatura .fatura__barra,
+app-cartoes .cartoes__barra {
+  height: 8px;
+  display: block;
+  overflow: hidden;
+  margin-top: 2px;
+  border: 1px solid var(--flux-borda);
+  border-radius: 999px;
+  background: var(--flux-card-2);
+}
+
+app-fatura .fatura__barra > span,
+app-cartoes .cartoes__barra > span {
+  height: 100%;
+  display: block;
+  border-radius: 999px;
+  background: var(--flux-ouro-grad);
+}
+
+app-fatura .fatura__barra--estourada > span,
+app-cartoes .cartoes__barra--estourada > span {
+  background: var(--flux-negativo);
+}
+
+app-fatura .fatura__pagamento app-alerta {
+  margin: 0 22px 16px;
+}
+
+app-fatura .fatura__acoes-do-pagamento {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 22px 18px;
+}
+
+// O card "Pagamentos": o título e a nota como os da lista, e um pagamento por linha.
+app-fatura .fatura__pagamentos {
+  gap: 0;
+  padding: 4px 0 8px;
+}
+
+app-fatura .fatura__lista-de-pagamentos {
+  margin: 0;
+  padding: 4px 24px 0;
+  list-style: none;
+}
+
+app-fatura .fatura__lista-de-pagamentos li + li {
+  border-top: 1px solid var(--flux-borda);
+}
+
+app-fatura .fatura__pagamento-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+app-fatura .fatura__pagamento-item:hover b {
+  color: var(--flux-ouro-texto);
+}
+
+// Decisão 35: o cadeado nos campos travados da compra com parcela numa fatura paga.
+app-compra-dialogo .compra__cadeado {
+  flex: none;
+  margin-right: 10px;
+  color: var(--flux-texto-3);
+}
+
+// Correções do QA: "Compra em andamento" travada fica com a cor texto-2 dos campos travados, e a caixa, esmaecida.
+app-compra-dialogo .compra__andamento.compra__andamento--travado {
+  color: var(--flux-texto-2);
+  cursor: not-allowed;
+}
+
+app-compra-dialogo .compra__andamento--travado .flux-caixa {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+// Correções do QA (decisão 38): a nota "acima do limite em R$ …" da célula do limite, em vermelho, como a trilha.
+app-fatura .fatura__nota.fatura__nota--acima {
+  color: var(--flux-negativo);
+}
+
+// Correções do QA (dono, 2026-11-20): o título do pagamento quebra a linha em vez de cortar, para o mês da fatura
+// aparecer no celular (a meta curta só tem a conta).
+app-linha-do-lancamento .linha__titulo.linha__titulo--pagamento {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+app-fatura .fatura__selo-do-pagamento,
+app-pagamento-dialogo .pagamento__selo,
+app-conversao-em-pagamento-dialogo .conversao-pagamento__selo {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--flux-borda);
+  border-radius: 10px;
+  background: var(--flux-card-2);
+  color: var(--flux-texto-2);
+}
+
+@container fatura (max-width: 859.98px) {
+  app-fatura .fatura__totais,
+  app-fatura .fatura__valores-do-pagamento {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  app-fatura .fatura__totais > div:nth-child(odd),
+  app-fatura .fatura__valores-do-pagamento > div:nth-child(odd) {
+    border-left: 0;
+  }
+
+  app-fatura .fatura__totais > div:nth-child(n + 3),
+  app-fatura .fatura__valores-do-pagamento > div:nth-child(n + 3) {
+    border-top: 1px solid var(--flux-borda);
+  }
+
+  app-fatura .fatura__valores-do-pagamento > div:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
+@container fatura (max-width: 479.98px) {
+  app-fatura .fatura__totais,
+  app-fatura .fatura__valores-do-pagamento {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  app-fatura .fatura__totais > div + div,
+  app-fatura .fatura__valores-do-pagamento > div + div {
+    border-top: 1px solid var(--flux-borda);
+    border-left: 0;
+  }
+}
+
+// Cartões e Início (decisão 38): a barra e o disponível; acima do limite, em vermelho.
+app-cartoes .cartoes__acima {
+  color: var(--flux-negativo);
+  font-weight: 700;
+}
+
+app-inicio .inicio-cartao__disponivel {
+  font-size: 12px;
+}
+
+app-compra-dialogo .compra__disponivel {
+  color: var(--flux-texto);
+  font-weight: 600;
+}
+
+// Os diálogos do pagamento e da conversão em pagamento: como o da compra.
+app-pagamento-dialogo .pagamento,
+app-conversao-em-pagamento-dialogo .conversao-pagamento {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 26px 26px 22px;
+}
+
+app-pagamento-dialogo .pagamento__cabecalho,
+app-conversao-em-pagamento-dialogo .conversao-pagamento__cabecalho {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+app-pagamento-dialogo .pagamento__titulos {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+app-pagamento-dialogo .pagamento__titulo,
+app-conversao-em-pagamento-dialogo .conversao-pagamento__titulo {
+  margin: 0;
+  padding: 0;
+  overflow-wrap: anywhere;
+  color: var(--flux-texto);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 26px;
+}
+
+app-pagamento-dialogo .pagamento__titulo::before,
+app-conversao-em-pagamento-dialogo .conversao-pagamento__titulo::before {
+  display: none;
+}
+
+app-pagamento-dialogo .pagamento__subtitulo {
+  margin: 0;
+  color: var(--flux-texto-2);
+  font-size: 13px;
+}
+
+app-pagamento-dialogo .pagamento__voltar,
+app-conversao-em-pagamento-dialogo .conversao-pagamento__voltar {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  margin-left: -8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--flux-texto);
+}
+
+app-pagamento-dialogo .pagamento__duas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+app-pagamento-dialogo .pagamento__acoes,
+app-conversao-em-pagamento-dialogo .conversao-pagamento__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+app-pagamento-dialogo .pagamento__excluir {
+  margin-right: auto;
+  color: var(--flux-negativo);
+}
+
+app-pagamento-dialogo .pagamento__carregando,
+app-conversao-em-pagamento-dialogo .conversao-pagamento__carregando,
+app-conversao-em-pagamento-dialogo .conversao-pagamento__vazio {
+  margin: 0;
+  color: var(--flux-texto-2);
+}
+
+app-pagamento-dialogo .pagamento__ficha {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px 18px;
+  margin: 0;
+  font-size: 14px;
+}
+
+app-pagamento-dialogo .pagamento__ficha dt {
+  color: var(--flux-texto-3);
+  font-weight: 600;
+}
+
+app-pagamento-dialogo .pagamento__ficha dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+app-conversao-em-pagamento-dialogo .conversao-pagamento__lado,
+app-conversao-em-pagamento-dialogo .conversao-pagamento__opcao {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--flux-borda);
+  border-radius: 12px;
+}
+
+app-conversao-em-pagamento-dialogo .conversao-pagamento__opcao {
+  cursor: pointer;
+}
+
+app-conversao-em-pagamento-dialogo .conversao-pagamento__opcao:has(input:checked) {
+  border-color: var(--flux-ouro);
+  background: rgba(var(--flux-ouro-rgb), 0.06);
+}
+
+app-conversao-em-pagamento-dialogo .conversao-pagamento__textos {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-wrap: anywhere;
+}
+
+app-conversao-em-pagamento-dialogo .conversao-pagamento__meta {
+  color: var(--flux-texto-3);
+  font-size: 12px;
+}
+
+app-conversao-em-pagamento-dialogo .conversao-pagamento__faturas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+app-conversao-em-pagamento-dialogo .conversao-pagamento__faturas legend {
+  margin-bottom: 6px;
+  padding: 0;
+  color: var(--flux-texto-2);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (max-width: 599.98px) {
+  app-pagamento-dialogo .pagamento,
+  app-conversao-em-pagamento-dialogo .conversao-pagamento {
+    min-height: 100%;
+    gap: 14px;
+    padding: 14px 16px 16px;
+  }
+
+  app-pagamento-dialogo .pagamento__acoes,
+  app-conversao-em-pagamento-dialogo .conversao-pagamento__acoes {
+    flex-direction: column-reverse;
+    margin-top: auto;
+  }
+
+  app-pagamento-dialogo .pagamento__acoes button,
+  app-conversao-em-pagamento-dialogo .conversao-pagamento__acoes button {
+    width: 100%;
+  }
+
+  app-pagamento-dialogo .pagamento__excluir {
+    margin-right: 0;
+  }
+
+  app-fatura .fatura__acoes-do-pagamento button {
+    width: 100%;
   }
 }

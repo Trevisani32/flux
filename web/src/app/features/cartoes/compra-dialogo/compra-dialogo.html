@@ -35,18 +35,25 @@
         <button type="button" class="compra__voltar flux-so-celular" aria-label="Voltar" [disabled]="enviando()" (click)="cancelar()"><app-icone nome="esquerda" /></button>
         <h2 mat-dialog-title class="compra__titulo">{{ titulo() }}</h2>
       </div>
+      @if (travaDaFaturaPaga(); as trava) {
+        <app-alerta tipo="info" icone="cadeado" titulo="Fatura paga"><p class="flux-alerta__texto">{{ trava }}</p></app-alerta>
+      }
 
       <div class="compra__duas">
         <div class="flux-campo">
           <label for="compra-cartao">Cartão</label>
-          <div class="flux-entrada" [class.flux-entrada--invalida]="erro('cartao') !== null">
+          <div class="flux-entrada" [class.flux-entrada--invalida]="erro('cartao') !== null" [class.flux-entrada--travada]="travaDaFaturaPaga() !== null">
             <select id="compra-cartao" formControlName="cartao" [attr.aria-invalid]="erro('cartao') !== null ? 'true' : null" [attr.aria-describedby]="erro('cartao') !== null ? 'compra-cartao-erro' : null">
               <option [ngValue]="null" disabled>Escolha</option>
               @for (cartao of cartoes(); track cartao.id) {
                 <option [ngValue]="cartao.id">{{ cartao.nome }}</option>
               }
             </select>
-            <app-icone class="flux-entrada__seta" nome="baixo" />
+            @if (travaDaFaturaPaga() !== null) {
+              <app-icone class="compra__cadeado" nome="cadeado" [tamanho]="16" />
+            } @else {
+              <app-icone class="flux-entrada__seta" nome="baixo" />
+            }
           </div>
           @if (erro('cartao'); as mensagem) {
             <p id="compra-cartao-erro" class="flux-campo__erro">{{ mensagem }}</p>
@@ -54,8 +61,11 @@
         </div>
         <div class="flux-campo">
           <label for="compra-data">{{ estorno ? 'Data do estorno' : 'Data da compra' }}</label>
-          <div class="flux-entrada" [class.flux-entrada--invalida]="erro('data') !== null">
+          <div class="flux-entrada" [class.flux-entrada--invalida]="erro('data') !== null" [class.flux-entrada--travada]="travaDaFaturaPaga() !== null">
             <input id="compra-data" type="date" formControlName="data" [min]="minimaDoCampo()" [max]="limite" [attr.aria-invalid]="erro('data') !== null ? 'true' : null" [attr.aria-describedby]="erro('data') !== null ? 'compra-data-erro' : null" />
+            @if (travaDaFaturaPaga() !== null) {
+              <app-icone class="compra__cadeado" nome="cadeado" [tamanho]="16" />
+            }
           </div>
           @if (erro('data'); as mensagem) {
             <p id="compra-data-erro" class="flux-campo__erro">{{ mensagem }}</p>
@@ -76,9 +86,12 @@
       <div class="compra__duas">
         <div class="flux-campo">
           <label for="compra-valor">{{ estorno ? 'Valor' : 'Valor total' }}</label>
-          <div class="flux-entrada" [class.flux-entrada--invalida]="erro('valor') !== null">
+          <div class="flux-entrada" [class.flux-entrada--invalida]="erro('valor') !== null" [class.flux-entrada--travada]="travaDaFaturaPaga() !== null">
             <span class="flux-entrada__prefixo" aria-hidden="true">R$</span>
             <input id="compra-valor" type="text" inputmode="decimal" formControlName="valor" placeholder="0,00" autocomplete="off" (blur)="formatarValor()" [attr.aria-invalid]="erro('valor') !== null ? 'true' : null" [attr.aria-describedby]="erro('valor') !== null ? 'compra-valor-erro' : null" />
+            @if (travaDaFaturaPaga() !== null) {
+              <app-icone class="compra__cadeado" nome="cadeado" [tamanho]="16" />
+            }
           </div>
           @if (erro('valor'); as mensagem) {
             <p id="compra-valor-erro" class="flux-campo__erro">{{ mensagem }}</p>
@@ -103,13 +116,17 @@
         } @else {
           <div class="flux-campo">
             <label for="compra-parcelas">Parcelas</label>
-            <div class="flux-entrada" [class.flux-entrada--invalida]="erro('parcelas') !== null">
+            <div class="flux-entrada" [class.flux-entrada--invalida]="erro('parcelas') !== null" [class.flux-entrada--travada]="travaDaFaturaPaga() !== null">
               <select id="compra-parcelas" formControlName="parcelas" [attr.aria-invalid]="erro('parcelas') !== null ? 'true' : null" [attr.aria-describedby]="erro('parcelas') !== null ? 'compra-parcelas-erro' : null">
                 @for (opcao of opcoesDeParcelas; track opcao.valor) {
                   <option [ngValue]="opcao.valor">{{ opcao.rotulo }}</option>
                 }
               </select>
-              <app-icone class="flux-entrada__seta" nome="baixo" />
+              @if (travaDaFaturaPaga() !== null) {
+                <app-icone class="compra__cadeado" nome="cadeado" [tamanho]="16" />
+              } @else {
+                <app-icone class="flux-entrada__seta" nome="baixo" />
+              }
             </div>
             @if (erro('parcelas'); as mensagem) {
               <p id="compra-parcelas-erro" class="flux-campo__erro">{{ mensagem }}</p>
@@ -137,16 +154,22 @@
             @if (previa.nota; as nota) {
               <span class="compra__nota">{{ nota }}</span>
             }
+            @if (disponivelDepois(); as disponivel) {
+              <span class="compra__disponivel">Disponível depois desta compra: <app-valor [valor]="disponivel.valor" tipo="saldo" /></span>
+            }
           </div>
         }
         @if (formulario.controls.parcelas.value > 1) {
-          <label class="compra__andamento"><input id="compra-andamento" type="checkbox" class="flux-caixa" formControlName="andamento" />Compra em andamento: parte das parcelas já foi cobrada antes do Flux</label>
+          <label class="compra__andamento" [class.compra__andamento--travado]="travaDaFaturaPaga() !== null"><input id="compra-andamento" type="checkbox" class="flux-caixa" formControlName="andamento" />Compra em andamento: parte das parcelas já foi cobrada antes do Flux</label>
         }
         @if (emAndamento()) {
           <div class="flux-campo compra__inicial">
             <label for="compra-inicial">Começa na parcela</label>
-            <div class="flux-entrada" [class.flux-entrada--invalida]="erro('parcelaInicial') !== null">
+            <div class="flux-entrada" [class.flux-entrada--invalida]="erro('parcelaInicial') !== null" [class.flux-entrada--travada]="travaDaFaturaPaga() !== null">
               <input id="compra-inicial" type="text" inputmode="numeric" maxlength="2" formControlName="parcelaInicial" autocomplete="off" [attr.aria-invalid]="erro('parcelaInicial') !== null ? 'true' : null" [attr.aria-describedby]="erro('parcelaInicial') !== null ? 'compra-inicial-erro' : null" />
+              @if (travaDaFaturaPaga() !== null) {
+                <app-icone class="compra__cadeado" nome="cadeado" [tamanho]="16" />
+              }
             </div>
             @if (erro('parcelaInicial'); as mensagem) {
               <p id="compra-inicial-erro" class="flux-campo__erro">{{ mensagem }}</p>
@@ -180,12 +203,16 @@
         }
       </div>
 
+      @if (avisoDaFaturaPaga(); as aviso) {
+        <app-alerta tipo="atencao" icone="cadeado" [titulo]="tituloDoAviso"><p class="flux-alerta__texto">{{ aviso }}</p></app-alerta>
+      }
+
       @if (erroGeral(); as mensagem) {
         <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem" />
       }
 
       <div class="compra__acoes">
-        @if (editando) {
+        @if (editando && travaDaFaturaPaga() === null) {
           <button mat-button type="button" class="compra__excluir" [disabled]="enviando()" (click)="excluir()"><app-icone nome="lixeira" [tamanho]="18" />Excluir</button>
         }
         <button mat-stroked-button type="button" class="flux-so-desktop" [disabled]="enviando()" (click)="cancelar()">Cancelar</button>

@@ -1,9 +1,21 @@
 <app-cabecalho-pagina [titulo]="titulo()">
-  <p complemento class="fatura__trilha"><a class="flux-link" routerLink="/cartoes">Cartões</a>@if (fatura(); as atual) { › {{ atual.cartaoNome }}}</p>
-  @if (podeLancar()) {
+  <p complemento class="fatura__trilha"><a class="flux-link" routerLink="/cartoes">Cartões</a>@if (fatura(); as atual) { › {{ atual.cartaoNome }}@if (trilhaDoDisponivel(); as limite) {@if (limite.acima) { · <b class="fatura__acima-do-limite">acima do limite em {{ limite.valor }}</b>} @else { · disponível <b>{{ limite.valor }}</b> de {{ limite.de }}}}}</p>
+  @if (podeLancar() && podeAjustar()) {
     <button mat-stroked-button type="button" class="flux-so-desktop" (click)="ajustar()"><app-icone nome="calendario" [tamanho]="18" />Ajustar fechamento</button>
+  }
+  @if (podeLancar()) {
     <button mat-stroked-button type="button" class="flux-so-desktop" (click)="novoEstorno()">Novo estorno</button>
+  }
+  @if (podeMarcarPagaFora()) {
+    <button mat-stroked-button type="button" class="flux-so-desktop" (click)="marcarPagaFora()">Marcar como paga fora do Flux</button>
+  }
+  @if (podePagar()) {
+    <button mat-stroked-button type="button" (click)="pagar()"><app-icone nome="pagar" [tamanho]="18" />Pagar fatura</button>
+  }
+  @if (podeLancar() || podeMarcarPagaFora()) {
     <button mat-stroked-button type="button" class="flux-so-celular" [matMenuTriggerFor]="menuDaFatura">Mais</button>
+  }
+  @if (podeLancar()) {
     <button mat-flat-button type="button" (click)="novaCompra()"><app-icone nome="mais" [tamanho]="18" [traco]="2.2" />Nova compra</button>
   }
 </app-cabecalho-pagina>
@@ -25,7 +37,7 @@
         <button type="button" class="fatura__seta" [attr.aria-label]="'Fatura de ' + rotuloDaSeta(seguinte())" [disabled]="mes() >= atual.ultimoMes" (click)="mudarMes(1)"><app-icone nome="proximo" /></button>
       </div>
       <span [class]="'fatura__situacao fatura__situacao--' + atual.situacao.toLowerCase()">{{ rotuloDaSituacao[atual.situacao] }}</span>
-      <span class="fatura__nota-da-situacao">{{ notaDaSituacao() }}</span>
+      <span class="fatura__nota-da-situacao">{{ notaDaSituacao() }}@if (notaDoVencimento(); as vencimento) {<span [class.fatura__venceu]="vencimento.atrasada">{{ vencimento.texto }}</span>}</span>
     </div>
 
     @if (atual.cartaoArquivado) {
@@ -39,7 +51,7 @@
         <div class="fatura__marco fatura__marco--vence"><b>{{ diaEMes(atual.vencimento) }}</b>vence</div>
       </div>
       @if (atual.fechamentoAjustado && !atual.cartaoArquivado) {
-        <button type="button" class="fatura__voltar-ao-normal" (click)="voltarAoNormal()">Voltar ao fechamento normal ({{ diaEMes(atual.fechamentoNormal) }})</button>
+        <button type="button" class="fatura__voltar-ao-normal" [disabled]="enviando()" (click)="voltarAoNormal()">Voltar ao fechamento normal ({{ diaEMes(atual.fechamentoNormal) }})</button>
       }
     </section>
 
@@ -50,6 +62,25 @@
       <div><span class="fatura__rotulo">Depois desta</span><span class="fatura__numero fatura__numero--depois flux-num">{{ textoDoTotal(atual.depois) }}</span><span class="fatura__nota">{{ notaDeDepois() }}</span></div>
     </section>
 
+    @if (mostraOPagamento()) {
+      <section class="flux-card fatura__pagamento" aria-labelledby="fatura-pagamento">
+        <h2 id="fatura-pagamento" class="flux-visualmente-oculto">Pagamento da fatura</h2>
+        <div class="fatura__valores-do-pagamento">
+          <div><span class="fatura__rotulo">Pago</span><app-valor class="fatura__numero" [valor]="atual.pago" tipo="saldo" /><span class="fatura__nota">{{ notaDoPago() }}</span></div>
+          <div><span class="fatura__rotulo">Pendente</span><app-valor class="fatura__numero" [valor]="atual.pendente" tipo="saldo" /><span class="fatura__nota" [class.fatura__venceu]="notaDoVencimento()?.atrasada === true">{{ notaDoPendente() }}</span></div>
+          <div><span class="fatura__rotulo">Limite disponível</span><app-valor class="fatura__numero" [valor]="atual.disponivel" tipo="saldo" /><span class="fatura__barra" [class.fatura__barra--estourada]="(atual.disponivel ?? 0) < 0" aria-hidden="true"><span [style.width.%]="atual.usoDoLimite ?? 0"></span></span><span class="fatura__nota" [class.fatura__nota--acima]="acimaDoLimite()">{{ notaDoDisponivel() }}</span></div>
+        </div>
+        @if (pagoAMais(); as aMais) {
+          <app-alerta tipo="atencao" icone="alerta" [titulo]="aMais"><p class="flux-alerta__texto">Falta lançar alguma compra desta fatura?</p></app-alerta>
+        }
+        @if (podeDesmarcarPagaFora()) {
+          <div class="fatura__acoes-do-pagamento">
+            <button mat-stroked-button type="button" [disabled]="enviando()" (click)="desmarcarPagaFora()">Desmarcar paga fora do Flux</button>
+          </div>
+        }
+      </section>
+    }
+
     @if (atual.itens.length === 0) {
       <app-estado-vazio icone="cartao" [titulo]="'Nada na fatura de ' + nomeDoMesMinusculo(mes())" [texto]="textoDoVazio()">
         @if (podeLancar()) {
@@ -58,7 +89,7 @@
       </app-estado-vazio>
     } @else {
       <section class="flux-card fatura__lista" aria-labelledby="fatura-lancamentos">
-        <div class="fatura__cabecalho-da-lista"><h2 id="fatura-lancamentos" class="fatura__titulo-da-lista">Lançamentos da fatura</h2><span class="fatura__nota">Em Lançamentos, todos aparecem em {{ diaEMes(atual.vencimento) }}, o vencimento.</span></div>
+        <div class="fatura__cabecalho-da-lista"><h2 id="fatura-lancamentos" class="fatura__titulo-da-lista">Lançamentos da fatura</h2><span class="fatura__nota">{{ notaDaLista() }}</span></div>
         <table class="fatura__tabela flux-so-desktop">
           <thead><tr><th class="fatura__c-data">Data</th><th>Descrição</th><th class="fatura__c-parcela">Parcela</th><th class="fatura__c-categoria">Categoria</th><th class="fatura__c-valor">Valor</th></tr></thead>
           <tbody>
@@ -92,10 +123,32 @@
         </ul>
       </section>
     }
+
+    @if ((atual.pagamentos ?? []).length > 0) {
+      <section class="flux-card fatura__pagamentos" aria-labelledby="fatura-pagamentos">
+        <div class="fatura__cabecalho-da-lista"><h2 id="fatura-pagamentos" class="fatura__titulo-da-lista">Pagamentos</h2><span class="fatura__nota">Saem da conta; não são despesa.</span></div>
+        <ul class="fatura__lista-de-pagamentos">
+          @for (pagamento of atual.pagamentos ?? []; track pagamento.id) {
+            <li><button type="button" class="fatura__pagamento-item" (click)="abrirPagamento(pagamento)">
+              <span class="fatura__selo-do-pagamento" aria-hidden="true"><app-icone nome="pagar" [tamanho]="16" /></span>
+              <span class="fatura__textos"><b>{{ diaEMes(pagamento.data) }} · {{ pagamento.contaNome }}</b><span class="fatura__meta">{{ pagamento.origem === 'IMPORTADO' ? 'Importado do extrato' : 'Lançado à mão' }}</span></span>
+              <app-valor [valor]="pagamento.valor" tipo="pagamento" />
+            </button></li>
+          }
+        </ul>
+      </section>
+    }
   }
 </div>
 
 <mat-menu #menuDaFatura="matMenu" class="flux-menu" xPosition="before">
-  <button mat-menu-item type="button" (click)="novoEstorno()"><app-icone matMenuItemIcon nome="entrada" />Novo estorno</button>
-  <button mat-menu-item type="button" (click)="ajustar()"><app-icone matMenuItemIcon nome="calendario" />Ajustar fechamento</button>
+  @if (podeLancar()) {
+    <button mat-menu-item type="button" (click)="novoEstorno()"><app-icone matMenuItemIcon nome="entrada" />Novo estorno</button>
+  }
+  @if (podeLancar() && podeAjustar()) {
+    <button mat-menu-item type="button" (click)="ajustar()"><app-icone matMenuItemIcon nome="calendario" />Ajustar fechamento</button>
+  }
+  @if (podeMarcarPagaFora()) {
+    <button mat-menu-item type="button" (click)="marcarPagaFora()"><app-icone matMenuItemIcon nome="sucesso" />Marcar como paga fora do Flux</button>
+  }
 </mat-menu>

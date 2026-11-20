@@ -18,10 +18,34 @@ import org.springframework.data.repository.query.Param;
 public interface LancamentoRepository extends JpaRepository<Lancamento, Long> {
 
     /**
-     * Receita ou despesa de conta do usuário, não ignorada; um lado de transferência e um lançamento de fatura
-     * (a parcela e o estorno, Fatia 05a, decisão 25) ficam de fora.
+     * Receita ou despesa de conta do usuário, não ignorada; um lado de transferência, um lançamento de fatura (a
+     * parcela e o estorno, Fatia 05a, decisão 25) e um pagamento de fatura (Fatia 05b, que tem /api/pagamentos) ficam
+     * de fora.
      */
-    Optional<Lancamento> findByIdAndUsuarioIdAndTransferenciaIdIsNullAndFaturaIdIsNullAndIgnoradoEmIsNull(Long id, Long usuarioId);
+    Optional<Lancamento> findByIdAndUsuarioIdAndTransferenciaIdIsNullAndFaturaIdIsNullAndFaturaPagaIdIsNullAndIgnoradoEmIsNull(Long id,
+                                                                                                                            Long usuarioId);
+
+    /** Fatia 05b: um pagamento de fatura do usuário. */
+    Optional<Lancamento> findByIdAndUsuarioIdAndFaturaPagaIdIsNotNull(Long id, Long usuarioId);
+
+    /** Fatia 05b: os pagamentos convertidos de despesas de uma importação (desfazer a importação). */
+    List<Lancamento> findAllByUsuarioIdAndImportacaoIdAndFaturaPagaIdIsNotNull(Long usuarioId, Long importacaoId);
+
+    /** Fatia 05b: os pagamentos convertidos de importados, de todas as importações do usuário (o histórico avisa). */
+    List<Lancamento> findAllByUsuarioIdAndImportacaoIdIsNotNullAndFaturaPagaIdIsNotNullOrderByDataAscIdAsc(Long usuarioId);
+
+    /** Fatia 05b: os pagamentos de uma fatura, o mais antigo primeiro. */
+    List<Lancamento> findAllByUsuarioIdAndFaturaPagaIdOrderByDataAscIdAsc(Long usuarioId, Long faturaPagaId);
+
+    /** Fatia 05b (decisões 34 e 38): os pagamentos de cada fatura do usuário, somados. */
+    @Query("select new com.flux.lancamentos.interno.PagoDaFatura(l.faturaPagaId, count(l), sum(l.valor)) from Lancamento l "
+            + "where l.usuarioId = :usuarioId and l.faturaPagaId is not null group by l.faturaPagaId")
+    List<PagoDaFatura> pagosDasFaturas(@Param("usuarioId") Long usuarioId);
+
+    /** Fatia 05b: os pagamentos de cada fatura de um cartão, somados. */
+    @Query("select new com.flux.lancamentos.interno.PagoDaFatura(l.faturaPagaId, count(l), sum(l.valor)) from Lancamento l "
+            + "join Fatura f on f.id = l.faturaPagaId where l.usuarioId = :usuarioId and f.cartaoId = :cartaoId group by l.faturaPagaId")
+    List<PagoDaFatura> pagosDoCartao(@Param("usuarioId") Long usuarioId, @Param("cartaoId") Long cartaoId);
 
     /** Um importado ignorado, para restaurar. */
     Optional<Lancamento> findByIdAndUsuarioIdAndIgnoradoEmIsNotNull(Long id, Long usuarioId);
@@ -111,11 +135,12 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, Long> {
 
     /**
      * Regras (Fatia 04b): as receitas e despesas de conta não ignoradas, só com as colunas que as regras usam. As de
-     * fatura ficam de fora até a 05c (Fatia 05a, decisão 27).
+     * fatura ficam de fora até a 05c (Fatia 05a, decisão 27), e o pagamento de fatura (Fatia 05b) nunca entra: não é
+     * receita nem despesa.
      */
     @Query("select new com.flux.lancamentos.interno.ParaAsRegras(l.id, l.contaId, l.data, l.valor, l.descricao, l.descricaoBanco, "
             + "l.categoriaId) from Lancamento l where l.usuarioId = :usuarioId and l.tipo <> :transferencia and l.faturaId is null "
-            + "and l.ignoradoEm is null "
+            + "and l.faturaPagaId is null and l.ignoradoEm is null "
             + "order by l.data desc, l.id desc")
     List<ParaAsRegras> paraAsRegras(@Param("usuarioId") Long usuarioId, @Param("transferencia") TipoLancamento transferencia);
 

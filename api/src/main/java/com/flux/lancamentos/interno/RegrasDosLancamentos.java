@@ -79,6 +79,16 @@ public class RegrasDosLancamentos {
         categorias.travar(usuarioId);
     }
 
+    /**
+     * Pagamento de fatura (Fatia 05b, decisão 49): a trava de contas e depois a de cartões. Depois delas, ninguém arquiva
+     * nem exclui a conta ou o cartão, muda os dias, ajusta um fechamento nem lança, edita ou exclui uma compra até o fim da
+     * transação: a situação paga, que trava as compras (decisão 35), não muda no meio.
+     */
+    void travarContasECartoes(Long usuarioId) {
+        contas.travar(usuarioId);
+        cartoes.travar(usuarioId);
+    }
+
     /** Ajuste de fechamento (decisão 49 da 05a): só a trava de cartões. */
     void travarCartoes(Long usuarioId) {
         cartoes.travar(usuarioId);

@@ -114,6 +114,18 @@ export interface TransferenciaDaImportacao {
   readonly tipo: 'RECEITA' | 'DESPESA';
 }
 
+/**
+ * Um lançamento da importação que virou pagamento de fatura (Fatia 05b): a data dele, o cartão e o mês da fatura
+ * ("2026-11"), que volta a ter esse valor pendente quando o desfazer apaga o pagamento.
+ */
+export interface PagamentoDaImportacao {
+  readonly data: string;
+  readonly cartaoId: number;
+  readonly cartaoNome: string;
+  readonly cartaoArquivado: boolean;
+  readonly faturaMes: string;
+}
+
 /** Resposta de POST /api/importacoes. Sem nada gravado, `importacaoId` vem nulo. */
 export interface Resultado {
   readonly importacaoId: number | null;
@@ -152,6 +164,8 @@ export interface Importacao {
   readonly desfeitaEm: string | null;
   /** Fatia 04c: os lançamentos dela numa transferência convertida. A API manda sempre; opcional pelo mesmo motivo de `pares`. */
   readonly transferencias?: readonly TransferenciaDaImportacao[];
+  /** Fatia 05b: os lançamentos dela que viraram pagamento de fatura. A API manda sempre; opcional pelo mesmo motivo. */
+  readonly pagamentos?: readonly PagamentoDaImportacao[];
 }
 
 export interface Excluido {

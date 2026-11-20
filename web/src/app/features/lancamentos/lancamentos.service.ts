@@ -5,7 +5,8 @@ import { Observable, Subject, map, tap } from 'rxjs';
 import { CorConta } from '../contas/contas.service';
 import { Filtros, parametrosDaApi } from './filtros';
 
-export type TipoLancamento = 'RECEITA' | 'DESPESA' | 'TRANSFERENCIA';
+/** Fatia 05b: PAGAMENTO_FATURA, o pagamento da fatura do cartão, na conta; não é receita nem despesa. */
+export type TipoLancamento = 'RECEITA' | 'DESPESA' | 'TRANSFERENCIA' | 'PAGAMENTO_FATURA';
 
 /**
  * Um lado da transferência (Fatia 04c): a saída primeiro. `descricaoBanco` só no importado; na
@@ -67,6 +68,12 @@ export interface ItemDaLista {
   readonly parcela?: number | null;
   readonly parcelas?: number | null;
   readonly dataCompra?: string | null;
+  /**
+   * Fatia 05b: só no pagamento de fatura (tipo PAGAMENTO_FATURA), o mês da fatura paga ("2026-11"); o cartão vem em
+   * `cartaoId`, `cartaoNome` e `cartaoCor`, e a conta, em `contaId` e `contaNome`. Opcional pelos objetos de teste das
+   * fatias anteriores.
+   */
+  readonly faturaPagaMes?: string | null;
 }
 
 /** Fatia 05a (decisão 23): a fatura do mês, com o filtro de um cartão. `total` positivo é a pagar. */
@@ -77,7 +84,7 @@ export interface FaturaDoFiltro {
   readonly mes: string;
   readonly fechamento: string;
   readonly vencimento: string;
-  readonly situacao: 'FUTURA' | 'ABERTA' | 'FECHADA';
+  readonly situacao: 'FUTURA' | 'ABERTA' | 'FECHADA' | 'PAGA';
   readonly total: number;
 }
 
