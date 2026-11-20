@@ -30,7 +30,10 @@ import com.flux.lancamentos.interno.TipoLancamento;
  *       {@code contaNome} nulos): {@code cartaoId}, {@code cartaoNome}, {@code cartaoCor}, {@code compraId},
  *       {@code estorno}, {@code parcela}/{@code parcelas} (o número e o total de parcelas) e
  *       {@code dataCompra}. A {@code data} é o vencimento da fatura (decisão 22), e {@code somenteLeitura},
- *       o cartão arquivado.</li>
+ *       o cartão arquivado;</li>
+ *   <li>Fatia 05b, no pagamento de fatura (tipo PAGAMENTO_FATURA, na conta, negativo): {@code cartaoId},
+ *       {@code cartaoNome} e {@code cartaoCor} do cartão pago e {@code faturaPagaMes} ("2026-11"); sem categoria;
+ *       {@code somenteLeitura}, a conta ou o cartão arquivado (decisão 33).</li>
  * </ul>
  */
 public record ItemDaLista(
@@ -61,7 +64,8 @@ public record ItemDaLista(
         boolean estorno,
         Integer parcela,
         Integer parcelas,
-        LocalDate dataCompra) {
+        LocalDate dataCompra,
+        String faturaPagaMes) {
 
     /** Um lado da transferência. {@code descricaoBanco} só no importado. */
     public record Lado(Long contaId, String contaNome, LocalDate data, OrigemLancamento origem, String descricaoBanco,

@@ -158,8 +158,10 @@ public class ConversaoService {
      */
     @Transactional(readOnly = true)
     public List<LancamentosImportados.ParSugerido> paresSugeridos(Long usuarioId, Long importacaoId) {
+        // O pagamento de fatura (Fatia 05b) não vira transferência: fica fora das sugestões.
         List<Lancamento> daImportacao =
-                lancamentos.findAllByUsuarioIdAndImportacaoIdAndTransferenciaIdIsNullAndIgnoradoEmIsNull(usuarioId, importacaoId);
+                lancamentos.findAllByUsuarioIdAndImportacaoIdAndTransferenciaIdIsNullAndIgnoradoEmIsNull(usuarioId, importacaoId).stream()
+                        .filter(lancamento -> !lancamento.pagamento()).toList();
         if (daImportacao.isEmpty()) {
             return List.of();
         }
@@ -221,8 +223,12 @@ public class ConversaoService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Lançamento não encontrado."));
     }
 
-    /** Decisão 26: só um importado, fora de transferência, numa conta ativa. */
+    /** Decisão 26: só um importado, fora de transferência e que não é pagamento de fatura (Fatia 05b), numa conta ativa. */
     private void exigirQueConverte(Long usuarioId, Lancamento fixo) {
+        if (fixo.pagamento()) {
+            throw new RegraDeNegocioException("Este lançamento é um pagamento de fatura: desfaça o pagamento antes de convertê-lo em "
+                    + "transferência.", "JA_E_PAGAMENTO");
+        }
         if (fixo.transferencia()) {
             throw new RegraDeNegocioException("Este lançamento já está numa transferência.", "JA_EM_TRANSFERENCIA");
         }

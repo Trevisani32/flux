@@ -19,9 +19,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Receitas e despesas de conta, manuais e importadas. Um lado de transferência e um lançamento de fatura (a
- * parcela e o estorno, Fatia 05a, decisão 25) não são lidos nem editados por aqui: dão 404.
- * No importado só mudam descrição, categoria e observação, e excluir o ignora (decisões 29 e 30).
+ * Receitas e despesas de conta, manuais e importadas. Um lado de transferência, um lançamento de fatura (a
+ * parcela e o estorno, Fatia 05a, decisão 25) e um pagamento de fatura (Fatia 05b, por /api/pagamentos) não são lidos
+ * nem editados por aqui: dão 404. No importado só mudam descrição, categoria e observação, e excluir o ignora
+ * (decisões 29 e 30).
  */
 @Service
 public class LancamentoService {
@@ -131,13 +132,14 @@ public class LancamentoService {
     }
 
     private Lancamento encontrar(Long usuarioId, Long id) {
-        return repositorio.findByIdAndUsuarioIdAndTransferenciaIdIsNullAndFaturaIdIsNullAndIgnoradoEmIsNull(id, usuarioId)
+        return repositorio.findByIdAndUsuarioIdAndTransferenciaIdIsNullAndFaturaIdIsNullAndFaturaPagaIdIsNullAndIgnoradoEmIsNull(id,
+                        usuarioId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Lançamento não encontrado."));
     }
 
-    /** A transferência tem endpoint próprio (/api/transferencias). */
+    /** A transferência tem endpoint próprio (/api/transferencias); o pagamento de fatura também (Fatia 05b). */
     private static void exigirReceitaOuDespesa(SalvarLancamentoRequest pedido) {
-        if (pedido.tipo() == TipoLancamento.TRANSFERENCIA) {
+        if (pedido.tipo() == TipoLancamento.TRANSFERENCIA || pedido.tipo() == TipoLancamento.PAGAMENTO_FATURA) {
             throw new CampoInvalidoException("tipo", "Escolha receita ou despesa.");
         }
     }

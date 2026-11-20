@@ -27,13 +27,15 @@ public class ImportadosNosLancamentos implements LancamentosImportados {
     private final RegrasDosLancamentos regras;
     private final CategoriasConsulta categorias;
     private final ConversaoService conversoes;
+    private final PagamentoService pagamentos;
 
     public ImportadosNosLancamentos(LancamentoRepository repositorio, RegrasDosLancamentos regras, CategoriasConsulta categorias,
-                                    ConversaoService conversoes) {
+                                    ConversaoService conversoes, PagamentoService pagamentos) {
         this.repositorio = repositorio;
         this.regras = regras;
         this.categorias = categorias;
         this.conversoes = conversoes;
+        this.pagamentos = pagamentos;
     }
 
     @Override
@@ -64,10 +66,14 @@ public class ImportadosNosLancamentos implements LancamentosImportados {
         repositorio.saveAll(lancamentos);
     }
 
-    /** Primeiro as conversões (decisão 34 da 04c), depois os lançamentos: o DELETE em massa não passa pelo vínculo. */
+    /**
+     * Primeiro as conversões (decisão 34 da 04c), depois os lançamentos: o DELETE em massa não passa pelo vínculo. O
+     * pagamento convertido de uma despesa da importação (Fatia 05b) sai junto, se o cartão dele está ativo.
+     */
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public int desfazer(Long usuarioId, Long importacaoId) {
+        pagamentos.desfazerDaImportacao(usuarioId, importacaoId);
         conversoes.desfazerDaImportacao(usuarioId, importacaoId);
         return repositorio.apagarDaImportacao(usuarioId, importacaoId);
     }
@@ -98,6 +104,11 @@ public class ImportadosNosLancamentos implements LancamentosImportados {
     @Override
     public List<Convertido> convertidos(Long usuarioId) {
         return conversoes.convertidos(usuarioId);
+    }
+
+    @Override
+    public List<PagamentoConvertido> pagamentosConvertidos(Long usuarioId) {
+        return pagamentos.convertidosDasImportacoes(usuarioId);
     }
 
     /**

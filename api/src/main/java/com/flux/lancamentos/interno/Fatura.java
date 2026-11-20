@@ -50,6 +50,10 @@ public class Fatura {
     @Column(name = "criada_em", nullable = false)
     private Instant criadaEm;
 
+    /** Fatia 05b (decisão 36): marcada como paga fora do Flux; o pendente dela é zero, sem lançamento. */
+    @Column(name = "paga_fora_em")
+    private Instant pagaForaEm;
+
     protected Fatura() {
     }
 
@@ -75,6 +79,26 @@ public class Fatura {
         this.dataVencimento = datas.vencimento();
         this.fechamentoNormal = datas.fechamento();
         this.fechamentoAjustado = false;
+    }
+
+    /** Decisão 36: "Marcar como paga fora do Flux"; marcar de novo não muda a data. */
+    public void marcarPagaFora(Instant agora) {
+        if (pagaForaEm == null) {
+            pagaForaEm = agora;
+        }
+    }
+
+    /** Decisão 36: "Desmarcar". */
+    public void desmarcarPagaFora() {
+        pagaForaEm = null;
+    }
+
+    public boolean pagaFora() {
+        return pagaForaEm != null;
+    }
+
+    public Instant getPagaForaEm() {
+        return pagaForaEm;
     }
 
     public YearMonth mes() {

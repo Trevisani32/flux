@@ -1,6 +1,7 @@
 package com.flux.lancamentos.interno;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -9,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 
 import com.flux.cartoes.CalendarioDoCartao;
@@ -29,7 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Compras e estornos no cartão (decisões 14 a 21, ADR 0017). Cada parcela é um lançamento na fatura certa:
  * a 1ª na fatura da data da compra, a k-ésima k − 1 faturas depois. O estorno é uma receita só, na fatura da
- * data dele. Gravar pega a trava de cartões e depois a de categorias (decisão 49).
+ * data dele. Gravar pega a trava de cartões e depois a de categorias (decisão 49). Desde a Fatia 05b (decisão 35), a
+ * compra com alguma parcela numa fatura paga só muda a descrição, a categoria e a observação, e não se exclui.
  */
 @Service
 public class CompraService {
@@ -77,8 +80,59 @@ public class CompraService {
                     numero >= pedido.parcelaInicial()));
         }
         CalendarioDoCartao.Datas datas = doCartao.datas(primeira);
+        // Decisão 38: o disponível com as parcelas no Flux somadas às faturas delas (o estorno abate).
+        boolean estorno = pedido.tipo() == TipoCompra.ESTORNO;
+        Map<YearMonth, BigDecimal> acrescimos = new TreeMap<>();
+        parcelas.stream().filter(ParcelaDaCompra::noFlux).forEach(parcela -> acrescimos.put(YearMonth.parse(parcela.mes()),
+                estorno ? parcela.valor().negate() : parcela.valor()));
+        // Na edição (dono, 2026-11-20), a prévia desconta as parcelas que a compra ou o estorno já tem neste cartão: o que muda
+        // em cada fatura é o novo menos o atual.
+        boolean edicao = pedido.compraId() != null;
+        Map<YearMonth, BigDecimal> deltas = new TreeMap<>(acrescimos);
+        if (edicao) {
+            Compra editada = compras.findByIdAndUsuarioIdAndTipo(pedido.compraId(), usuarioId, pedido.tipo())
+                    .orElseThrow(() -> new RegraDeNegocioException(estorno ? "Estorno não encontrado." : "Compra não encontrada."));
+            if (editada.getCartaoId().equals(cartao.id())) {
+                lancamentos.findAllByUsuarioIdAndCompraIdInOrderByCompraIdAscNumeroParcelaAsc(usuarioId, List.of(editada.getId()))
+                        .forEach(atual -> deltas.merge(YearMonth.from(atual.getData()), atual.getValor(), BigDecimal::add));
+            }
+        }
+        PagamentosDasFaturas pagamentos = PagamentosDasFaturas.carregar(lancamentos, usuarioId, doCartao);
+        BigDecimal pendente = pagamentos.pendenteDeTodasCom(deltas);
+        LocalDate hoje = regras.hoje();
+        // Decisão 35 (dono, 2026-11-20): a parcela que, lançada, fica numa fatura paga entra travada, e a prévia avisa. Na
+        // edição, a fatura que já está paga é a da trava (a compra já está nela) ou a da recusa da edição, que o PUT diz.
+        String aviso = null;
+        for (ParcelaDaCompra parcela : parcelas) {
+            YearMonth mes = YearMonth.parse(parcela.mes());
+            boolean jaPaga = pagamentos.paga(mes, hoje);
+            if (parcela.noFlux() && !(edicao && jaPaga) && pagamentos.ficaPagaCom(mes, hoje, deltas.get(mes))) {
+                aviso = avisoDaFaturaPaga(estorno, edicao, pedido.parcelas(), parcela.numero(), mes, hoje, jaPaga,
+                        pagamentos.resumo(mes, hoje).pagaFora());
+                break;
+            }
+        }
         return new PreviaDaCompraResponse(parcelas, new PreviaDaCompraResponse.Fatura(primeira.toString(), datas.fechamento(),
-                datas.vencimento(), doCartao.situacao(primeira, regras.hoje()).name()));
+                datas.vencimento(), doCartao.situacao(primeira, hoje).name()),
+                cartao.limite().subtract(pendente).setScale(2, RoundingMode.UNNECESSARY), aviso);
+    }
+
+    /**
+     * Decisão 35, antes de salvar (dono, 2026-11-20): "A compra vai para a fatura de setembro, que já foi paga fora do Flux:
+     * ela entra travada, e só a descrição, a categoria e a observação vão mudar. Para corrigir um engano, desmarque a
+     * fatura." Com pagamento, "que já foi paga" e "exclua ou edite o pagamento dela"; parcelada, "A parcela 2/3 vai… a compra
+     * entra travada…"; o estorno, "O estorno vai… ele entra travado…". Na fatura que passa a ser paga pelo lançamento, "que
+     * fica paga com ele"; na edição, "A compra vai ficar na fatura de setembro, que fica paga com ela: ela fica travada…".
+     */
+    private static String avisoDaFaturaPaga(boolean estorno, boolean edicao, int parcelas, int numero, YearMonth mes, LocalDate hoje,
+                                            boolean jaPaga, boolean pagaFora) {
+        String quem = estorno ? "O estorno" : parcelas == 1 ? "A compra" : "A parcela " + numero + "/" + parcelas;
+        String travado = (estorno ? "ele " : parcelas == 1 ? "ela " : "a compra ") + (edicao ? "fica" : "entra")
+                + (estorno ? " travado" : " travada");
+        return quem + (edicao ? " vai ficar na fatura de " : " vai para a fatura de ") + FaturaService.nomeDoMes(mes, hoje)
+                + (jaPaga ? ", que já foi paga" + (pagaFora ? " fora do Flux" : "") : ", que fica paga com " + (estorno ? "ele" : "ela"))
+                + ": " + travado + ", e só a descrição, a categoria e a observação vão mudar. "
+                + (pagaFora ? "Para corrigir um engano, desmarque a fatura." : "Para corrigir um engano, exclua ou edite o pagamento dela.");
     }
 
     @Transactional(readOnly = true)
@@ -129,12 +183,18 @@ public class CompraService {
             atuais.forEach(parcela -> parcela.alterarTextosDaFatura(dados.descricao(), dados.categoriaId(), dados.observacao(), agora));
             return resposta(usuarioId, compra);
         }
+        // Decisão 35: com uma parcela em fatura paga, só os textos mudam.
+        Optional<String> trava = travaDaFaturaPaga(usuarioId, compra, atuais);
+        if (trava.isPresent()) {
+            throw new RegraDeNegocioException(trava.get(), "FATURA_PAGA");
+        }
         // Decisão 7: com a data e o cartão iguais, a 1ª parcela fica no mês em que está, sem a fatura ser buscada pela
         // data de novo. Depois de uma troca de dias, o mês da data pode não ter gravados os dias de antes (a compra em
         // andamento não grava a fatura das parcelas de antes do Flux), e a busca usaria os dias novos.
         Lancamento primeiraNoFlux = atuais.getFirst();
         YearMonth mesDaPrimeira = compra.getCartaoId().equals(cartao.id()) && compra.getDataCompra().equals(dados.data())
                 ? YearMonth.from(primeiraNoFlux.getData()).minusMonths(primeiraNoFlux.getNumeroParcela() - 1L) : null;
+        exigirForaDasPagas(usuarioId, cartao, dados, mesDaPrimeira);
         // O delete limpa o contexto de persistência: a compra volta a ser gravada pelo save.
         lancamentos.apagarDaCompra(usuarioId, id);
         compra.alterar(cartao.id(), dados.data(), dados.valorTotal(), dados.parcelas(), dados.parcelaInicial(), agora);
@@ -143,14 +203,62 @@ public class CompraService {
         return resposta(usuarioId, gravada);
     }
 
+    /**
+     * Decisão 35 (dono, 2026-11-20): a edição que regrava as parcelas não leva nenhuma para uma fatura paga (ou marcada
+     * como paga fora do Flux), pela data, pelo cartão ou pela primeira parcela, como o ajuste (decisão 12). Para lançar
+     * nela, o usuário exclui e lança de novo: a compra nova entra travada, com o aviso da prévia.
+     */
+    private void exigirForaDasPagas(Long usuarioId, CartaoResumo cartao, Dados dados, YearMonth mesDaPrimeira) {
+        FaturasDoCartao doCartao = FaturasDoCartao.carregar(faturas, usuarioId, cartao);
+        YearMonth primeira = mesDaPrimeira != null ? mesDaPrimeira : doCartao.faturaDe(dados.data());
+        PagamentosDasFaturas pagamentos = PagamentosDasFaturas.carregar(lancamentos, usuarioId, doCartao);
+        LocalDate hoje = regras.hoje();
+        for (int numero = dados.parcelaInicial(); numero <= dados.parcelas(); numero++) {
+            YearMonth mes = primeira.plusMonths(numero - 1L);
+            if (pagamentos.paga(mes, hoje)) {
+                boolean estorno = dados.tipo() == TipoCompra.ESTORNO;
+                String oQue = estorno ? "o estorno" : dados.parcelas() == 1 ? "a compra" : "a parcela " + numero + "/" + dados.parcelas();
+                throw new RegraDeNegocioException("A edição levaria " + oQue + " para a fatura de " + FaturaService.nomeDoMes(mes, hoje)
+                        + ", que já foi paga. " + (estorno ? "Para lançá-lo nessa fatura, exclua este estorno e lance de novo."
+                        : dados.parcelas() == 1 ? "Para lançá-la nessa fatura, exclua esta compra e lance de novo."
+                        : "Para lançar a compra nessa fatura, exclua esta e lance de novo."), "FATURA_PAGA");
+            }
+        }
+    }
+
     /** Decisão 19: as parcelas saem junto; as faturas ficam (decisão 9). */
     @Transactional
     public void excluir(Long usuarioId, Long id, TipoCompra tipo) {
         regras.travarCartoesECategorias(usuarioId);
         Compra compra = encontrar(usuarioId, id, tipo);
         regras.exigirCartaoAtivoPara(usuarioId, compra.getCartaoId(), "editar ou excluir " + oQue(tipo));
+        // Decisão 35: com uma parcela em fatura paga, a compra não se exclui.
+        Optional<String> trava = travaDaFaturaPaga(usuarioId, compra,
+                lancamentos.findAllByUsuarioIdAndCompraIdInOrderByCompraIdAscNumeroParcelaAsc(usuarioId, List.of(id)));
+        if (trava.isPresent()) {
+            throw new RegraDeNegocioException(trava.get(), "FATURA_PAGA");
+        }
         lancamentos.apagarDaCompra(usuarioId, id);
         compras.delete(compra);
+    }
+
+    /**
+     * Decisão 35: a primeira parcela (pelo número) que está numa fatura paga, dita na frase da trava: "A parcela 1/3 está
+     * na fatura de novembro, que já foi paga: só a descrição, a categoria e a observação mudam." (à vista, "A compra está…";
+     * o estorno, "O estorno está…").
+     */
+    private Optional<String> travaDaFaturaPaga(Long usuarioId, Compra compra, List<Lancamento> parcelas) {
+        CartaoResumo cartao = cartoes.buscar(usuarioId, compra.getCartaoId()).orElseThrow();
+        FaturasDoCartao doCartao = FaturasDoCartao.carregar(faturas, usuarioId, cartao);
+        PagamentosDasFaturas pagamentos = PagamentosDasFaturas.carregar(lancamentos, usuarioId, doCartao);
+        LocalDate hoje = regras.hoje();
+        return parcelas.stream().filter(parcela -> pagamentos.paga(YearMonth.from(parcela.getData()), hoje)).findFirst()
+                .map(parcela -> {
+                    String quem = compra.estorno() ? "O estorno está" : compra.getParcelas() == 1 ? "A compra está"
+                            : "A parcela " + parcela.getNumeroParcela() + "/" + compra.getParcelas() + " está";
+                    return quem + " na fatura de " + FaturaService.nomeDoMes(YearMonth.from(parcela.getData()), hoje)
+                            + ", que já foi paga: só a descrição, a categoria e a observação mudam.";
+                });
     }
 
     /**
@@ -226,7 +334,7 @@ public class CompraService {
                 compra.getDataCompra(), primeira.getDescricao(), compra.getValorTotal(), compra.getParcelas(), compra.getParcelaInicial(),
                 categoria == null ? null : categoria.id(), categoria == null ? null : categoria.nome(),
                 categoria == null ? null : categoria.nomeDaMae(), categoria != null && categoria.arquivada(), primeira.getObservacao(),
-                noFlux);
+                noFlux, travaDaFaturaPaga(usuarioId, compra, parcelas).orElse(null));
     }
 
     private static TipoLancamento natureza(TipoCompra tipo) {

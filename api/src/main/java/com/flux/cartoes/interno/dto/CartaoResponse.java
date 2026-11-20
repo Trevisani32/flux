@@ -10,6 +10,9 @@ import com.flux.cartoes.interno.CorCartao;
  * Um cartão (decisões 1 a 6, 26 e 29). {@code arquivadoEm} é nulo no ativo. {@code faturaAberta} é a
  * fatura que contém hoje, e {@code proximaFatura}, a seguinte; {@code emAberto} soma os totais da aberta e
  * das futuras, e {@code lancamentosEmAberto} conta os lançamentos delas (a confirmação de arquivar).
+ * Fatia 05b (decisão 38): {@code pendente} soma o que falta pagar em todas as faturas, {@code disponivel} = limite −
+ * pendente (negativo: acima do limite), e {@code usoDoLimite}, de 0 a 100, é a parte do limite tomada pelo pendente,
+ * arredondada, para a barra (100 também acima do limite).
  * Os valores vêm prontos (ADR 0002): o total positivo é a pagar, o negativo é crédito.
  */
 public record CartaoResponse(
@@ -26,7 +29,10 @@ public record CartaoResponse(
         Fatura faturaAberta,
         Fatura proximaFatura,
         BigDecimal emAberto,
-        long lancamentosEmAberto) {
+        long lancamentosEmAberto,
+        BigDecimal pendente,
+        BigDecimal disponivel,
+        int usoDoLimite) {
 
     /** {@code mes} é "2026-12". */
     public record Fatura(String mes, LocalDate inicio, LocalDate fechamento, LocalDate vencimento, BigDecimal total,

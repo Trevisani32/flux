@@ -5,9 +5,12 @@ import java.time.YearMonth;
 import java.util.List;
 
 import com.flux.compartilhado.seguranca.UsuarioAtual;
+import com.flux.lancamentos.interno.dto.ConverterEmPagamentoRequest;
 import com.flux.lancamentos.interno.dto.ConverterRequest;
+import com.flux.lancamentos.interno.dto.FaturasParaPagamentoResponse;
 import com.flux.lancamentos.interno.dto.ItemDaLista;
 import com.flux.lancamentos.interno.dto.ListaDoMesResponse;
+import com.flux.lancamentos.interno.dto.PagamentoResponse;
 import com.flux.lancamentos.interno.dto.ParesResponse;
 import com.flux.lancamentos.interno.dto.RestaurarRequest;
 import com.flux.lancamentos.interno.dto.SalvarLancamentoRequest;
@@ -31,18 +34,20 @@ public class LancamentoController {
     private final LancamentoService lancamentoService;
     private final ListaDosLancamentos lista;
     private final ConversaoService conversaoService;
+    private final PagamentoService pagamentoService;
 
     public LancamentoController(UsuarioAtual usuarioAtual, LancamentoService lancamentoService, ListaDosLancamentos lista,
-                                ConversaoService conversaoService) {
+                                ConversaoService conversaoService, PagamentoService pagamentoService) {
         this.usuarioAtual = usuarioAtual;
         this.lancamentoService = lancamentoService;
         this.lista = lista;
         this.conversaoService = conversaoService;
+        this.pagamentoService = pagamentoService;
     }
 
     /**
-     * ?mes=2026-11&conta=3&categoria=12|sem&tipo=receita|despesa|transferencia&busca=texto, todos opcionais; desde a
-     * Fatia 05a, ?cartao=2 no lugar de ?conta= (decisão 23).
+     * ?mes=2026-11&conta=3&categoria=12|sem&tipo=receita|despesa|transferencia|pagamento&busca=texto, todos opcionais;
+     * desde a Fatia 05a, ?cartao=2 no lugar de ?conta= (decisão 23); desde a 05b, o tipo "pagamento" (decisão 32).
      */
     @GetMapping
     public ListaDoMesResponse listar(@RequestParam(required = false) YearMonth mes,
@@ -99,5 +104,19 @@ public class LancamentoController {
     public ResponseEntity<ItemDaLista> converter(@PathVariable Long id, @Valid @RequestBody ConverterRequest pedido) {
         ItemDaLista criada = conversaoService.converter(usuarioAtual.id(), id, pedido);
         return ResponseEntity.created(URI.create("/api/transferencias/" + criada.id())).body(criada);
+    }
+
+    /** Fatia 05b: a despesa importada e as faturas que ela pode pagar, por cartão (decisão 37). */
+    @GetMapping("/{id}/faturas-para-pagamento")
+    public FaturasParaPagamentoResponse faturasParaPagamento(@PathVariable Long id) {
+        return pagamentoService.faturasParaPagamento(usuarioAtual.id(), id);
+    }
+
+    /** Fatia 05b: a despesa importada vira o pagamento da fatura escolhida (decisão 37); responde o pagamento. */
+    @PostMapping("/{id}/converter-em-pagamento")
+    public ResponseEntity<PagamentoResponse> converterEmPagamento(@PathVariable Long id,
+                                                                  @Valid @RequestBody ConverterEmPagamentoRequest pedido) {
+        PagamentoResponse criado = pagamentoService.converter(usuarioAtual.id(), id, pedido.cartaoId(), pedido.mes());
+        return ResponseEntity.created(URI.create("/api/pagamentos/" + criado.id())).body(criado);
     }
 }

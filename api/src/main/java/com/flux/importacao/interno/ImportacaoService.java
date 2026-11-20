@@ -170,9 +170,14 @@ public class ImportacaoService {
         Map<Long, List<ImportacaoResponse.Transferencia>> transferencias = importados.convertidos(usuarioId).stream()
                 .collect(Collectors.groupingBy(LancamentosImportados.Convertido::importacaoId, Collectors.mapping(
                         convertido -> transferencia(convertido, doUsuario.get(convertido.outraContaId())), Collectors.toList())));
+        // Fatia 05b: os pagamentos de fatura convertidos, para a confirmação do desfazer avisar (e bloquear com o cartão arquivado).
+        Map<Long, List<ImportacaoResponse.Pagamento>> pagamentos = importados.pagamentosConvertidos(usuarioId).stream()
+                .collect(Collectors.groupingBy(LancamentosImportados.PagamentoConvertido::importacaoId, Collectors.mapping(
+                        convertido -> new ImportacaoResponse.Pagamento(convertido.data(), convertido.cartaoId(), convertido.cartaoNome(),
+                                convertido.cartaoArquivado(), convertido.faturaMes()), Collectors.toList())));
         return importacoes.findAllByUsuarioIdOrderByCriadaEmDescIdDesc(usuarioId).stream()
                 .map(importacao -> resposta(importacao, doUsuario.get(importacao.getContaId()), contagens.get(importacao.getId()),
-                        transferencias.getOrDefault(importacao.getId(), List.of())))
+                        transferencias.getOrDefault(importacao.getId(), List.of()), pagamentos.getOrDefault(importacao.getId(), List.of())))
                 .toList();
     }
 
@@ -180,7 +185,8 @@ public class ImportacaoService {
      * Desfazer (decisão 32): apaga todos os lançamentos da importação, inclusive editados e
      * ignorados, e marca o registro. Com a conta arquivada, é recusado. Desde a Fatia 04c (decisão 34),
      * as transferências convertidas de lançamentos dela são desfeitas junto, pela API de lançamentos,
-     * que recusa o desfazer se o outro lado está numa conta arquivada.
+     * que recusa o desfazer se o outro lado está numa conta arquivada. Desde a Fatia 05b, os pagamentos de
+     * fatura convertidos saem junto, e o cartão arquivado de um deles também recusa.
      */
     @Transactional
     public ImportacaoResponse desfazer(Long usuarioId, Long id) {
@@ -196,7 +202,7 @@ public class ImportacaoService {
         }
         importados.desfazer(usuarioId, id);
         importacao.desfazer(agora());
-        return resposta(importacao, conta, null, List.of());
+        return resposta(importacao, conta, null, List.of(), List.of());
     }
 
     @Transactional(readOnly = true)
@@ -396,13 +402,14 @@ public class ImportacaoService {
     }
 
     private static ImportacaoResponse resposta(Importacao importacao, ContaResumo conta, LancamentosImportados.Contagem contagem,
-                                              List<ImportacaoResponse.Transferencia> transferencias) {
+                                              List<ImportacaoResponse.Transferencia> transferencias,
+                                              List<ImportacaoResponse.Pagamento> pagamentos) {
         return new ImportacaoResponse(importacao.getId(), importacao.getNomeArquivo(), importacao.getContaId(),
                 conta == null ? "" : conta.nome(), conta != null && conta.arquivada(), importacao.getCriadaEm(),
                 importacao.getDataInicio(), importacao.getDataFim(), importacao.getImportadas(), importacao.getDuplicadas(),
                 importacao.getDesmarcadas(), importacao.getAnteriores() + importacao.getFora(),
                 contagem == null ? 0 : contagem.editados(), contagem == null ? 0 : contagem.excluidos(), importacao.getDesfeitaEm(),
-                transferencias);
+                transferencias, pagamentos);
     }
 
     /** Decisão 34 da 04c: o que o desfazer faz com o outro lado de uma transferência convertida. */
