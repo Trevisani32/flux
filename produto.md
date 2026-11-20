@@ -646,7 +646,7 @@ Ver [ADR 0017](decisoes/0017-cartao-de-credito-faturas-e-parcelas.md), que subst
 | 04a | Importação de extratos OFX e CSV: revisão, histórico, ignorar e desfazer | Concluída |
 | 04b | Regras de categorização: cadastro, sugestão na revisão da importação, "Aplicar regras" e "Criar regra" | Concluída |
 | 04c | Conversão de importados em transferência: pares, lado novo, desfazer e sugestão no resultado da importação | Concluída |
-| 05a | Cartões, faturas, compras parceladas, estornos e ajuste de fechamento | Implementada, aguardando publicação |
+| 05a | Cartões, faturas, compras parceladas, estornos e ajuste de fechamento | Concluída |
 | 05b | Pagamento da fatura e limite disponível | — |
 | 05c | Importação de fatura de cartão e regras com cartão | — |
 | 06 | Dashboard, relatórios e exportação dos dados | — |
