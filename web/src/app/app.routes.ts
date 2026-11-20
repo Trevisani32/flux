@@ -57,6 +57,14 @@ export const routes: Routes = [
         loadComponent: () => import('./features/contas/contas').then((m) => m.Contas),
       },
       {
+        path: 'cartoes', title: 'Cartões | Flux',
+        loadComponent: () => import('./features/cartoes/cartoes').then((m) => m.Cartoes),
+      },
+      {
+        path: 'cartoes/:id/faturas/:mes', title: 'Fatura | Flux',
+        loadComponent: () => import('./features/cartoes/fatura/fatura').then((m) => m.PaginaDaFatura),
+      },
+      {
         path: 'categorias', title: 'Categorias | Flux',
         loadComponent: () => import('./features/categorias/categorias').then((m) => m.Categorias),
       },

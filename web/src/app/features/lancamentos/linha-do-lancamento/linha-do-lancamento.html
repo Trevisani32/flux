@@ -1,10 +1,15 @@
 <button type="button" class="linha" (click)="abrir.emit(item())">
-  <span class="linha__selo" [class.linha__selo--entrada]="item().tipo === 'RECEITA'" aria-hidden="true"><app-icone [nome]="icone()" /></span>
+  <span class="linha__selo" [class.linha__selo--entrada]="item().tipo === 'RECEITA' && !deCartao()" [class.linha__selo--cartao]="deCartao()" [style.--flux-cor]="deCartao() ? corDoCartao() : null" aria-hidden="true"><app-icone [nome]="icone()" /></span>
   <span class="linha__textos">
     <span class="linha__titulo">{{ item().descricao }}</span>
     <span class="linha__meta">
       @if (item().futuro) {
         <span class="linha__pilula"><app-icone nome="relogio" [tamanho]="11" [traco]="2.4" />Futuro</span>
+      }
+      @if (item().estorno === true) {
+        <span class="linha__pilula--estorno">Estorno</span>
+      } @else if (parcela(); as rotulo) {
+        <span class="linha__pilula--parcela">{{ rotulo }}</span>
       }
       @if (semCategoria()) {
         <span class="linha__sem-categoria">Sem categoria</span>

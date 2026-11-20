@@ -84,9 +84,12 @@ public class LancamentosNasRegras implements LancamentosParaRegras {
         return mudaram;
     }
 
-    /** Receita ou despesa ainda sem categoria, não excluída, em conta ativa, e a categoria ativa e da natureza. */
+    /**
+     * Receita ou despesa de conta (a de fatura só entra na 05c, decisão 27 da 05a) ainda sem categoria, não excluída,
+     * em conta ativa, e a categoria ativa e da natureza.
+     */
     private static boolean serve(Lancamento lancamento, CategoriaResumo categoria, Set<Long> contasAtivas) {
-        return !lancamento.transferencia() && lancamento.getIgnoradoEm() == null && lancamento.getCategoriaId() == null
+        return !lancamento.transferencia() && !lancamento.deFatura() && lancamento.getIgnoradoEm() == null && lancamento.getCategoriaId() == null
                 && contasAtivas.contains(lancamento.getContaId()) && categoria != null && !categoria.arquivada()
                 && categoria.natureza().equals(lancamento.getTipo().name());
     }

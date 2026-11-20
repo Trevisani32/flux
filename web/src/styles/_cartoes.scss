@@ -1,0 +1,871 @@
+// Fatia 05a: cartões, faturas, compras e estornos. As regras ficam aqui, e não no .scss de cada
+// componente, pelo orçamento de 4 kB por componente (Plano B da Fatia 01): o seletor leva a tag do host.
+
+// Tela de Cartões
+app-cartoes .cartoes__grade {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+app-cartoes .cartoes__cartao {
+  container: cartao / inline-size;
+  gap: 14px;
+}
+
+app-cartoes .cartoes__topo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+app-cartoes .cartoes__selo {
+  width: 46px;
+  height: 32px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--flux-cor, var(--flux-ouro)), color-mix(in srgb, var(--flux-cor, var(--flux-ouro)) 45%, #000));
+  color: var(--flux-sobre-ouro);
+}
+
+app-cartoes .cartoes__selo--p {
+  width: 36px;
+  height: 25px;
+  border-radius: 6px;
+  background: var(--flux-card-2);
+  color: var(--flux-texto-2);
+}
+
+app-cartoes .cartoes__textos {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+app-cartoes .cartoes__nome {
+  margin: 0;
+  overflow: hidden;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+app-cartoes .cartoes__meta {
+  overflow: hidden;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+app-cartoes .cartoes__fatura {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 4px 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--flux-borda);
+  border-radius: 14px;
+  background: var(--flux-card-2);
+}
+
+app-cartoes .cartoes__rotulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+app-cartoes .cartoes__pilula,
+app-fatura .fatura__situacao--aberta {
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: var(--flux-raio-pilula);
+  background: rgba(var(--flux-ouro-rgb), 0.14);
+  color: var(--flux-ouro-texto);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+app-cartoes .cartoes__datas {
+  color: var(--flux-texto-2);
+  font-size: 12px;
+  text-align: right;
+}
+
+app-cartoes .cartoes__total {
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+}
+
+app-cartoes .cartoes__ver {
+  justify-self: end;
+}
+
+app-cartoes .cartoes__rodape {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 10px;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+}
+
+app-cartoes .cartoes__rodape b {
+  color: var(--flux-texto);
+}
+
+app-cartoes .cartoes__aviso {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--flux-cor-conta-laranja);
+  font-weight: 600;
+}
+
+app-cartoes .cartoes__arquivado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 14px 12px 24px;
+}
+
+app-cartoes .cartoes__arquivado + .cartoes__arquivado {
+  border-top: 1px solid var(--flux-borda);
+}
+
+app-cartoes .cartoes__nome-arquivado {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--flux-texto-2);
+  font-weight: 700;
+}
+
+// Diálogos: cartão, compra e estorno, ajuste
+app-cartao-dialogo .cartao-dialogo,
+app-compra-dialogo .compra,
+app-ajuste-dialogo .ajuste {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 26px 26px 22px;
+}
+
+app-cartao-dialogo .cartao-dialogo__titulo,
+app-compra-dialogo .compra__titulo,
+app-ajuste-dialogo .ajuste__titulo {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow-wrap: anywhere;
+  color: var(--flux-texto);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+
+app-cartao-dialogo .cartao-dialogo__titulo::before,
+app-compra-dialogo .compra__titulo::before,
+app-ajuste-dialogo .ajuste__titulo::before {
+  display: none;
+}
+
+app-cartao-dialogo .cartao-dialogo__duas,
+app-compra-dialogo .compra__duas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+app-cartao-dialogo .cartao-dialogo__erro-dos-dias,
+app-cartao-dialogo .cartao-dialogo__dica-dos-dias {
+  margin-top: -8px;
+}
+
+app-cartao-dialogo .cartao-dialogo__acoes,
+app-compra-dialogo .compra__acoes,
+app-ajuste-dialogo .ajuste__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+app-compra-dialogo .compra__cabecalho,
+app-ajuste-dialogo .ajuste__cabecalho {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+app-compra-dialogo .compra__voltar,
+app-ajuste-dialogo .ajuste__voltar {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  margin-left: -8px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--flux-texto);
+  cursor: pointer;
+}
+
+app-compra-dialogo .compra__excluir {
+  margin-right: auto;
+  color: var(--flux-negativo);
+}
+
+app-compra-dialogo .compra__carregando {
+  color: var(--flux-texto-2);
+}
+
+app-compra-dialogo .compra__previa {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid rgba(var(--flux-ouro-rgb), 0.3);
+  border-radius: 12px;
+  background: rgba(var(--flux-ouro-rgb), 0.05);
+  color: var(--flux-texto-2);
+  font-size: 13px;
+  line-height: 19px;
+}
+
+app-compra-dialogo .compra__titulo-previa {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--flux-texto);
+  font-weight: 700;
+}
+
+app-compra-dialogo .compra__titulo-previa app-icone {
+  color: var(--flux-ouro-texto);
+}
+
+app-compra-dialogo .compra__parcelas {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 180px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+app-compra-dialogo .compra__parcelas li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+app-compra-dialogo .compra__parcela--fora {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+app-compra-dialogo .compra__nota {
+  color: var(--flux-texto-3);
+  font-size: 12px;
+}
+
+app-compra-dialogo .compra__andamento {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--flux-texto);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+app-compra-dialogo .compra__inicial {
+  max-width: 160px;
+}
+
+app-compra-dialogo .compra__ficha {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px 18px;
+  margin: 0;
+  font-size: 14px;
+}
+
+app-compra-dialogo .compra__ficha dt {
+  color: var(--flux-texto-3);
+  font-weight: 600;
+}
+
+app-compra-dialogo .compra__ficha dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+app-ajuste-dialogo .ajuste__texto {
+  margin: 0;
+  color: var(--flux-texto-2);
+  font-size: 13px;
+}
+
+// Página da fatura
+app-fatura .fatura__trilha {
+  margin: 0;
+  color: var(--flux-texto-3);
+  font-size: 13px;
+}
+
+app-fatura .fatura__navegacao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+app-fatura .fatura__mes {
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+  border: 1px solid var(--flux-borda);
+  border-radius: var(--flux-raio-controle);
+  background: var(--flux-card);
+}
+
+app-fatura .fatura__seta {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--flux-texto-2);
+  cursor: pointer;
+}
+
+app-fatura .fatura__seta:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+app-fatura .fatura__nome-do-mes {
+  min-width: 190px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+app-fatura .fatura__nome-do-mes app-icone {
+  color: var(--flux-ouro-texto);
+}
+
+app-fatura .fatura__situacao--fechada,
+app-fatura .fatura__situacao--futura {
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: var(--flux-raio-pilula);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+app-fatura .fatura__situacao--fechada {
+  background: color-mix(in srgb, var(--flux-cor-conta-laranja) 15%, transparent);
+  color: var(--flux-cor-conta-laranja);
+}
+
+app-fatura .fatura__situacao--futura {
+  border: 1px solid var(--flux-borda-2);
+  color: var(--flux-texto-2);
+}
+
+app-fatura .fatura__nota-da-situacao {
+  margin-left: auto;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+}
+
+app-fatura .fatura__periodo {
+  gap: 10px;
+  padding: 14px 22px 16px;
+}
+
+app-fatura .fatura__linha-do-tempo {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 10px 4px 2px;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+}
+
+app-fatura .fatura__linha-do-tempo::before {
+  content: '';
+  position: absolute;
+  top: 16px;
+  right: 6px;
+  left: 6px;
+  height: 2px;
+  background: var(--flux-borda-2);
+}
+
+app-fatura .fatura__marco {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 14px;
+}
+
+app-fatura .fatura__marco::before {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--flux-borda-2);
+  border-radius: 50%;
+  background: var(--flux-card);
+}
+
+app-fatura .fatura__marco--inicio::before {
+  border-color: var(--flux-ouro);
+  background: var(--flux-ouro);
+}
+
+app-fatura .fatura__marco--fecha {
+  align-items: center;
+  text-align: center;
+}
+
+app-fatura .fatura__marco--fecha::before {
+  left: calc(50% - 6px);
+}
+
+app-fatura .fatura__marco--vence {
+  align-items: flex-end;
+  text-align: right;
+}
+
+app-fatura .fatura__marco--vence::before {
+  right: 0;
+  left: auto;
+}
+
+app-fatura .fatura__marco b {
+  color: var(--flux-texto);
+}
+
+app-fatura .fatura__voltar-ao-normal {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--flux-ouro-texto);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+app-fatura .fatura__totais {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  padding: 0;
+}
+
+app-fatura .fatura__totais > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 22px;
+}
+
+app-fatura .fatura__totais > div + div {
+  border-left: 1px solid var(--flux-borda);
+}
+
+app-fatura .fatura__rotulo {
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+app-fatura .fatura__numero {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+app-fatura .fatura__numero--depois {
+  color: var(--flux-texto-2);
+}
+
+app-fatura .fatura__nota {
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+app-fatura .fatura__lista {
+  container: fatura-lista / inline-size;
+  gap: 0;
+  padding: 4px 0 8px;
+}
+
+app-fatura .fatura__cabecalho-da-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 24px 4px;
+}
+
+app-fatura .fatura__titulo-da-lista {
+  margin: 0;
+  font: var(--flux-fonte-titulo-card);
+}
+
+// As colunas têm largura fixa e a da descrição fica com o resto: uma descrição longa, sem espaços (como as importadas,
+// "PAG*…"), não alarga a tabela; ela termina em reticências, como em Lançamentos.
+app-fatura .fatura__tabela {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 14px;
+}
+
+app-fatura .fatura__tabela th {
+  padding: 12px 12px 8px;
+  color: var(--flux-texto-3);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+app-fatura .fatura__tabela td {
+  padding: 10px 12px;
+  border-top: 1px solid var(--flux-borda);
+  vertical-align: middle;
+}
+
+app-fatura .fatura__tabela tfoot td {
+  font-weight: 800;
+}
+
+app-fatura .fatura__c-data {
+  width: 76px;
+  padding-left: 24px !important;
+  color: var(--flux-texto-2);
+}
+
+app-fatura .fatura__c-parcela {
+  width: 90px;
+}
+
+app-fatura .fatura__c-categoria {
+  width: 220px;
+  color: var(--flux-texto-2);
+  font-size: 13px;
+}
+
+app-fatura .fatura__c-valor {
+  width: 150px;
+  padding-right: 24px !important;
+  text-align: right;
+}
+
+// No card estreito (o desktop de uns 960 a 1.130 px), as colunas fixas encolhem até o conteúdo delas ("12/11", a
+// pílula "Estorno", "−R$ 12.345,67"; a categoria longa quebra a linha), e a descrição, a informação principal da
+// linha, fica com pelo menos uns 190 px de texto: uma descrição comum, de uns 25 caracteres, cabe inteira. Abaixo
+// de 960 px, a página mostra a lista, e não a tabela.
+@container fatura-lista (max-width: 799.98px) {
+  app-fatura .fatura__c-data {
+    width: 68px;
+  }
+
+  app-fatura .fatura__c-parcela {
+    width: 82px;
+  }
+
+  app-fatura .fatura__c-categoria {
+    width: 120px;
+  }
+
+  app-fatura .fatura__c-valor {
+    width: 140px;
+  }
+}
+
+app-fatura .fatura__abrir,
+app-fatura .fatura__item {
+  width: 100%;
+  display: flex;
+  border: 0;
+  background: transparent;
+  color: var(--flux-texto);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+app-fatura .fatura__abrir {
+  flex-direction: column;
+  gap: 2px;
+  padding: 0;
+}
+
+app-fatura .fatura__abrir:hover b {
+  color: var(--flux-ouro-texto);
+}
+
+app-fatura .fatura__abrir b,
+app-fatura .fatura__textos b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+app-fatura .fatura__item {
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 10px 16px;
+}
+
+app-fatura .fatura__textos {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+app-fatura .fatura__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+app-fatura .fatura__pilula,
+app-linha-do-lancamento .linha__pilula--parcela,
+app-linha-do-lancamento .linha__pilula--estorno {
+  height: 20px;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding: 0 7px;
+  border: 1px solid var(--flux-borda);
+  border-radius: var(--flux-raio-pilula);
+  background: var(--flux-card-2);
+  color: var(--flux-texto-2);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+app-fatura .fatura__pilula--estorno,
+app-linha-do-lancamento .linha__pilula--estorno {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--flux-positivo) 12%, transparent);
+  color: var(--flux-positivo);
+}
+
+// Lançamentos (decisões 22 e 23): a linha do cartão e a faixa da fatura com o filtro de um cartão
+app-linha-do-lancamento .linha__selo.linha__selo--cartao {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--flux-cor, var(--flux-ouro)) 14%, transparent);
+  color: var(--flux-cor, var(--flux-ouro));
+}
+
+app-lancamentos .lancamentos__fatura {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  padding: 14px 18px;
+  border: 1px solid rgba(var(--flux-ouro-rgb), 0.3);
+  border-radius: 14px;
+  background: rgba(var(--flux-ouro-rgb), 0.05);
+  color: var(--flux-texto-2);
+  font-size: 13px;
+}
+
+app-lancamentos .lancamentos__fatura b {
+  color: var(--flux-texto);
+}
+
+app-lancamentos .lancamentos__fatura .flux-link {
+  margin-left: auto;
+}
+
+// Início (decisão 26): o card "Cartões"
+app-inicio .inicio-cartoes {
+  gap: 10px;
+}
+
+app-inicio .inicio-cartoes__nota {
+  margin-top: -10px;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+app-inicio .inicio-cartao {
+  display: flex;
+  align-items: center;
+  gap: var(--flux-espaco-3);
+}
+
+app-inicio .inicio-cartao + .inicio-cartao {
+  padding-top: 10px;
+  border-top: 1px solid var(--flux-borda);
+}
+
+app-inicio .inicio-cartao__selo {
+  width: 36px;
+  height: 25px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--flux-cor, var(--flux-ouro)) 18%, transparent);
+  color: var(--flux-cor, var(--flux-ouro));
+}
+
+app-inicio .inicio-cartao__textos {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+app-inicio .inicio-cartao__nome {
+  overflow: hidden;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+app-inicio .inicio-cartao__nome:hover {
+  color: var(--flux-ouro-texto);
+  text-decoration: underline;
+}
+
+app-inicio .inicio-cartao__meta {
+  color: var(--flux-texto-3);
+  font-size: 12px;
+}
+
+app-inicio .inicio-cartoes__vazio {
+  color: var(--flux-texto-2);
+  font-size: 14px;
+}
+
+// O card estreito (o celular e o desktop de uns 1.000 px, com dois cards por linha): as datas descem para a linha de
+// baixo do rótulo, o total fica com a largura que sobra ao lado de "Ver fatura", e os dias do cartão quebram a linha
+// em vez de cortar a conta de pagamento.
+@container cartao (max-width: 439.98px) {
+  app-cartoes .cartoes__datas {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+
+  app-cartoes .cartoes__topo .cartoes__meta {
+    white-space: normal;
+  }
+}
+
+@media (max-width: 959.98px) {
+  app-cartoes .cartoes__grade,
+  app-fatura .fatura__totais {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  app-fatura .fatura__totais > div + div {
+    border-top: 1px solid var(--flux-borda);
+    border-left: 0;
+  }
+
+  app-fatura .fatura__nota-da-situacao {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  app-cartao-dialogo .cartao-dialogo,
+  app-ajuste-dialogo .ajuste {
+    gap: 14px;
+    padding: 22px 18px 18px;
+  }
+}
+
+// Os diálogos da compra e do ajuste ocupam a tela no celular (.flux-dialogo--cheio-no-celular), com o botão embaixo.
+@media (max-width: 599.98px) {
+  app-compra-dialogo .compra,
+  app-ajuste-dialogo .ajuste {
+    min-height: 100%;
+    gap: 14px;
+    padding: 14px 16px 16px;
+  }
+
+  app-compra-dialogo .compra__acoes,
+  app-ajuste-dialogo .ajuste__acoes,
+  app-cartao-dialogo .cartao-dialogo__acoes {
+    flex-direction: column-reverse;
+    margin-top: auto;
+  }
+
+  app-compra-dialogo .compra__acoes button,
+  app-ajuste-dialogo .ajuste__acoes button,
+  app-cartao-dialogo .cartao-dialogo__acoes button {
+    width: 100%;
+  }
+
+  app-compra-dialogo .compra__excluir {
+    margin-right: 0;
+  }
+
+  app-cartao-dialogo .cartao-dialogo__duas {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}

@@ -1,0 +1,28 @@
+<form class="ajuste" [formGroup]="formulario" (ngSubmit)="ajustar()">
+  <div class="ajuste__cabecalho">
+    <button type="button" class="ajuste__voltar flux-so-celular" aria-label="Voltar" [disabled]="enviando()" (click)="cancelar()"><app-icone nome="esquerda" /></button>
+    <h2 mat-dialog-title class="ajuste__titulo">Ajustar o fechamento de {{ mesDaFatura }}</h2>
+  </div>
+  <p class="ajuste__texto">Use quando o banco fechar esta fatura em outro dia. Pelo cartão, ela fecha em <b>{{ diaEMes(fatura.fechamentoNormal) }}</b>.</p>
+  <div class="flux-campo">
+    <label for="ajuste-data">Fecha em</label>
+    <div class="flux-entrada" [class.flux-entrada--invalida]="erroDaData() !== null">
+      <input id="ajuste-data" type="date" formControlName="data" [min]="fatura.ajusteDe" [max]="fatura.ajusteAte" [attr.aria-invalid]="erroDaData() !== null ? 'true' : null" [attr.aria-describedby]="erroDaData() !== null ? 'ajuste-data-erro' : 'ajuste-data-dica'" />
+    </div>
+    @if (erroDaData(); as mensagem) {
+      <p id="ajuste-data-erro" class="flux-campo__erro">{{ mensagem }}</p>
+    } @else {
+      <p id="ajuste-data-dica" class="flux-dica">{{ dica }}</p>
+    }
+  </div>
+  @if (aviso(); as atual) {
+    <app-alerta tipo="info" icone="info" [titulo]="atual.titulo"><p class="flux-alerta__texto">{{ atual.texto }}</p></app-alerta>
+  }
+  @if (erroGeral(); as mensagem) {
+    <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem" />
+  }
+  <div class="ajuste__acoes">
+    <button mat-stroked-button type="button" class="flux-so-desktop" [disabled]="enviando()" (click)="cancelar()">Cancelar</button>
+    <button mat-flat-button type="submit" [disabled]="enviando()">Ajustar</button>
+  </div>
+</form>

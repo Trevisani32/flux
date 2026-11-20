@@ -13,9 +13,11 @@ import { dataIsoNoFuso } from '../../shared/datas/data-curta';
 import { dataPorExtenso } from '../../shared/datas/data-por-extenso';
 import { EstadoVazio } from '../../shared/estado-vazio/estado-vazio';
 import { Icone } from '../../shared/icone/icone';
-import { NomeIcone } from '../../shared/icone/icones';
 import { SaldoEmDestaque } from '../../shared/saldo-em-destaque/saldo-em-destaque';
 import { Valor } from '../../shared/valor/valor';
+import { diaEMes, textoDoTotal } from '../cartoes/apresentacao';
+import { CartoesService, ListaDeCartoes } from '../cartoes/cartoes.service';
+import { abrirCompra } from '../cartoes/compra-dialogo/compra-dialogo';
 import { CategoriasService, ListaDeCategorias } from '../categorias/categorias.service';
 import { corDaConta, quantidadeDeContasAtivas, tipoDaConta } from '../contas/apresentacao';
 import { ContasService, ListaDeContas } from '../contas/contas.service';
@@ -25,13 +27,10 @@ import { abrirDialogoDeLancamento, contaPadrao } from '../lancamentos/lancamento
 import { ItemDaLista, LancamentosService, ListaDoMes } from '../lancamentos/lancamentos.service';
 import { LinhaDoLancamento } from '../lancamentos/linha-do-lancamento/linha-do-lancamento';
 
-interface ItemEmBreve {
-  readonly icone: NomeIcone;
-  readonly titulo: string;
-  readonly texto: string;
-}
-
-/** Saldo total, contas, o mês e os últimos lançamentos (decisão 32 da 03b); "Importar extrato" no topo (04a). */
+/**
+ * Saldo total, contas, o mês e os últimos lançamentos (decisão 32 da 03b); "Importar extrato" no topo (04a). Fatia 05a
+ * (decisão 26): o card "Cartões", com a fatura aberta de cada cartão ativo, no lugar do "Em breve".
+ */
 @Component({
   selector: 'app-inicio',
   imports: [MatButtonModule, RouterLink, Alerta, CabecalhoPagina, Card, EstadoVazio, Icone, LinhaDoLancamento, SaldoEmDestaque, Valor],
@@ -41,6 +40,7 @@ interface ItemEmBreve {
 export class Inicio {
   private readonly auth = inject(AuthService);
   private readonly contasService = inject(ContasService);
+  private readonly cartoesService = inject(CartoesService);
   private readonly lancamentosService = inject(LancamentosService);
   private readonly dialogo = inject(MatDialog);
   private readonly agora = inject(AGORA)();
@@ -49,10 +49,14 @@ export class Inicio {
   readonly corDaConta = corDaConta;
   readonly quantidadeDeContasAtivas = quantidadeDeContasAtivas;
   readonly nomeDoMesSemAno = nomeDoMesSemAno;
+  readonly diaEMes = diaEMes;
+  readonly textoDoTotal = textoDoTotal;
   readonly titulo = computed(() => `Olá, ${this.auth.usuario()?.nome ?? ''}`);
   readonly hoje = dataPorExtenso(this.agora);
   readonly hojeIso = dataIsoNoFuso(this.agora);
   readonly contas = signal<ListaDeContas | null>(null);
+  /** Sem os cartões (erro ao carregar), o card "Cartões" só some. */
+  readonly cartoes = signal<ListaDeCartoes | null>(null);
   readonly mes = signal<ListaDoMes | null>(null);
   readonly ultimos = signal<readonly ItemDaLista[] | null>(null);
   readonly falhaAoCarregar = signal(false);
@@ -64,10 +68,6 @@ export class Inicio {
     const mes = this.mes();
     return mes !== null && mes.quantidadeLancamentos + mes.quantidadeTransferencias > 0 ? mes : null;
   });
-  readonly emBreve: readonly ItemEmBreve[] = [
-    { icone: 'cartao', titulo: 'Cartões de crédito', texto: 'Faturas, compras parceladas e limite disponível.' },
-  ];
-
   constructor() {
     this.carregar();
     // O "Desfazer" de um importado excluído volta depois que o diálogo fechou (Fatia 04a).
@@ -78,11 +78,20 @@ export class Inicio {
     });
   }
 
-  /** Novo (item null) ou Editar, com o mesmo diálogo da tela de Lançamentos. */
+  /** Novo (item null) ou Editar, com o mesmo diálogo da tela de Lançamentos; a parcela e o estorno abrem a compra (05a). */
   abrir(item: ItemDaLista | null): void {
     const contas = this.contas();
     const categorias = this.categorias();
     if (contas === null || categorias === null) {
+      return;
+    }
+    if (item !== null && item.compraId !== undefined && item.compraId !== null) {
+      abrirCompra(this.dialogo, { tipo: item.estorno === true ? 'ESTORNO' : 'COMPRA', id: item.compraId, cartaoId: null, hoje: this.hojeIso, categorias })
+        .subscribe((resultado) => {
+          if (resultado !== undefined) {
+            this.carregar();
+          }
+        });
       return;
     }
     abrirDialogoDeLancamento(this.dialogo, {
@@ -103,8 +112,12 @@ export class Inicio {
       next: (lista) => this.contas.set(lista),
       error: () => this.falhaAoCarregar.set(true),
     });
+    this.cartoesService.listar().subscribe({
+      next: (cartoes) => this.cartoes.set(cartoes),
+      error: () => this.cartoes.set(null),
+    });
     // Sem os lançamentos, o Início continua com as contas: os dois cartões só somem.
-    this.lancamentosService.listar({ mes: mesDe(this.hojeIso), conta: null, categoria: null, tipo: null, busca: '' }).subscribe({
+    this.lancamentosService.listar({ mes: mesDe(this.hojeIso), conta: null, cartao: null, categoria: null, tipo: null, busca: '' }).subscribe({
       next: (mes) => this.mes.set(mes),
       error: () => this.mes.set(null),
     });

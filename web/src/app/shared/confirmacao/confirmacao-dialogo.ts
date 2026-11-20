@@ -14,12 +14,17 @@ export type TrechoDeTexto = string | { readonly forte: string };
 
 /**
  * O diálogo troca para o bloqueio quando a API responde 422 com este código (decisão 33):
- * "Esta conta não pode ser excluída", com o uso que veio no campo "uso" do erro.
+ * "Esta conta não pode ser excluída", com o uso que veio no campo "uso" do erro (ou no campo que a `propriedade` diz).
  */
 export interface BloqueioDaConfirmacao {
   /** Código do 422 (ex.: "CONTA_EM_USO"). */
   readonly codigo: string;
   readonly titulo: string;
+  /**
+   * O campo do erro com o uso; sem ele, "uso". Fatia 05a: a conta usa "motivo", que já traz o verbo ("tem 34 lançamentos
+   * e é a conta de pagamento de 1 cartão").
+   */
+  readonly propriedade?: string;
   /** O parágrafo, montado com o uso ("34 lançamentos e 3 transferências"). */
   readonly paragrafo: (uso: string) => readonly TrechoDeTexto[];
   /** Botão que fecha com "alternativa" (ex.: "Arquivar conta"); sem ele, só "Fechar". */
@@ -79,7 +84,7 @@ export class ConfirmacaoDialogo {
       error: (erro: unknown) => {
         const status = statusDoErro(erro);
         const bloqueio = this.dados.bloqueio;
-        const uso = propriedadeDoErro(erro, 'uso');
+        const uso = propriedadeDoErro(erro, bloqueio?.propriedade ?? 'uso');
         if (status === 422 && bloqueio !== undefined && codigoDoErro(erro) === bloqueio.codigo && uso !== null) {
           this.bloqueado.set(bloqueio.paragrafo(uso));
         } else {

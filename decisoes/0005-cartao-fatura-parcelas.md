@@ -1,6 +1,6 @@
 # ADR 0005 — Cartão de crédito, fatura e parcelas
 
-- **Status:** Proposto. Confirmar no planejamento da Fatia 05.
+- **Status:** Substituído pelo [ADR 0017](0017-cartao-de-credito-faturas-e-parcelas.md).
 - **Data:** 2026-11-06
 
 ## Contexto

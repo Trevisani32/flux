@@ -22,7 +22,7 @@ test('a lateral fica fixa com Início ativo e sem botão de menu', async ({ page
   const navegacao = page.getByRole('navigation', { name: 'Menu principal' });
   await expect(navegacao).toBeVisible();
   await expect(navegacao.getByRole('link', { name: 'Início' })).toHaveAttribute('aria-current', 'page');
-  await expect(navegacao.getByRole('list', { name: 'Visão geral' }).getByRole('link')).toHaveText(['Início', 'Lançamentos', 'Importação', 'Contas']);
+  await expect(navegacao.getByRole('list', { name: 'Visão geral' }).getByRole('link')).toHaveText(['Início', 'Lançamentos', 'Importação', 'Contas', 'Cartões']);
   await expect(navegacao.getByRole('list', { name: 'Organização' }).getByRole('link')).toHaveText(['Categorias', 'Regras']);
   await navegacao.getByRole('link', { name: 'Contas' }).click();
   await expect(page.getByRole('heading', { name: 'Contas', level: 1 })).toBeVisible();

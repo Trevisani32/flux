@@ -1,0 +1,97 @@
+<app-cabecalho-pagina titulo="Cartões" [subtitulo]="subtitulo()">
+  @if (temContaQuePaga()) {
+    <button mat-flat-button type="button" (click)="novoCartao()"><app-icone nome="mais" [tamanho]="18" [traco]="2.2" />Novo cartão</button>
+  }
+</app-cabecalho-pagina>
+<div class="flux-conteudo">
+  @if (falhaAoCarregar()) {
+    <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível carregar os cartões.">
+      <div class="flux-alerta__acoes"><button mat-stroked-button type="button" (click)="carregar()">Tentar de novo</button></div>
+    </app-alerta>
+  } @else if (lista(); as lista) {
+    @if (contas() !== null) {
+      @if (lista.ativos.length > 0) {
+        <div class="cartoes__grade">
+          @for (cartao of lista.ativos; track cartao.id) {
+            <section class="flux-card cartoes__cartao" [attr.aria-labelledby]="'cartao-' + cartao.id">
+              <div class="cartoes__topo">
+                <span class="cartoes__selo" [style.--flux-cor]="corDoCartao(cartao.cor)" aria-hidden="true"><app-icone nome="cartao" [tamanho]="18" [traco]="2" /></span>
+                <div class="cartoes__textos">
+                  <h2 class="cartoes__nome" [id]="'cartao-' + cartao.id">{{ cartao.nome }}</h2>
+                  <span class="cartoes__meta"><span class="flux-so-desktop">{{ diasDoCartao(cartao, false) }}</span><span class="flux-so-celular">{{ diasDoCartao(cartao, true) }}</span></span>
+                </div>
+                <button type="button" class="flux-botao-acoes" [attr.aria-label]="'Ações de ' + cartao.nome" [matMenuTriggerFor]="menuDoCartao" [matMenuTriggerData]="{ cartao }"><app-icone nome="mais-h" /></button>
+              </div>
+              <div class="cartoes__fatura">
+                <span class="cartoes__rotulo">Fatura de {{ mesSemAno(cartao.faturaAberta.mes) }} <span class="cartoes__pilula">Aberta</span></span>
+                <span class="cartoes__datas">fecha {{ diaEMes(cartao.faturaAberta.fechamento) }} · vence {{ diaEMes(cartao.faturaAberta.vencimento) }}</span>
+                <span class="cartoes__total flux-num">{{ textoDoTotal(cartao.faturaAberta.total) }}</span>
+                <a class="flux-link cartoes__ver" [routerLink]="['/cartoes', cartao.id, 'faturas', cartao.faturaAberta.mes]">Ver fatura</a>
+              </div>
+              <div class="cartoes__rodape">
+                <span>Limite <app-valor [valor]="cartao.limite" tipo="saldo" /></span>
+                @if (cartao.contaPagamentoArquivada) {
+                  <span class="cartoes__aviso"><app-icone nome="alerta" [tamanho]="14" />Conta de pagamento arquivada: escolha outra</span>
+                } @else if (cartao.proximaFatura.lancamentos > 0) {
+                  <span>Próxima: {{ mesSemAno(cartao.proximaFatura.mes) }}, <b class="flux-num">{{ textoDoTotal(cartao.proximaFatura.total) }}</b></span>
+                }
+              </div>
+            </section>
+          }
+        </div>
+      } @else if (temContaQuePaga()) {
+        <app-estado-vazio icone="cartao" titulo="Nenhum cartão ainda" texto="Cadastre o cartão com os dias de fechamento e de vencimento: cada compra cai sozinha na fatura certa, e as parcelas se espalham pelas próximas.">
+          <button mat-flat-button type="button" (click)="novoCartao()"><app-icone nome="mais" [tamanho]="18" [traco]="2.2" />Novo cartão</button>
+        </app-estado-vazio>
+      } @else {
+        <app-estado-vazio icone="contas" titulo="Cadastre uma conta primeiro" texto="O cartão precisa de uma conta corrente, poupança ou carteira para pagar a fatura.">
+          <a mat-flat-button routerLink="/contas" [queryParams]="{ nova: 'conta' }">Cadastrar conta</a>
+        </app-estado-vazio>
+      }
+
+      @if (lista.arquivados.length > 0) {
+        <section class="flux-card flux-arquivadas">
+          <button type="button" class="flux-arquivadas__alternar" [attr.aria-expanded]="arquivadosAbertos()" aria-controls="cartoes-arquivados" (click)="alternarArquivados()">
+            Arquivados <span class="flux-contador">{{ lista.arquivados.length }}</span>
+            <app-icone class="flux-arquivadas__seta" nome="baixo" />
+          </button>
+          <div id="cartoes-arquivados" class="flux-arquivadas__corpo" [hidden]="!arquivadosAbertos()">
+            @if (erroAoReativar(); as mensagem) {
+              <app-alerta class="flux-arquivadas__erro" tipo="erro" icone="alerta" titulo="Não foi possível reativar"><p class="flux-alerta__texto">{{ mensagem }}</p></app-alerta>
+            }
+            <p class="flux-arquivadas__explica">Saem dos seletores; as compras e as faturas ficam só para leitura.</p>
+            <ul class="flux-lista">
+              @for (cartao of lista.arquivados; track cartao.id) {
+                <li class="cartoes__arquivado">
+                  <span class="cartoes__selo cartoes__selo--p" aria-hidden="true"><app-icone nome="cartao" [tamanho]="14" [traco]="2" /></span>
+                  <span class="cartoes__nome-arquivado">{{ cartao.nome }}</span>
+                  <span class="cartoes__meta">Arquivado em {{ dataCurtaDoInstante(cartao.arquivadoEm ?? '') }}</span>
+                  <button mat-stroked-button type="button" (click)="reativar(cartao)"><app-icone nome="reativar" [tamanho]="16" />Reativar</button>
+                  <button type="button" class="flux-botao-acoes" [attr.aria-label]="'Mais ações de ' + cartao.nome" [matMenuTriggerFor]="menuDoArquivado" [matMenuTriggerData]="{ cartao }"><app-icone nome="mais-h" /></button>
+                </li>
+              }
+            </ul>
+          </div>
+        </section>
+      }
+    }
+  }
+</div>
+
+<mat-menu #menuDoCartao="matMenu" class="flux-menu" xPosition="before">
+  <ng-template matMenuContent let-cartao="cartao">
+    <button mat-menu-item type="button" (click)="verFatura(cartao)"><app-icone matMenuItemIcon nome="cartao" />Ver fatura</button>
+    <button mat-menu-item type="button" (click)="editar(cartao)"><app-icone matMenuItemIcon nome="editar" />Editar</button>
+    <button mat-menu-item type="button" (click)="arquivar(cartao)"><app-icone matMenuItemIcon nome="arquivar" />Arquivar</button>
+    <mat-divider />
+    <button mat-menu-item type="button" class="flux-menu__perigo" (click)="excluir(cartao)"><app-icone matMenuItemIcon nome="lixeira" />Excluir</button>
+  </ng-template>
+</mat-menu>
+
+<mat-menu #menuDoArquivado="matMenu" class="flux-menu" xPosition="before">
+  <ng-template matMenuContent let-cartao="cartao">
+    <button mat-menu-item type="button" (click)="verFatura(cartao)"><app-icone matMenuItemIcon nome="cartao" />Ver faturas</button>
+    <mat-divider />
+    <button mat-menu-item type="button" class="flux-menu__perigo" (click)="excluir(cartao)"><app-icone matMenuItemIcon nome="lixeira" />Excluir</button>
+  </ng-template>
+</mat-menu>

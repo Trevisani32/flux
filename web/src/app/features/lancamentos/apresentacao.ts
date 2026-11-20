@@ -1,3 +1,4 @@
+import { dataCurta } from '../../shared/datas/data-curta';
 import { GrupoDeCategorias } from '../categorias/categorias.service';
 import { ItemDaLista } from './lancamentos.service';
 
@@ -52,7 +53,8 @@ export function quantidadeDeItens(lancamentos: number, transferencias: number): 
  * A meta da linha. Receita e despesa: "Alimentação › Mercado · Banco Horizonte" (curto, só
  * "Mercado"); sem a conta quando a lista já é dela. Transferência: "Banco Horizonte →
  * Poupança" ou, com o filtro de uma das contas, "Para Poupança"/"De Banco Horizonte"; fora do
- * celular, com "· fora dos totais" (decisão 26).
+ * celular, com "· fora dos totais" (decisão 26). Lançamento de fatura (Fatia 05a): a categoria, o cartão
+ * (sem ele quando a lista já é dele, `contaFiltrada`) e "compra em 02/11"; curto, sem a categoria.
  */
 export function metaDoItem(item: ItemDaLista, curto: boolean, contaFiltrada: boolean): string {
   if (item.tipo === 'TRANSFERENCIA') {
@@ -64,6 +66,11 @@ export function metaDoItem(item: ItemDaLista, curto: boolean, contaFiltrada: boo
   const categoria = item.categoriaNome === null ? null
     : curto || item.categoriaMaeNome === null ? item.categoriaNome
       : `${item.categoriaMaeNome} › ${item.categoriaNome}`;
+  if (item.compraId !== undefined && item.compraId !== null) {
+    // Fatia 05a (decisão 22): "Educação · Cartão Horizonte · compra em 02/11"; curto, sem a categoria; o estorno, "em 11/11".
+    const quando = `${item.estorno === true ? 'em' : 'compra em'} ${dataCurta(item.dataCompra ?? item.data).slice(0, 5)}`;
+    return [curto ? null : categoria, contaFiltrada ? null : item.cartaoNome ?? null, quando].filter((parte) => parte !== null).join(' · ');
+  }
   return [categoria, contaFiltrada ? null : item.contaNome].filter((parte) => parte !== null).join(' · ');
 }
 

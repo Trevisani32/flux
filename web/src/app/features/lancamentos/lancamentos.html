@@ -80,17 +80,29 @@
                   <button type="button" [attr.aria-pressed]="filtros().tipo === opcao.valor" (click)="mudarTipo(opcao.valor)">{{ opcao.rotulo }}</button>
                 }
               </div>
-              <label class="lancamentos__filtro" [class.lancamentos__filtro--ativo]="filtros().conta !== null">
-                <span class="flux-visualmente-oculto">Conta</span>
+              <label class="lancamentos__filtro" [class.lancamentos__filtro--ativo]="filtros().conta !== null || filtros().cartao !== null">
+                <span class="flux-visualmente-oculto">Conta ou cartão</span>
                 <select #filtroDeConta (change)="mudarConta(filtroDeConta.value)">
-                  <option value="" [selected]="filtros().conta === null">Todas as contas</option>
-                  @for (conta of contas()?.ativas ?? []; track conta.id) {
-                    <option [value]="conta.id" [selected]="filtros().conta === conta.id">{{ conta.nome }}</option>
+                  <option value="" [selected]="filtros().conta === null && filtros().cartao === null">Todas as contas e cartões</option>
+                  <optgroup label="Contas">
+                    @for (conta of contas()?.ativas ?? []; track conta.id) {
+                      <option [value]="conta.id" [selected]="filtros().conta === conta.id">{{ conta.nome }}</option>
+                    }
+                  </optgroup>
+                  @if ((cartoes()?.ativos ?? []).length > 0) {
+                    <optgroup label="Cartões">
+                      @for (cartao of cartoes()?.ativos ?? []; track cartao.id) {
+                        <option [value]="'cartao-' + cartao.id" [selected]="filtros().cartao === cartao.id">{{ cartao.nome }}</option>
+                      }
+                    </optgroup>
                   }
-                  @if ((contas()?.arquivadas ?? []).length > 0) {
-                    <optgroup label="Arquivadas">
+                  @if ((contas()?.arquivadas ?? []).length + (cartoes()?.arquivados ?? []).length > 0) {
+                    <optgroup label="Arquivados">
                       @for (conta of contas()?.arquivadas ?? []; track conta.id) {
                         <option [value]="conta.id" [selected]="filtros().conta === conta.id">{{ conta.nome }}</option>
+                      }
+                      @for (cartao of cartoes()?.arquivados ?? []; track cartao.id) {
+                        <option [value]="'cartao-' + cartao.id" [selected]="filtros().cartao === cartao.id">{{ cartao.nome }}</option>
                       }
                     </optgroup>
                   }
@@ -132,6 +144,12 @@
               <button mat-stroked-button type="button" (click)="aplicarRegras()"><app-icone nome="regra" [tamanho]="18" />Aplicar regras</button>
             </div>
           }
+          @if (lista.fatura; as fatura) {
+            <div class="lancamentos__fatura" role="note">
+              <span><b>Fatura de {{ mesSemAno(fatura.mes) }}</b> · fecha {{ diaEMes(fatura.fechamento) }} · vence {{ diaEMes(fatura.vencimento) }} · <b class="flux-num">{{ textoDoTotal(fatura.total) }}</b></span>
+              <a class="flux-link" [routerLink]="['/cartoes', fatura.cartaoId, 'faturas', fatura.mes]">Ver fatura</a>
+            </div>
+          }
           @if (lista.dias.length === 0) {
             <app-estado-vazio icone="busca" titulo="Nada encontrado" [texto]="'Nenhum lançamento de ' + nomeDoMes(lista.mes).split(' ')[0] + ' passa por estes filtros.'">
               <button mat-stroked-button type="button" (click)="limparFiltros()">Limpar filtros</button>
@@ -148,7 +166,7 @@
                   </h3>
                   <ul class="flux-lista">
                     @for (item of dia.itens; track item.tipo + item.id) {
-                      <li class="lancamentos__item"><app-linha-do-lancamento [item]="item" [contaFiltrada]="filtros().conta !== null" (abrir)="abrir($event)" /></li>
+                      <li class="lancamentos__item"><app-linha-do-lancamento [item]="item" [contaFiltrada]="filtros().conta !== null || filtros().cartao !== null" (abrir)="abrir($event)" /></li>
                     }
                   </ul>
                 </div>

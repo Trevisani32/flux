@@ -1,0 +1,201 @@
+@if (falhaAoCarregar(); as mensagem) {
+  <div class="compra">
+    <div class="compra__cabecalho">
+      <button type="button" class="compra__voltar flux-so-celular" aria-label="Voltar" (click)="cancelar()"><app-icone nome="esquerda" /></button>
+      <h2 mat-dialog-title class="compra__titulo">{{ titulo() }}</h2>
+    </div>
+    <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem">
+      <div class="flux-alerta__acoes"><button mat-stroked-button type="button" (click)="carregar()">Tentar de novo</button></div>
+    </app-alerta>
+    <div class="compra__acoes"><button mat-stroked-button type="button" (click)="cancelar()">Fechar</button></div>
+  </div>
+} @else if (carregado(); as atual) {
+  @if (atual.compra !== null && atual.compra.somenteLeitura) {
+    <div class="compra">
+      <div class="compra__cabecalho">
+        <button type="button" class="compra__voltar flux-so-celular" aria-label="Voltar" (click)="cancelar()"><app-icone nome="esquerda" /></button>
+        <h2 mat-dialog-title class="compra__titulo">{{ titulo() }}</h2>
+      </div>
+      <app-alerta tipo="info" icone="arquivar" [titulo]="atual.compra.cartaoNome + ' está arquivado'"><p class="flux-alerta__texto">Reative o cartão em Cartões, na seção "Arquivados", para editar ou excluir {{ estorno ? 'este estorno' : 'esta compra' }}.</p></app-alerta>
+      <dl class="compra__ficha">
+        <dt>Valor</dt>
+        <dd><app-valor [valor]="atual.compra.valorTotal" tipo="saldo" />@if (atual.compra.parcelas > 1) { em {{ atual.compra.parcelas }}x}</dd>
+        <dt>Data</dt>
+        <dd>{{ dataCurta(atual.compra.data) }}</dd>
+        <dt>Categoria</dt>
+        <dd>{{ textoDaCategoria(atual.compra.categoriaNome, atual.compra.categoriaMaeNome) }}</dd>
+        <dt>Observação</dt>
+        <dd>{{ atual.compra.observacao ?? '—' }}</dd>
+      </dl>
+      <div class="compra__acoes"><button mat-stroked-button type="button" (click)="cancelar()">Fechar</button></div>
+    </div>
+  } @else {
+    <form class="compra" [formGroup]="formulario" (ngSubmit)="salvar()">
+      <div class="compra__cabecalho">
+        <button type="button" class="compra__voltar flux-so-celular" aria-label="Voltar" [disabled]="enviando()" (click)="cancelar()"><app-icone nome="esquerda" /></button>
+        <h2 mat-dialog-title class="compra__titulo">{{ titulo() }}</h2>
+      </div>
+
+      <div class="compra__duas">
+        <div class="flux-campo">
+          <label for="compra-cartao">Cartão</label>
+          <div class="flux-entrada" [class.flux-entrada--invalida]="erro('cartao') !== null">
+            <select id="compra-cartao" formControlName="cartao" [attr.aria-invalid]="erro('cartao') !== null ? 'true' : null" [attr.aria-describedby]="erro('cartao') !== null ? 'compra-cartao-erro' : null">
+              <option [ngValue]="null" disabled>Escolha</option>
+              @for (cartao of cartoes(); track cartao.id) {
+                <option [ngValue]="cartao.id">{{ cartao.nome }}</option>
+              }
+            </select>
+            <app-icone class="flux-entrada__seta" nome="baixo" />
+          </div>
+          @if (erro('cartao'); as mensagem) {
+            <p id="compra-cartao-erro" class="flux-campo__erro">{{ mensagem }}</p>
+          }
+        </div>
+        <div class="flux-campo">
+          <label for="compra-data">{{ estorno ? 'Data do estorno' : 'Data da compra' }}</label>
+          <div class="flux-entrada" [class.flux-entrada--invalida]="erro('data') !== null">
+            <input id="compra-data" type="date" formControlName="data" [min]="minimaDoCampo()" [max]="limite" [attr.aria-invalid]="erro('data') !== null ? 'true' : null" [attr.aria-describedby]="erro('data') !== null ? 'compra-data-erro' : null" />
+          </div>
+          @if (erro('data'); as mensagem) {
+            <p id="compra-data-erro" class="flux-campo__erro">{{ mensagem }}</p>
+          }
+        </div>
+      </div>
+
+      <div class="flux-campo">
+        <label for="compra-descricao">Descrição</label>
+        <div class="flux-entrada" [class.flux-entrada--invalida]="erro('descricao') !== null">
+          <input id="compra-descricao" type="text" formControlName="descricao" maxlength="255" autocomplete="off" [attr.aria-invalid]="erro('descricao') !== null ? 'true' : null" [attr.aria-describedby]="erro('descricao') !== null ? 'compra-descricao-erro' : null" />
+        </div>
+        @if (erro('descricao'); as mensagem) {
+          <p id="compra-descricao-erro" class="flux-campo__erro">{{ mensagem }}</p>
+        }
+      </div>
+
+      <div class="compra__duas">
+        <div class="flux-campo">
+          <label for="compra-valor">{{ estorno ? 'Valor' : 'Valor total' }}</label>
+          <div class="flux-entrada" [class.flux-entrada--invalida]="erro('valor') !== null">
+            <span class="flux-entrada__prefixo" aria-hidden="true">R$</span>
+            <input id="compra-valor" type="text" inputmode="decimal" formControlName="valor" placeholder="0,00" autocomplete="off" (blur)="formatarValor()" [attr.aria-invalid]="erro('valor') !== null ? 'true' : null" [attr.aria-describedby]="erro('valor') !== null ? 'compra-valor-erro' : null" />
+          </div>
+          @if (erro('valor'); as mensagem) {
+            <p id="compra-valor-erro" class="flux-campo__erro">{{ mensagem }}</p>
+          }
+        </div>
+        @if (estorno) {
+          <div class="flux-campo">
+            <label for="compra-categoria">Categoria <span class="flux-grupo__opcional">(opcional)</span></label>
+            <div class="flux-entrada" [class.flux-entrada--invalida]="erro('categoria') !== null">
+              <select id="compra-categoria" formControlName="categoria" [attr.aria-invalid]="erro('categoria') !== null ? 'true' : null" [attr.aria-describedby]="erro('categoria') !== null ? 'compra-categoria-erro' : null">
+                <option [ngValue]="null">Sem categoria</option>
+                @for (opcao of categorias(); track opcao.id) {
+                  <option [ngValue]="opcao.id">{{ opcao.rotulo }}</option>
+                }
+              </select>
+              <app-icone class="flux-entrada__seta" nome="baixo" />
+            </div>
+            @if (erro('categoria'); as mensagem) {
+              <p id="compra-categoria-erro" class="flux-campo__erro">{{ mensagem }}</p>
+            }
+          </div>
+        } @else {
+          <div class="flux-campo">
+            <label for="compra-parcelas">Parcelas</label>
+            <div class="flux-entrada" [class.flux-entrada--invalida]="erro('parcelas') !== null">
+              <select id="compra-parcelas" formControlName="parcelas" [attr.aria-invalid]="erro('parcelas') !== null ? 'true' : null" [attr.aria-describedby]="erro('parcelas') !== null ? 'compra-parcelas-erro' : null">
+                @for (opcao of opcoesDeParcelas; track opcao.valor) {
+                  <option [ngValue]="opcao.valor">{{ opcao.rotulo }}</option>
+                }
+              </select>
+              <app-icone class="flux-entrada__seta" nome="baixo" />
+            </div>
+            @if (erro('parcelas'); as mensagem) {
+              <p id="compra-parcelas-erro" class="flux-campo__erro">{{ mensagem }}</p>
+            }
+          </div>
+        }
+      </div>
+
+      @if (estorno) {
+        <p class="flux-dica">{{ dicaDoEstorno() }}</p>
+      } @else {
+        @if (textoDaPrevia(); as previa) {
+          <div class="compra__previa" role="status">
+            <span class="compra__titulo-previa"><app-icone nome="parcelas" [tamanho]="16" />{{ previa.titulo }}</span>
+            @if (previa.linha; as linha) {
+              <span>{{ linha }}</span>
+            }
+            @if (previa.lista.length > 0) {
+              <ol class="compra__parcelas">
+                @for (linha of previa.lista; track linha.rotulo) {
+                  <li [class.compra__parcela--fora]="linha.fora"><span>{{ linha.rotulo }}</span><span class="flux-num">{{ linha.valor }}</span></li>
+                }
+              </ol>
+            }
+            @if (previa.nota; as nota) {
+              <span class="compra__nota">{{ nota }}</span>
+            }
+          </div>
+        }
+        @if (formulario.controls.parcelas.value > 1) {
+          <label class="compra__andamento"><input id="compra-andamento" type="checkbox" class="flux-caixa" formControlName="andamento" />Compra em andamento: parte das parcelas já foi cobrada antes do Flux</label>
+        }
+        @if (emAndamento()) {
+          <div class="flux-campo compra__inicial">
+            <label for="compra-inicial">Começa na parcela</label>
+            <div class="flux-entrada" [class.flux-entrada--invalida]="erro('parcelaInicial') !== null">
+              <input id="compra-inicial" type="text" inputmode="numeric" maxlength="2" formControlName="parcelaInicial" autocomplete="off" [attr.aria-invalid]="erro('parcelaInicial') !== null ? 'true' : null" [attr.aria-describedby]="erro('parcelaInicial') !== null ? 'compra-inicial-erro' : null" />
+            </div>
+            @if (erro('parcelaInicial'); as mensagem) {
+              <p id="compra-inicial-erro" class="flux-campo__erro">{{ mensagem }}</p>
+            }
+          </div>
+        }
+        <div class="flux-campo">
+          <label for="compra-categoria">Categoria <span class="flux-grupo__opcional">(opcional)</span></label>
+          <div class="flux-entrada" [class.flux-entrada--invalida]="erro('categoria') !== null">
+            <select id="compra-categoria" formControlName="categoria" [attr.aria-invalid]="erro('categoria') !== null ? 'true' : null" [attr.aria-describedby]="erro('categoria') !== null ? 'compra-categoria-erro' : null">
+              <option [ngValue]="null">Sem categoria</option>
+              @for (opcao of categorias(); track opcao.id) {
+                <option [ngValue]="opcao.id">{{ opcao.rotulo }}</option>
+              }
+            </select>
+            <app-icone class="flux-entrada__seta" nome="baixo" />
+          </div>
+          @if (erro('categoria'); as mensagem) {
+            <p id="compra-categoria-erro" class="flux-campo__erro">{{ mensagem }}</p>
+          }
+        </div>
+      }
+
+      <div class="flux-campo">
+        <label for="compra-observacao">Observação <span class="flux-grupo__opcional">(opcional)</span></label>
+        <div class="flux-entrada flux-entrada--area" [class.flux-entrada--invalida]="erro('observacao') !== null">
+          <textarea id="compra-observacao" formControlName="observacao" rows="2" maxlength="1000" [attr.aria-invalid]="erro('observacao') !== null ? 'true' : null" [attr.aria-describedby]="erro('observacao') !== null ? 'compra-observacao-erro' : null"></textarea>
+        </div>
+        @if (erro('observacao'); as mensagem) {
+          <p id="compra-observacao-erro" class="flux-campo__erro">{{ mensagem }}</p>
+        }
+      </div>
+
+      @if (erroGeral(); as mensagem) {
+        <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem" />
+      }
+
+      <div class="compra__acoes">
+        @if (editando) {
+          <button mat-button type="button" class="compra__excluir" [disabled]="enviando()" (click)="excluir()"><app-icone nome="lixeira" [tamanho]="18" />Excluir</button>
+        }
+        <button mat-stroked-button type="button" class="flux-so-desktop" [disabled]="enviando()" (click)="cancelar()">Cancelar</button>
+        <button mat-flat-button type="submit" [disabled]="enviando()">{{ textoDoSalvar() }}</button>
+      </div>
+    </form>
+  }
+} @else {
+  <div class="compra">
+    <h2 mat-dialog-title class="compra__titulo">{{ titulo() }}</h2>
+    <p class="compra__carregando" role="status">Carregando…</p>
+  </div>
+}

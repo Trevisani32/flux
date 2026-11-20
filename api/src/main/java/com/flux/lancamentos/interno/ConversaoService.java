@@ -212,9 +212,12 @@ public class ConversaoService {
         return lados.stream().anyMatch(Lancamento::importado);
     }
 
-    /** Lançamento do usuário que não está excluído: o ignorado é um 404, como no resto de /api/lancamentos. */
+    /**
+     * Lançamento de conta do usuário que não está excluído: o ignorado e o de fatura (Fatia 05a, decisão 27) são um
+     * 404, como no resto de /api/lancamentos.
+     */
     private Lancamento encontrar(Long usuarioId, Long id) {
-        return lancamentos.findByIdAndUsuarioIdAndIgnoradoEmIsNull(id, usuarioId)
+        return lancamentos.findByIdAndUsuarioIdAndFaturaIdIsNullAndIgnoradoEmIsNull(id, usuarioId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Lançamento não encontrado."));
     }
 
@@ -240,11 +243,11 @@ public class ConversaoService {
     }
 
     /**
-     * Decisão 27, conferida de novo dentro da trava: o par inexistente, de outro usuário, excluído ou que
-     * não serve dá o mesmo 422; o que só não serve porque a conta foi arquivada diz a conta.
+     * Decisão 27, conferida de novo dentro da trava: o par inexistente, de outro usuário, excluído, de fatura
+     * (Fatia 05a) ou que não serve dá o mesmo 422; o que só não serve porque a conta foi arquivada diz a conta.
      */
     private Lancamento parEscolhido(Long usuarioId, Lancamento fixo, Long parId) {
-        Lancamento par = lancamentos.findByIdAndUsuarioIdAndIgnoradoEmIsNull(parId, usuarioId)
+        Lancamento par = lancamentos.findByIdAndUsuarioIdAndFaturaIdIsNullAndIgnoradoEmIsNull(parId, usuarioId)
                 .orElseThrow(() -> new RegraDeNegocioException(PAR_QUE_NAO_SERVE, "PAR_INVALIDO"));
         if (par.transferencia()) {
             throw new RegraDeNegocioException("O lançamento escolhido já está numa transferência.", "PAR_INVALIDO");

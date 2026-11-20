@@ -212,8 +212,11 @@ app-lancamentos .lancamentos__busca input::placeholder {
   color: var(--flux-texto-3);
 }
 
+// No desktop estreito, os filtros descem de linha em vez de passar da largura; no celular, a linha rola (abaixo).
 app-lancamentos .lancamentos__rolagem {
+  min-width: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
 }
@@ -353,6 +356,7 @@ app-lancamentos .lancamentos__item + .lancamentos__item {
     width: calc(100% + 2 * var(--flux-margem));
     margin: 0 calc(-1 * var(--flux-margem));
     padding: 0 var(--flux-margem) 2px;
+    flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
   }

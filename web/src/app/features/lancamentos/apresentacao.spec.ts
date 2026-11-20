@@ -50,6 +50,17 @@ describe('apresentação dos lançamentos', () => {
     expect(metaDoItem({ ...transferencia, direcao: 'ENTRADA' }, true, true)).toBe('De Banco Horizonte');
   });
 
+  it('monta a meta da parcela e do estorno no cartão (Fatia 05a, decisão 22)', () => {
+    const parcela = item({ data: '2026-12-10', contaId: null as unknown as number, contaNome: null as unknown as string, categoriaNome: 'Compras',
+      categoriaMaeNome: null, cartaoId: 2, cartaoNome: 'Cartão Horizonte', compraId: 9, estorno: false, parcela: 1, parcelas: 3,
+      dataCompra: '2026-11-05' });
+    expect(metaDoItem(parcela, false, false)).toBe('Compras · Cartão Horizonte · compra em 05/11');
+    expect(metaDoItem(parcela, true, false)).toBe('Cartão Horizonte · compra em 05/11');
+    expect(metaDoItem(parcela, false, true)).toBe('Compras · compra em 05/11');
+    const estorno = { ...parcela, tipo: 'RECEITA' as const, estorno: true, categoriaNome: null, categoriaId: null, dataCompra: '2026-11-11' };
+    expect(metaDoItem(estorno, false, false)).toBe('Cartão Horizonte · em 11/11');
+  });
+
   it('lista as categorias com as subcategorias recuadas e as arquivadas à parte', () => {
     const alimentacao = categoria(1, 'Alimentação', [categoria(2, 'Mercado'), categoria(3, 'Restaurante')]);
     expect(opcoesDeCategoria({ ativas: [alimentacao, categoria(4, 'Lazer')], arquivadas: [] })).toEqual([

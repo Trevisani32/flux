@@ -5,6 +5,8 @@ import { BehaviorSubject, Observable, Subject, of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AGORA } from '../../core/tempo/agora';
+import { Cartao, CartoesService, ListaDeCartoes } from '../cartoes/cartoes.service';
+import { CompraDialogo } from '../cartoes/compra-dialogo/compra-dialogo';
 import { Categoria, CategoriasService, ListaDeCategorias } from '../categorias/categorias.service';
 import { Conta, ContasService, ListaDeContas } from '../contas/contas.service';
 import { FluxoDeRegras } from '../regras/fluxo-de-regras';
@@ -34,6 +36,14 @@ const contas: ListaDeContas = {
   arquivadas: [conta(3, 'Conta salário', '2026-11-03T15:00:00Z')],
   totais: { geral: 0, disponivel: 0, investimentos: 0 },
 };
+
+function cartao(id: number, nome: string, arquivadoEm: string | null = null): Cartao {
+  const fatura = { mes: '2026-12', inicio: '2026-11-04', fechamento: '2026-12-03', vencimento: '2026-12-10', total: 0, lancamentos: 0 };
+  return { id, nome, limite: 5000, diaFechamento: 3, diaVencimento: 10, contaPagamentoId: 1, contaPagamentoNome: 'Banco Horizonte',
+    contaPagamentoArquivada: false, cor: 'ROXO', arquivadoEm, faturaAberta: fatura, proximaFatura: fatura, emAberto: 0, lancamentosEmAberto: 0 };
+}
+
+const cartoes: ListaDeCartoes = { ativos: [cartao(7, 'Cartão Horizonte')], arquivados: [cartao(8, 'Cartão Lua', '2026-11-01T10:00:00Z')] };
 
 const categorias: ListaDeCategorias = {
   despesas: { ativas: [categoria(1, 'Alimentação', [categoria(2, 'Mercado')])], arquivadas: [categoria(9, 'Educação')] },
@@ -88,6 +98,7 @@ describe('Lancamentos', () => {
         { provide: ActivatedRoute, useValue: { queryParamMap: url.asObservable() } },
         { provide: LancamentosService, useValue: servico },
         { provide: ContasService, useValue: { listar: () => of(listaDeContas) } },
+        { provide: CartoesService, useValue: { listar: () => of(cartoes) } },
         { provide: CategoriasService, useValue: { listar: () => of(categorias) } },
         { provide: MatDialog, useValue: dialogo },
         { provide: FluxoDeRegras, useValue: fluxo },
@@ -117,7 +128,7 @@ describe('Lancamentos', () => {
   it('lê o mês e os filtros da URL, chama a API com eles e mostra totais, dias e linhas', () => {
     const { elemento, servico } = criar({ mes: '2026-10', conta: '1' });
 
-    expect(servico.listar).toHaveBeenCalledWith({ mes: '2026-10', conta: 1, categoria: null, tipo: null, busca: '' });
+    expect(servico.listar).toHaveBeenCalledWith({ mes: '2026-10', conta: 1, cartao: null, categoria: null, tipo: null, busca: '' });
     expect(textos(elemento, '.lancamentos__subtitulo')).toEqual(['Banco Horizonte · 2 lançamentos e 1 transferência · Limpar filtros']);
     expect(textos(elemento, '.lancamentos__nome-do-mes')).toEqual(['outubro de 2026']);
     expect(textos(elemento, '.lancamentos__totais .lancamentos__rotulo')).toEqual(['Entradas · 1', 'Saídas · 1', 'Resultado · sem transferências']);
@@ -130,27 +141,34 @@ describe('Lancamentos', () => {
     expect(valores.map((valor) => valor.querySelector('.valor__texto')?.textContent?.replace(/\s/g, ' '))).toEqual(['−R$ 287,43', 'R$ 1.000,00', '+R$ 7.200,00']);
     expect(valores[1].classList).toContain('flux-valor--neutro');
     expect(elemento.querySelector<HTMLSelectElement>('.lancamentos__filtro select')?.value).toBe('1');
-    expect(Array.from(elemento.querySelectorAll('optgroup')).map((grupo) => grupo.label)).toEqual(['Arquivadas', 'Despesas', 'Receitas', 'Arquivadas']);
+    expect(Array.from(elemento.querySelectorAll('optgroup')).map((grupo) => grupo.label))
+      .toEqual(['Contas', 'Cartões', 'Arquivados', 'Despesas', 'Receitas', 'Arquivadas']);
+    expect(textos(elemento, '.lancamentos__filtro select option').slice(0, 6))
+      .toEqual(['Todas as contas e cartões', 'Banco Horizonte', 'Poupança', 'Cartão Horizonte', 'Conta salário', 'Cartão Lua']);
+    expect(elemento.querySelector('.lancamentos__fatura')).toBeNull();
   });
 
   it('mudar mês, tipo, conta e categoria navega com os parâmetros, e o mês de hoje sai da URL', () => {
     const { elemento, atualizar, servico, navegar, url } = criar({});
-    expect(servico.listar).toHaveBeenCalledWith({ mes: '2026-11', conta: null, categoria: null, tipo: null, busca: '' });
+    expect(servico.listar).toHaveBeenCalledWith({ mes: '2026-11', conta: null, cartao: null, categoria: null, tipo: null, busca: '' });
 
     elemento.querySelector<HTMLButtonElement>('button[aria-label="Mês anterior"]')?.click();
-    expect(parametrosNavegados(navegar)).toEqual({ mes: '2026-10', conta: null, categoria: null, tipo: null, busca: null });
+    expect(parametrosNavegados(navegar)).toEqual({ mes: '2026-10', conta: null, cartao: null, categoria: null, tipo: null, busca: null });
 
     url.next(convertToParamMap({ mes: '2026-10' }));
     atualizar();
-    expect(servico.listar).toHaveBeenLastCalledWith({ mes: '2026-10', conta: null, categoria: null, tipo: null, busca: '' });
+    expect(servico.listar).toHaveBeenLastCalledWith({ mes: '2026-10', conta: null, cartao: null, categoria: null, tipo: null, busca: '' });
 
     botao(elemento, 'Despesas').click();
-    expect(parametrosNavegados(navegar)).toEqual({ mes: '2026-10', conta: null, categoria: null, tipo: 'despesa', busca: null });
+    expect(parametrosNavegados(navegar)).toEqual({ mes: '2026-10', conta: null, cartao: null, categoria: null, tipo: 'despesa', busca: null });
 
     const [filtroDeConta, filtroDeCategoria] = Array.from(elemento.querySelectorAll<HTMLSelectElement>('.lancamentos__filtro select'));
     filtroDeConta.value = '3';
     filtroDeConta.dispatchEvent(new Event('change'));
-    expect(parametrosNavegados(navegar)).toEqual({ mes: '2026-10', conta: 3, categoria: null, tipo: null, busca: null });
+    expect(parametrosNavegados(navegar)).toEqual({ mes: '2026-10', conta: 3, cartao: null, categoria: null, tipo: null, busca: null });
+    filtroDeConta.value = 'cartao-7';
+    filtroDeConta.dispatchEvent(new Event('change'));
+    expect(parametrosNavegados(navegar)).toEqual({ mes: '2026-10', conta: null, cartao: 7, categoria: null, tipo: null, busca: null });
     filtroDeCategoria.value = 'sem';
     filtroDeCategoria.dispatchEvent(new Event('change'));
     expect(parametrosNavegados(navegar)).toMatchObject({ categoria: 'sem' });
@@ -172,7 +190,7 @@ describe('Lancamentos', () => {
     vi.advanceTimersByTime(299);
     expect(navegar).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
-    expect(parametrosNavegados(navegar)).toEqual({ mes: '2026-10', conta: null, categoria: null, tipo: null, busca: 'mercado' });
+    expect(parametrosNavegados(navegar)).toEqual({ mes: '2026-10', conta: null, cartao: null, categoria: null, tipo: null, busca: 'mercado' });
   });
 
   it('limpa os filtros, volta ao mês atual e não passa de 12 meses à frente', () => {
@@ -180,10 +198,10 @@ describe('Lancamentos', () => {
 
     expect(elemento.querySelector<HTMLButtonElement>('button[aria-label="Próximo mês"]')?.disabled).toBe(true);
     botao(elemento, 'Mês atual').click();
-    expect(parametrosNavegados(navegar)).toEqual({ mes: null, conta: null, categoria: null, tipo: 'receita', busca: 'salário' });
+    expect(parametrosNavegados(navegar)).toEqual({ mes: null, conta: null, cartao: null, categoria: null, tipo: 'receita', busca: 'salário' });
     expect(textos(elemento, '.estado-vazio__titulo')).toEqual(['Nada encontrado']);
     botao(elemento, 'Limpar filtros').click();
-    expect(parametrosNavegados(navegar)).toEqual({ mes: '2027-11', conta: null, categoria: null, tipo: null, busca: null });
+    expect(parametrosNavegados(navegar)).toEqual({ mes: '2027-11', conta: null, cartao: null, categoria: null, tipo: null, busca: null });
   });
 
   it('mostra o mês vazio, o aviso das transferências e o convite sem conta', () => {
@@ -218,6 +236,33 @@ describe('Lancamentos', () => {
     fechamentos[1].next('salvo');
     expect(servico.listar).toHaveBeenCalledTimes(2);
     fechamentos[0].next(undefined);
+    expect(servico.listar).toHaveBeenCalledTimes(2);
+  });
+
+  it('com o filtro de um cartão, mostra a fatura do mês; a parcela abre a compra (Fatia 05a, decisões 23 e 25)', () => {
+    const parcela = item({ id: 30, data: '2026-12-10', descricao: 'Sapataria Passo Firme', valor: -150, contaId: null as unknown as number,
+      contaNome: null as unknown as string, categoriaId: null, categoriaNome: null, categoriaMaeNome: null, cartaoId: 7,
+      cartaoNome: 'Cartão Horizonte', cartaoCor: 'ROXO', compraId: 12, estorno: false, parcela: 1, parcelas: 3, dataCompra: '2026-11-05' });
+    const dezembro: ListaDoMes = { ...vazia('2026-12'), quantidadeLancamentos: 1, dias: [{ data: '2026-12-10', saldoNoFimDoDia: null, itens: [parcela] }],
+      fatura: { cartaoId: 7, cartaoNome: 'Cartão Horizonte', cartaoCor: 'ROXO', mes: '2026-12', fechamento: '2026-12-03',
+        vencimento: '2026-12-10', situacao: 'ABERTA', total: 1113.69 } };
+    const { elemento, servico, dialogo, fechamentos } = criar({ mes: '2026-12', cartao: '7' }, () => of(dezembro));
+
+    expect(servico.listar).toHaveBeenCalledWith({ mes: '2026-12', conta: null, cartao: 7, categoria: null, tipo: null, busca: '' });
+    expect(textos(elemento, '.lancamentos__subtitulo')).toEqual(['Cartão Horizonte · 1 lançamento · Limpar filtros']);
+    expect(elemento.querySelector<HTMLSelectElement>('.lancamentos__filtro select')?.value).toBe('cartao-7');
+    expect(elemento.querySelector('.lancamentos__fatura span')?.textContent?.replace(/\s+/g, ' '))
+      .toBe('Fatura de dezembro · fecha 03/12 · vence 10/12 · R$ 1.113,69');
+    expect(elemento.querySelector('.lancamentos__fatura a')?.getAttribute('href')).toBe('/cartoes/7/faturas/2026-12');
+    expect(textos(elemento, '.linha__meta-texto.flux-so-desktop')).toEqual(['compra em 05/11']);
+    expect(textos(elemento, '.linha__pilula--parcela')).toEqual(['1/3']);
+    expect(elemento.querySelector('.linha__selo--cartao')).not.toBeNull();
+
+    elemento.querySelector<HTMLButtonElement>('.linha')?.click();
+    const [componente, configuracao] = dialogo.open.mock.lastCall as unknown as [unknown, { data: { tipo: string; id: number; hoje: string } }];
+    expect(componente).toBe(CompraDialogo);
+    expect(configuracao.data).toMatchObject({ tipo: 'COMPRA', id: 12, hoje: '2026-11-09' });
+    fechamentos[0].next('excluido');
     expect(servico.listar).toHaveBeenCalledTimes(2);
   });
 

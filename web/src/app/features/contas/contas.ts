@@ -142,13 +142,15 @@ export class Contas {
       confirmar: 'Excluir conta',
       falha: 'Não foi possível excluir a conta. Tente novamente.',
       acao: () => this.servico.excluir(conta.id),
-      // Decisão 33: com lançamentos, o mesmo diálogo vira o bloqueio, com o uso que veio no 422.
+      // Decisão 33: com lançamentos, o mesmo diálogo vira o bloqueio, com o motivo que veio no 422 (Fatia 05a: o motivo
+      // traz o verbo, "tem 34 lançamentos" ou "é a conta de pagamento de 1 cartão").
       bloqueio: {
         codigo: 'CONTA_EM_USO',
         titulo: 'Esta conta não pode ser excluída',
-        paragrafo: (uso) => arquivada
-          ? [{ forte: conta.nome }, ` tem ${uso}. Ela continua arquivada, com o histórico nos relatórios.`]
-          : [{ forte: conta.nome }, ` tem ${uso}. Para tirá-la do saldo total e dos seletores sem perder o histórico, arquive a conta.`],
+        propriedade: 'motivo',
+        paragrafo: (motivo) => arquivada
+          ? [{ forte: conta.nome }, ` ${motivo}. Ela continua arquivada, com o histórico nos relatórios.`]
+          : [{ forte: conta.nome }, ` ${motivo}. Para tirá-la do saldo total e dos seletores sem perder o histórico, arquive a conta.`],
         alternativa: arquivada ? undefined : 'Arquivar conta',
       },
     }).subscribe((resultado) => {

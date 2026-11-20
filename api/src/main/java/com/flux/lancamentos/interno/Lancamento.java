@@ -16,8 +16,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 /**
- * Uma movimentação numa conta. O valor é guardado com sinal (ADR 0002): receita positiva,
- * despesa negativa; numa transferência, a saída é negativa e a entrada, positiva.
+ * Uma movimentação numa conta ou, desde a Fatia 05a, numa fatura de cartão (a parcela e o estorno, sem
+ * conta). O valor é guardado com sinal (ADR 0002): receita positiva, despesa negativa; numa
+ * transferência, a saída é negativa e a entrada, positiva.
  */
 @Entity
 @Table(name = "lancamentos")
@@ -30,7 +31,8 @@ public class Lancamento {
     @Column(name = "usuario_id", nullable = false)
     private Long usuarioId;
 
-    @Column(name = "conta_id", nullable = false)
+    /** Nulo na parcela e no estorno, que estão numa fatura (Fatia 05a, ADR 0017). */
+    @Column(name = "conta_id")
     private Long contaId;
 
     @Column(nullable = false)
@@ -82,7 +84,48 @@ public class Lancamento {
     @Column(name = "ignorado_em")
     private Instant ignoradoEm;
 
+    /** Fatia 05a: só na parcela e no estorno, que estão numa fatura do cartão (ADR 0017). */
+    @Column(name = "cartao_id")
+    private Long cartaoId;
+
+    @Column(name = "fatura_id")
+    private Long faturaId;
+
+    @Column(name = "compra_id")
+    private Long compraId;
+
+    @Column(name = "numero_parcela")
+    private Integer numeroParcela;
+
     protected Lancamento() {
+    }
+
+    /**
+     * Fatia 05a (decisões 20 e 22): uma parcela da compra (despesa, valor negativo) ou o estorno (receita,
+     * positivo), na fatura {@code faturaId}, com a data do vencimento dela. Sem conta.
+     */
+    public static Lancamento daFatura(Long usuarioId, Long cartaoId, Long faturaId, LocalDate vencimento, Long compraId, int numeroParcela,
+                                      BigDecimal valor, String descricao, Long categoriaId, String observacao, Instant agora) {
+        Lancamento lancamento = new Lancamento(usuarioId, null, agora);
+        lancamento.cartaoId = cartaoId;
+        lancamento.faturaId = faturaId;
+        lancamento.compraId = compraId;
+        lancamento.numeroParcela = numeroParcela;
+        lancamento.alterar(valor.signum() > 0 ? TipoLancamento.RECEITA : TipoLancamento.DESPESA, null, vencimento, descricao, valor,
+                categoriaId, observacao, agora);
+        return lancamento;
+    }
+
+    /** Fatia 05a (decisões 7 e 12): a parcela muda de fatura e passa à data do vencimento da nova. */
+    public void moverParaFatura(Long faturaId, LocalDate vencimento, Instant agora) {
+        this.faturaId = faturaId;
+        this.data = vencimento;
+        this.atualizadoEm = agora;
+    }
+
+    /** Fatia 05a (decisão 19): descrição, categoria e observação mudam sem regravar as parcelas. */
+    public void alterarTextosDaFatura(String descricao, Long categoriaId, String observacao, Instant agora) {
+        alterar(tipo, null, data, descricao, valor, categoriaId, observacao, agora);
     }
 
     /** Lançamento manual novo; {@code transferenciaId} só num lado de transferência. */
@@ -195,6 +238,27 @@ public class Lancamento {
 
     public boolean importado() {
         return origem == OrigemLancamento.IMPORTADO;
+    }
+
+    /** Fatia 05a: parcela ou estorno, numa fatura do cartão. */
+    public boolean deFatura() {
+        return faturaId != null;
+    }
+
+    public Long getCartaoId() {
+        return cartaoId;
+    }
+
+    public Long getFaturaId() {
+        return faturaId;
+    }
+
+    public Long getCompraId() {
+        return compraId;
+    }
+
+    public Integer getNumeroParcela() {
+        return numeroParcela;
     }
 
     public Long getId() {

@@ -40,14 +40,18 @@ public class LancamentoController {
         this.conversaoService = conversaoService;
     }
 
-    /** ?mes=2026-11&conta=3&categoria=12|sem&tipo=receita|despesa|transferencia&busca=texto, todos opcionais. */
+    /**
+     * ?mes=2026-11&conta=3&categoria=12|sem&tipo=receita|despesa|transferencia&busca=texto, todos opcionais; desde a
+     * Fatia 05a, ?cartao=2 no lugar de ?conta= (decisão 23).
+     */
     @GetMapping
     public ListaDoMesResponse listar(@RequestParam(required = false) YearMonth mes,
                                      @RequestParam(required = false) Long conta,
+                                     @RequestParam(required = false) Long cartao,
                                      @RequestParam(required = false) String categoria,
                                      @RequestParam(required = false) String tipo,
                                      @RequestParam(required = false) String busca) {
-        return lista.listar(usuarioAtual.id(), FiltroDaLista.de(mes, conta, categoria, tipo, busca));
+        return lista.listar(usuarioAtual.id(), FiltroDaLista.de(mes, conta, cartao, categoria, tipo, busca));
     }
 
     @GetMapping("/ultimos")

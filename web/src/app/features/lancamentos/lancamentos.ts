@@ -12,6 +12,9 @@ import { dataIsoNoFuso } from '../../shared/datas/data-curta';
 import { EstadoVazio } from '../../shared/estado-vazio/estado-vazio';
 import { Icone } from '../../shared/icone/icone';
 import { Valor } from '../../shared/valor/valor';
+import { abrirCompra } from '../cartoes/compra-dialogo/compra-dialogo';
+import { CartoesService, ListaDeCartoes } from '../cartoes/cartoes.service';
+import { diaEMes, mesSemAno, textoDoTotal } from '../cartoes/apresentacao';
 import { CategoriasService, ListaDeCategorias } from '../categorias/categorias.service';
 import { ContasService, ListaDeContas } from '../contas/contas.service';
 import { FluxoDeRegras } from '../regras/fluxo-de-regras';
@@ -30,7 +33,8 @@ interface OpcaoDeTipo {
 
 /**
  * A lista de um mês, com totais e filtros, que vivem na URL (decisão 13). Mudar um filtro
- * navega; a lista recarrega quando a URL muda.
+ * navega; a lista recarrega quando a URL muda. Fatia 05a: o filtro "Conta ou cartão" (decisão 23), a
+ * faixa da fatura com o filtro de um cartão e a parcela que abre a compra (decisão 25).
  */
 @Component({
   selector: 'app-lancamentos',
@@ -43,6 +47,7 @@ export class Lancamentos {
   private readonly router = inject(Router);
   private readonly servico = inject(LancamentosService);
   private readonly contasService = inject(ContasService);
+  private readonly cartoesService = inject(CartoesService);
   private readonly categoriasService = inject(CategoriasService);
   private readonly dialogo = inject(MatDialog);
   private readonly fluxoDeRegras = inject(FluxoDeRegras);
@@ -53,6 +58,9 @@ export class Lancamentos {
   readonly nomeDoMes = nomeDoMes;
   readonly rotuloDoDia = rotuloDoDia;
   readonly marcaDoDia = marcaDoDia;
+  readonly diaEMes = diaEMes;
+  readonly mesSemAno = mesSemAno;
+  readonly textoDoTotal = textoDoTotal;
   readonly tipos: readonly OpcaoDeTipo[] = [
     { valor: null, rotulo: 'Todos' },
     { valor: 'receita', rotulo: 'Receitas' },
@@ -62,6 +70,8 @@ export class Lancamentos {
   readonly filtros = signal<Filtros>(filtrosDaUrl(convertToParamMap({}), this.hoje));
   readonly lista = signal<ListaDoMes | null>(null);
   readonly contas = signal<ListaDeContas | null>(null);
+  /** Fatia 05a: os cartões do filtro "Conta ou cartão"; sem eles (erro ao carregar), o filtro só tem as contas. */
+  readonly cartoes = signal<ListaDeCartoes | null>(null);
   readonly categorias = signal<ListaDeCategorias | null>(null);
   readonly falha = signal(false);
   readonly filtrando = computed(() => temFiltro(this.filtros()));
@@ -78,9 +88,11 @@ export class Lancamentos {
       return '';
     }
     const contas = this.contas();
-    const conta = this.filtros().conta;
-    const nome = conta === null || contas === null ? null
-      : [...contas.ativas, ...contas.arquivadas].find((item) => item.id === conta)?.nome ?? null;
+    const cartoes = this.cartoes();
+    const { conta, cartao } = this.filtros();
+    const nome = conta !== null && contas !== null ? [...contas.ativas, ...contas.arquivadas].find((item) => item.id === conta)?.nome ?? null
+      : cartao !== null && cartoes !== null ? [...cartoes.ativos, ...cartoes.arquivados].find((item) => item.id === cartao)?.nome ?? null
+        : null;
     return `${nome ?? 'Todas as contas'} · ${quantidadeDeItens(lista.quantidadeLancamentos, lista.quantidadeTransferencias)}`;
   });
   readonly categoriasDeDespesa = computed(() => this.opcoes((lista) => opcoesDeCategoria(lista.despesas)));
@@ -123,8 +135,10 @@ export class Lancamentos {
     this.navegar({ ...this.filtros(), tipo });
   }
 
+  /** O filtro "Conta ou cartão": o valor é o id da conta ou "cartao-" e o id do cartão (decisão 23 da 05a). */
   mudarConta(valor: string): void {
-    this.navegar({ ...this.filtros(), conta: valor === '' ? null : Number(valor) });
+    const cartao = valor.startsWith('cartao-') ? Number(valor.slice(7)) : null;
+    this.navegar({ ...this.filtros(), conta: valor === '' || cartao !== null ? null : Number(valor), cartao });
   }
 
   mudarCategoria(valor: string): void {
@@ -137,14 +151,23 @@ export class Lancamentos {
   }
 
   limparFiltros(): void {
-    this.navegar({ mes: this.filtros().mes, conta: null, categoria: null, tipo: null, busca: '' });
+    this.navegar({ mes: this.filtros().mes, conta: null, cartao: null, categoria: null, tipo: null, busca: '' });
   }
 
-  /** Novo (item null) ou Editar; recarrega a lista quando algo mudou. */
+  /** Novo (item null) ou Editar; a parcela e o estorno abrem a compra (decisão 25 da 05a). Recarrega a lista quando algo mudou. */
   abrir(item: ItemDaLista | null): void {
     const contas = this.contas();
     const categorias = this.categorias();
     if (contas === null || categorias === null) {
+      return;
+    }
+    if (item !== null && item.compraId !== undefined && item.compraId !== null) {
+      abrirCompra(this.dialogo, { tipo: item.estorno === true ? 'ESTORNO' : 'COMPRA', id: item.compraId, cartaoId: null, hoje: this.hoje, categorias })
+        .subscribe((resultado) => {
+          if (resultado !== undefined) {
+            this.carregarLista();
+          }
+        });
       return;
     }
     abrirDialogoDeLancamento(this.dialogo, {
@@ -177,6 +200,10 @@ export class Lancamentos {
     this.contasService.listar().subscribe({
       next: (contas) => this.contas.set(contas),
       error: () => this.falha.set(true),
+    });
+    this.cartoesService.listar().subscribe({
+      next: (cartoes) => this.cartoes.set(cartoes),
+      error: () => this.cartoes.set(null),
     });
     this.categoriasService.listar().subscribe({
       next: (categorias) => this.categorias.set(categorias),
