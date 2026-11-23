@@ -13,6 +13,7 @@ import { EstadoVazio } from '../../shared/estado-vazio/estado-vazio';
 import { Icone } from '../../shared/icone/icone';
 import { Valor } from '../../shared/valor/valor';
 import { abrirCompra } from '../cartoes/compra-dialogo/compra-dialogo';
+import { abrirPagamento } from '../cartoes/pagamento-dialogo/pagamento-dialogo';
 import { CartoesService, ListaDeCartoes } from '../cartoes/cartoes.service';
 import { diaEMes, mesSemAno, textoDoTotal } from '../cartoes/apresentacao';
 import { CategoriasService, ListaDeCategorias } from '../categorias/categorias.service';
@@ -66,6 +67,7 @@ export class Lancamentos {
     { valor: 'receita', rotulo: 'Receitas' },
     { valor: 'despesa', rotulo: 'Despesas' },
     { valor: 'transferencia', rotulo: 'Transferências' },
+    { valor: 'pagamento', rotulo: 'Pagamentos de fatura' },
   ];
   readonly filtros = signal<Filtros>(filtrosDaUrl(convertToParamMap({}), this.hoje));
   readonly lista = signal<ListaDoMes | null>(null);
@@ -154,11 +156,22 @@ export class Lancamentos {
     this.navegar({ mes: this.filtros().mes, conta: null, cartao: null, categoria: null, tipo: null, busca: '' });
   }
 
-  /** Novo (item null) ou Editar; a parcela e o estorno abrem a compra (decisão 25 da 05a). Recarrega a lista quando algo mudou. */
+  /**
+   * Novo (item null) ou Editar; a parcela e o estorno abrem a compra (decisão 25 da 05a), e o pagamento de fatura, o
+   * diálogo dele (05b). Recarrega a lista quando algo mudou.
+   */
   abrir(item: ItemDaLista | null): void {
     const contas = this.contas();
     const categorias = this.categorias();
     if (contas === null || categorias === null) {
+      return;
+    }
+    if (item !== null && item.tipo === 'PAGAMENTO_FATURA') {
+      abrirPagamento(this.dialogo, { cartaoId: null, mes: null, pagamentoId: item.id, hoje: this.hoje }).subscribe((resultado) => {
+        if (resultado !== undefined) {
+          this.carregarLista();
+        }
+      });
       return;
     }
     if (item !== null && item.compraId !== undefined && item.compraId !== null) {

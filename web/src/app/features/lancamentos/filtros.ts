@@ -1,6 +1,7 @@
 import { ParamMap, Params } from '@angular/router';
 
-export type TipoDoFiltro = 'receita' | 'despesa' | 'transferencia';
+/** Fatia 05b (decisão 32): "pagamento", os pagamentos de fatura. */
+export type TipoDoFiltro = 'receita' | 'despesa' | 'transferencia' | 'pagamento';
 
 /**
  * O mês ("2026-11") e os filtros da lista. Vêm da URL e vão para a API com os mesmos
@@ -20,7 +21,7 @@ export interface Filtros {
 
 const MES = /^\d{4}-(0[1-9]|1[0-2])$/;
 const ID = /^[1-9]\d{0,14}$/;
-const TIPOS: readonly TipoDoFiltro[] = ['receita', 'despesa', 'transferencia'];
+const TIPOS: readonly TipoDoFiltro[] = ['receita', 'despesa', 'transferencia', 'pagamento'];
 /** O mesmo limite da API. */
 export const TAMANHO_MAXIMO_DA_BUSCA = 100;
 

@@ -16,7 +16,10 @@ import com.flux.cartoes.MovimentoDosCartoes;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-/** A fatura aberta, a seguinte e o que está em aberto de cada cartão (decisões 5, 26 e 29), para o módulo de cartões. */
+/**
+ * A fatura aberta, a seguinte e o que está em aberto de cada cartão (decisões 5, 26 e 29), para o módulo de cartões; desde
+ * a Fatia 05b, o pendente de todas as faturas, para o limite disponível (decisão 38).
+ */
 @Component
 public class MovimentoPorFaturas implements MovimentoDosCartoes {
 
@@ -36,8 +39,9 @@ public class MovimentoPorFaturas implements MovimentoDosCartoes {
         }
         Map<Long, List<Fatura>> porCartao = faturas.findAllByUsuarioId(usuarioId).stream()
                 .collect(Collectors.groupingBy(Fatura::getCartaoId));
-        Map<Long, TotalDaFatura> totais = lancamentos.totaisDasFaturas(usuarioId).stream()
-                .collect(Collectors.toMap(TotalDaFatura::faturaId, Function.identity()));
+        List<TotalDaFatura> todosOsTotais = lancamentos.totaisDasFaturas(usuarioId);
+        Map<Long, TotalDaFatura> totais = todosOsTotais.stream().collect(Collectors.toMap(TotalDaFatura::faturaId, Function.identity()));
+        List<PagoDaFatura> pagos = lancamentos.pagosDasFaturas(usuarioId);
         Map<Long, Movimento> movimentos = new HashMap<>();
         for (CartaoResumo cartao : cartoes) {
             FaturasDoCartao doCartao = new FaturasDoCartao(usuarioId, cartao, porCartao.getOrDefault(cartao.id(), List.of()));
@@ -51,8 +55,9 @@ public class MovimentoPorFaturas implements MovimentoDosCartoes {
                     lancamentosEmAberto += total.lancamentos();
                 }
             }
+            BigDecimal pendente = new PagamentosDasFaturas(doCartao, todosOsTotais, pagos).pendenteDeTodas();
             movimentos.put(cartao.id(), new Movimento(fatura(doCartao, aberta, totais), fatura(doCartao, aberta.plusMonths(1), totais),
-                    emAberto.setScale(2, RoundingMode.UNNECESSARY), lancamentosEmAberto));
+                    emAberto.setScale(2, RoundingMode.UNNECESSARY), lancamentosEmAberto, pendente));
         }
         return movimentos;
     }

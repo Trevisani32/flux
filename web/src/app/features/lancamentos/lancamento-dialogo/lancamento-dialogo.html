@@ -38,7 +38,7 @@
   <form class="lancamento-dialogo" [formGroup]="formulario" (ngSubmit)="salvar(false)">
     <h2 mat-dialog-title class="lancamento-dialogo__titulo">{{ titulo() }}</h2>
     @if (importado) {
-      <app-alerta tipo="info" icone="importar" titulo="Lançamento importado"><p class="flux-alerta__texto">Tipo, valor, data e conta vêm do extrato e não mudam. {{ textoDaConversao }}</p><button type="button" class="lancamento-dialogo__converter" [disabled]="enviando()" (click)="converter()">Converter em transferência</button></app-alerta>
+      <app-alerta tipo="info" icone="importar" titulo="Lançamento importado"><p class="flux-alerta__texto">Tipo, valor, data e conta vêm do extrato e não mudam. {{ textoDaConversao }}</p><button type="button" class="lancamento-dialogo__converter" [disabled]="enviando()" (click)="converter()">Converter em transferência</button>@if (podeVirarPagamento) {<p class="flux-alerta__texto">Se é o pagamento da fatura de um cartão:</p><button type="button" class="lancamento-dialogo__converter" [disabled]="enviando()" (click)="converterEmPagamento()">Converter em pagamento de fatura</button>}</app-alerta>
     }
 
     <fieldset class="flux-grupo" [attr.aria-describedby]="editando && !importado ? 'lancamento-tipo-dica' : null">

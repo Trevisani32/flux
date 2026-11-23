@@ -2,7 +2,8 @@ import { Component, computed, input } from '@angular/core';
 
 import { partesDaMoeda, SEM_VALOR, SINAL_MENOS } from '../moeda/moeda';
 
-export type TipoValor = 'sinal' | 'saldo' | 'neutro';
+/** `pagamento` (Fatia 05b): o pagamento de fatura, com o "−" e em cor neutra, porque não é despesa. */
+export type TipoValor = 'sinal' | 'saldo' | 'neutro' | 'pagamento';
 type CorValor = 'positivo' | 'negativo' | 'neutro' | 'padrao';
 
 interface Apresentacao {
@@ -43,7 +44,7 @@ export class Valor {
       return { visivel: absoluto, falado: null, cor: 'neutro' };
     }
     if (negativo) {
-      return { visivel: `${SINAL_MENOS}${absoluto}`, falado: `menos ${absoluto}`, cor: 'negativo' };
+      return { visivel: `${SINAL_MENOS}${absoluto}`, falado: `menos ${absoluto}`, cor: this.tipo() === 'pagamento' ? 'neutro' : 'negativo' };
     }
     if (this.tipo() === 'saldo') {
       return { visivel: absoluto, falado: null, cor: 'padrao' };

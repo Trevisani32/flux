@@ -18,7 +18,8 @@ import jakarta.persistence.Table;
 /**
  * Uma movimentação numa conta ou, desde a Fatia 05a, numa fatura de cartão (a parcela e o estorno, sem
  * conta). O valor é guardado com sinal (ADR 0002): receita positiva, despesa negativa; numa
- * transferência, a saída é negativa e a entrada, positiva.
+ * transferência, a saída é negativa e a entrada, positiva. Desde a Fatia 05b, o pagamento da fatura é um
+ * lançamento da conta, negativo, ligado à fatura que paga.
  */
 @Entity
 @Table(name = "lancamentos")
@@ -97,7 +98,51 @@ public class Lancamento {
     @Column(name = "numero_parcela")
     private Integer numeroParcela;
 
+    /** Fatia 05b: só no pagamento, a fatura que ele paga (ADR 0018). */
+    @Column(name = "fatura_paga_id")
+    private Long faturaPagaId;
+
     protected Lancamento() {
+    }
+
+    /**
+     * Fatia 05b (decisão 30): o pagamento da fatura {@code faturaId}, lançado à mão na conta. {@code valor} já negativo:
+     * é dinheiro que sai da conta. Não tem categoria.
+     */
+    public static Lancamento pagamento(Long usuarioId, Long contaId, Long faturaId, LocalDate data, BigDecimal valor, String descricao,
+                                       String observacao, Instant agora) {
+        Lancamento lancamento = new Lancamento(usuarioId, null, agora);
+        lancamento.faturaPagaId = faturaId;
+        lancamento.alterar(TipoLancamento.PAGAMENTO_FATURA, contaId, data, descricao, valor, null, observacao, agora);
+        return lancamento;
+    }
+
+    /** Fatia 05b (decisão 33): conta, data, valor (negativo) e observação do pagamento lançado à mão. */
+    public void alterarPagamento(Long contaId, LocalDate data, BigDecimal valor, String observacao, Instant agora) {
+        alterar(tipo, contaId, data, descricao, valor, null, observacao, agora);
+    }
+
+    /**
+     * Fatia 05b (decisão 37): a despesa importada vira o pagamento da fatura {@code faturaId}. Data, valor, conta,
+     * descrição, observação, descrição do extrato e chave de importação ficam; a categoria sai.
+     */
+    public void converterEmPagamento(Long faturaId, Instant agora) {
+        this.faturaPagaId = faturaId;
+        alterar(TipoLancamento.PAGAMENTO_FATURA, contaId, data, descricao, valor, null, observacao, agora);
+    }
+
+    /** Fatia 05b (decisão 37): o pagamento convertido volta a ser a despesa, sem categoria. */
+    public void desfazerPagamento(Instant agora) {
+        this.faturaPagaId = null;
+        alterar(TipoLancamento.DESPESA, contaId, data, descricao, valor, null, observacao, agora);
+    }
+
+    /** Fatia 05b: no pagamento importado, só a observação muda; sem mudança, {@code atualizado_em} fica como está. */
+    public void alterarObservacaoDoPagamento(String observacao, Instant agora) {
+        if (Objects.equals(this.observacao, observacao)) {
+            return;
+        }
+        alterar(tipo, contaId, data, descricao, valor, null, observacao, agora);
     }
 
     /**
@@ -243,6 +288,15 @@ public class Lancamento {
     /** Fatia 05a: parcela ou estorno, numa fatura do cartão. */
     public boolean deFatura() {
         return faturaId != null;
+    }
+
+    /** Fatia 05b: o pagamento de uma fatura, na conta. */
+    public boolean pagamento() {
+        return tipo == TipoLancamento.PAGAMENTO_FATURA;
+    }
+
+    public Long getFaturaPagaId() {
+        return faturaPagaId;
     }
 
     public Long getCartaoId() {

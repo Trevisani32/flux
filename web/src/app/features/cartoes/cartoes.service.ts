@@ -7,7 +7,8 @@ import { CorConta } from '../contas/contas.service';
 /** A paleta é a das contas (decisão 1 da 05a). */
 export type CorCartao = CorConta;
 
-export type SituacaoDaFatura = 'FUTURA' | 'ABERTA' | 'FECHADA';
+/** Fatia 05b (decisão 34): PAGA é a fechada com pagamento que cobre o total, ou marcada como paga fora do Flux. */
+export type SituacaoDaFatura = 'FUTURA' | 'ABERTA' | 'FECHADA' | 'PAGA';
 
 /** Uma fatura resumida no cartão: `mes` é "2026-12"; `total` positivo é a pagar, negativo é crédito. */
 export interface FaturaDoCartao {
@@ -36,6 +37,14 @@ export interface Cartao {
   /** A soma das faturas aberta e futuras, para a confirmação de arquivar (decisão 5). */
   readonly emAberto: number;
   readonly lancamentosEmAberto: number;
+  /**
+   * Fatia 05b (decisão 38): o que falta pagar em todas as faturas; o disponível = limite − pendente (negativo: acima do
+   * limite); de 0 a 100, a parte do limite tomada pelo pendente, para a barra. A API manda sempre; opcionais porque os
+   * objetos de teste da 05a não os trazem.
+   */
+  readonly pendente?: number;
+  readonly disponivel?: number;
+  readonly usoDoLimite?: number;
 }
 
 /** Resposta de GET /api/cartoes. */
@@ -91,6 +100,16 @@ export interface ItemDaFatura {
   readonly categoriaMaeNome: string | null;
 }
 
+/** Um pagamento na fatura (Fatia 05b, decisão 33): `valor` negativo, como na conta. */
+export interface PagamentoNaFatura {
+  readonly id: number;
+  readonly data: string;
+  readonly contaId: number;
+  readonly contaNome: string;
+  readonly valor: number;
+  readonly origem: 'MANUAL' | 'IMPORTADO';
+}
+
 /** Resposta de GET /api/cartoes/{id}/faturas/{mes} (decisões 8 a 13). */
 export interface Fatura {
   readonly cartaoId: number;
@@ -120,6 +139,22 @@ export interface Fatura {
   readonly primeiroMes: string;
   readonly ultimoMes: string;
   readonly itens: readonly ItemDaFatura[];
+  /**
+   * Fatia 05b (decisões 31 a 38): o pago e quantos pagamentos; o pendente (total − pago, nunca negativo; zero na paga fora
+   * do Flux); o pago a mais; a marca de paga fora; o limite e o disponível do cartão, com a parte do limite tomada (de 0 a
+   * 100, para a barra); a conta que vem no pagamento; e os pagamentos, o mais antigo primeiro. A API manda sempre;
+   * opcionais porque os objetos de teste da 05a não os trazem (a tela lê a falta como zero e sem pagamento).
+   */
+  readonly pago?: number;
+  readonly quantidadePagamentos?: number;
+  readonly pendente?: number;
+  readonly pagoAMais?: number;
+  readonly pagaFora?: boolean;
+  readonly limite?: number;
+  readonly disponivel?: number;
+  readonly usoDoLimite?: number;
+  readonly contaPagamentoId?: number;
+  readonly pagamentos?: readonly PagamentoNaFatura[];
 }
 
 /** Resposta do ajuste e da volta ao normal (decisão 12): as compras e os estornos que mudaram de fatura, à parte. */
@@ -172,5 +207,15 @@ export class CartoesService {
 
   voltarAoFechamentoNormal(id: number, mes: string): Observable<ResultadoDoAjuste> {
     return this.http.delete<ResultadoDoAjuste>(`/api/cartoes/${id}/faturas/${mes}/fechamento`);
+  }
+
+  /** Fatia 05b (decisão 36): "Marcar como paga fora do Flux"; responde a fatura. */
+  marcarPagaFora(id: number, mes: string): Observable<Fatura> {
+    return this.http.put<Fatura>(`/api/cartoes/${id}/faturas/${mes}/paga-fora`, null);
+  }
+
+  /** Fatia 05b (decisão 36): "Desmarcar"; responde a fatura. */
+  desmarcarPagaFora(id: number, mes: string): Observable<Fatura> {
+    return this.http.delete<Fatura>(`/api/cartoes/${id}/faturas/${mes}/paga-fora`);
   }
 }

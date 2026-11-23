@@ -22,15 +22,15 @@ function cartao(parcial: Partial<Cartao>): Cartao {
     contaPagamentoArquivada: false, cor: 'OURO', arquivadoEm: null,
     faturaAberta: { mes: '2026-12', inicio: '2026-11-04', fechamento: '2026-12-03', vencimento: '2026-12-10', total: 1113.69, lancamentos: 7 },
     proximaFatura: { mes: '2027-01', inicio: '2026-12-04', fechamento: '2027-01-03', vencimento: '2027-01-10', total: 631.33, lancamentos: 4 },
-    emAberto: 4267.35, lancamentosEmAberto: 30, ...parcial,
+    emAberto: 4267.35, lancamentosEmAberto: 30, pendente: 4267.35, disponivel: 732.65, usoDoLimite: 85, ...parcial,
   };
 }
 
 const contas: ListaDeContas = { ativas: [conta({})], arquivadas: [], totais: { geral: 0, disponivel: 0, investimentos: 0 } };
 
 const lista: ListaDeCartoes = {
-  ativos: [cartao({}), cartao({ id: 8, nome: 'Cartão Lua', diaFechamento: 25, diaVencimento: 5, contaPagamentoNome: 'Poupança antiga',
-    contaPagamentoArquivada: true, lancamentosEmAberto: 0, emAberto: 0 })],
+  ativos: [cartao({}), cartao({ id: 8, nome: 'Cartão Lua', limite: 2000, diaFechamento: 25, diaVencimento: 5, contaPagamentoNome: 'Poupança antiga',
+    contaPagamentoArquivada: true, lancamentosEmAberto: 0, emAberto: 0, pendente: 2120, disponivel: -120, usoDoLimite: 100 })],
   arquivados: [cartao({ id: 9, nome: 'Cartão Antigo', arquivadoEm: '2026-11-01T15:00:00Z' })],
 };
 
@@ -72,7 +72,7 @@ describe('Cartoes', () => {
     return Array.from(elemento.querySelectorAll(seletor)).map((item) => item.textContent?.trim().replace(/\s+/g, ' ') ?? '');
   }
 
-  it('mostra um card por cartão ativo, com os dias, a fatura aberta, o limite e o aviso da conta arquivada', () => {
+  it('mostra um card por cartão ativo, com os dias, a fatura aberta, o disponível com a barra e o aviso da conta arquivada (decisão 38)', () => {
     const { elemento } = criar();
     expect(elemento.querySelector('h1')?.textContent).toBe('Cartões');
     expect(elemento.querySelector('.cabecalho__subtitulo')?.textContent).toBe('2 cartões ativos. A compra entra na fatura pelo dia de fechamento.');
@@ -83,8 +83,12 @@ describe('Cartoes', () => {
     expect(textos(elemento, '.cartoes__datas')[0]).toBe('fecha 03/12 · vence 10/12');
     expect(textos(elemento, '.cartoes__total')[0]).toBe('R$ 1.113,69');
     expect(elemento.querySelector('.cartoes__ver')?.getAttribute('href')).toBe('/cartoes/7/faturas/2026-12');
-    expect(textos(elemento, '.cartoes__rodape > span')).toEqual(['Limite R$ 5.000,00', 'Próxima: janeiro, R$ 631,33', 'Limite R$ 5.000,00',
-      'Conta de pagamento arquivada: escolha outra']);
+    expect(textos(elemento, '.cartoes__disponivel .valor__texto')).toEqual(['R$ 732,65', '−R$ 120,00']);
+    expect(textos(elemento, '.cartoes__rodape > span:nth-child(2)')).toEqual(['de R$ 5.000,00 · R$ 4.267,35 em faturas a pagar',
+      'Acima do limite em R$ 120,00']);
+    const barras = Array.from(elemento.querySelectorAll<HTMLElement>('.cartoes__barra'));
+    expect(barras.map((barra) => (barra.firstElementChild as HTMLElement).style.width)).toEqual(['85%', '100%']);
+    expect(barras.map((barra) => barra.classList.contains('cartoes__barra--estourada'))).toEqual([false, true]);
     expect(textos(elemento, '.cartoes__aviso')).toEqual(['Conta de pagamento arquivada: escolha outra']);
     expect(textos(elemento, '.flux-arquivadas__alternar')).toEqual(['Arquivados 1']);
     expect(textos(elemento, '.cartoes__nome-arquivado')).toEqual(['Cartão Antigo']);

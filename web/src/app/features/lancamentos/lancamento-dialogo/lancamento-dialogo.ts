@@ -18,6 +18,7 @@ import { ListaDeCategorias } from '../../categorias/categorias.service';
 import { Conta, ListaDeContas } from '../../contas/contas.service';
 import { FluxoDeRegras } from '../../regras/fluxo-de-regras';
 import { OpcaoDeCategoria, opcoesDeCategoria } from '../apresentacao';
+import { abrirConversaoEmPagamento } from '../../cartoes/conversao-em-pagamento-dialogo/conversao-em-pagamento-dialogo';
 import { abrirConversao } from '../conversao-dialogo/conversao-dialogo';
 import { convertida } from '../conversao';
 import { abrirConvertida, ResultadoDaConvertida } from '../convertida-dialogo/convertida-dialogo';
@@ -122,6 +123,13 @@ export class LancamentoDialogo {
   readonly importado = this.item?.origem === 'IMPORTADO';
   /** Fatia 04c (decisão 26): o atalho do alerta, dito pelo sentido do dinheiro. */
   readonly textoDaConversao = (this.item?.valor ?? 0) < 0 ? 'Se é dinheiro indo para outra conta sua:' : 'Se é dinheiro vindo de outra conta sua:';
+  /**
+   * Fatia 05b (decisão 37): a despesa importada de conta ativa corrente, poupança ou carteira, com data até hoje, pode
+   * virar pagamento de fatura: as condições da API (o lançamento de transferência e o pagamento não são DESPESA). A data
+   * futura vem da API (`futuro`, pelo relógio dela); o web não decide o dia (Correções do QA).
+   */
+  readonly podeVirarPagamento = this.importado && this.item?.tipo === 'DESPESA' && this.item.futuro !== true
+    && this.dados.contas.ativas.some((conta) => conta.id === this.item?.contaId && conta.tipo !== 'INVESTIMENTO');
   /** O que a só leitura manda reativar a conta para fazer: a convertida não se exclui, ela se desfaz (Fatia 04c). */
   readonly acaoDaSoLeitura = this.item !== null && convertida(this.item) ? 'editar ou desfazer esta transferência'
     : this.item?.tipo === 'TRANSFERENCIA' ? 'editar ou excluir esta transferência' : 'editar ou excluir este lançamento';
@@ -129,7 +137,9 @@ export class LancamentoDialogo {
   readonly contaArquivada = this.dados.contas.arquivadas
     .find((conta) => conta.id === this.item?.contaId || conta.id === this.item?.contaDestinoId)?.nome ?? null;
   readonly formulario = new FormGroup({
-    tipo: new FormControl<TipoDoFormulario>(this.item?.tipo ?? 'DESPESA', { nonNullable: true }),
+    // O pagamento de fatura (Fatia 05b) abre o diálogo dele e nunca chega aqui.
+    tipo: new FormControl<TipoDoFormulario>(this.item === null || this.item.tipo === 'PAGAMENTO_FATURA' ? 'DESPESA' : this.item.tipo,
+      { nonNullable: true }),
     valor: new FormControl(this.item === null ? '' : escreverValorDigitado(Math.abs(this.item.valor)), { nonNullable: true }),
     data: new FormControl(this.item?.data ?? this.dados.hoje, { nonNullable: true }),
     descricao: new FormControl(this.descricaoInicial(), { nonNullable: true }),
@@ -312,6 +322,22 @@ export class LancamentoDialogo {
     }
     abrirConversao(this.dialogo, { lancamentoId: item.id, contas: this.dados.contas, parSugerido: null }).subscribe((transferencia) => {
       if (transferencia !== undefined) {
+        this.referencia.close('convertido');
+      }
+    });
+  }
+
+  /**
+   * Fatia 05b (decisão 37): "Converter em pagamento de fatura" abre a conversão por cima. "Cancelar" volta a este diálogo
+   * como estava; convertido, ele fecha com "convertido" (a conversão tira a categoria).
+   */
+  converterEmPagamento(): void {
+    const item = this.item;
+    if (item === null || this.enviando()) {
+      return;
+    }
+    abrirConversaoEmPagamento(this.dialogo, { lancamentoId: item.id }).subscribe((pagamento) => {
+      if (pagamento !== undefined) {
         this.referencia.close('convertido');
       }
     });

@@ -19,7 +19,13 @@ import java.util.List;
  *       estornos (negativo é crédito); {@code depois}: o total das faturas seguintes, e {@code depoisAte}, a última
  *       delas com lançamento (nulo sem nenhuma);</li>
  *   <li>{@code primeiroMes}/{@code ultimoMes}: até onde as setas andam (decisão 13);</li>
- *   <li>{@code itens}: os lançamentos, a compra mais recente primeiro.</li>
+ *   <li>{@code itens}: os lançamentos, a compra mais recente primeiro;</li>
+ *   <li>Fatia 05b (ADR 0018): {@code situacao} também PAGA (decisão 34); {@code pago}, positivo, e
+ *       {@code quantidadePagamentos}; {@code pendente} = total − pago, nunca negativo, zero com {@code pagaFora} (decisão
+ *       36); {@code pagoAMais}, o que passou do total (decisão 31); {@code limite} e {@code disponivel} = limite − o
+ *       pendente de todas as faturas do cartão (decisão 38; negativo: acima do limite), e {@code usoDoLimite}, de 0 a 100,
+ *       a parte do limite tomada pelo pendente, para a barra; {@code contaPagamentoId}, a conta que vem preenchida no
+ *       pagamento; {@code pagamentos}, o mais antigo primeiro.</li>
  * </ul>
  */
 public record FaturaResponse(
@@ -47,7 +53,17 @@ public record FaturaResponse(
         String depoisAte,
         String primeiroMes,
         String ultimoMes,
-        List<Item> itens) {
+        List<Item> itens,
+        BigDecimal pago,
+        long quantidadePagamentos,
+        BigDecimal pendente,
+        BigDecimal pagoAMais,
+        boolean pagaFora,
+        BigDecimal limite,
+        BigDecimal disponivel,
+        int usoDoLimite,
+        Long contaPagamentoId,
+        List<Pagamento> pagamentos) {
 
     /**
      * Uma parcela ou um estorno. {@code tipo} é COMPRA ou ESTORNO; {@code valor} com sinal (a parcela negativa, o
@@ -56,5 +72,9 @@ public record FaturaResponse(
     public record Item(Long lancamentoId, Long compraId, String tipo, LocalDate dataCompra, String descricao, BigDecimal valor,
                        int parcela, int parcelas, int parcelaInicial, BigDecimal valorTotal, Long categoriaId, String categoriaNome,
                        String categoriaMaeNome) {
+    }
+
+    /** Um pagamento da fatura (decisão 33): {@code valor} negativo, como na conta; {@code origem} MANUAL ou IMPORTADO. */
+    public record Pagamento(Long id, LocalDate data, Long contaId, String contaNome, BigDecimal valor, String origem) {
     }
 }

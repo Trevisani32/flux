@@ -10,6 +10,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { Usuario } from '../../core/auth/sessao';
 import { AGORA } from '../../core/tempo/agora';
 import { Cartao, CartoesService, ListaDeCartoes } from '../cartoes/cartoes.service';
+import { PagamentoDialogo } from '../cartoes/pagamento-dialogo/pagamento-dialogo';
 import { CategoriasService, ListaDeCategorias } from '../categorias/categorias.service';
 import { ContasService, ListaDeContas } from '../contas/contas.service';
 import { ItemDaLista, LancamentosService, ListaDoMes } from '../lancamentos/lancamentos.service';
@@ -31,7 +32,7 @@ const horizonte: Cartao = {
   contaPagamentoArquivada: false, cor: 'OURO', arquivadoEm: null,
   faturaAberta: { mes: '2026-12', inicio: '2026-11-04', fechamento: '2026-12-03', vencimento: '2026-12-10', total: 1113.69, lancamentos: 7 },
   proximaFatura: { mes: '2027-01', inicio: '2026-12-04', fechamento: '2027-01-03', vencimento: '2027-01-10', total: 631.33, lancamentos: 4 },
-  emAberto: 4267.35, lancamentosEmAberto: 30,
+  emAberto: 4267.35, lancamentosEmAberto: 30, pendente: 4267.35, disponivel: 732.65, usoDoLimite: 85,
 };
 
 const comCartao: ListaDeCartoes = { ativos: [horizonte], arquivados: [] };
@@ -82,7 +83,7 @@ describe('Inicio', () => {
     return [...elemento.querySelectorAll(seletor)].map((no) => no.textContent?.trim().replace(/\s+/g, ' ') ?? '');
   }
 
-  it('mostra a saudação, a data e o card Cartões com a fatura aberta de cada cartão (Fatia 05a, decisão 26)', () => {
+  it('mostra a saudação, a data e o card Cartões com a fatura aberta e o disponível de cada cartão (decisões 26 e 38)', () => {
     const { elemento } = criar(() => of(comContas));
     expect(elemento.querySelector('h1')?.textContent).toBe('Olá, Dev');
     expect(elemento.querySelector('p.cabecalho__subtitulo')?.textContent).toBe('Sexta-feira, 6 de novembro de 2026');
@@ -91,10 +92,23 @@ describe('Inicio', () => {
     expect(textos(elemento, '.inicio-cartoes__nota')).toEqual(['Faturas abertas']);
     expect(textos(elemento, '.inicio-cartao__nome')).toEqual(['Cartão Horizonte']);
     expect(elemento.querySelector('a.inicio-cartao__nome')?.getAttribute('href')).toBe('/cartoes/7/faturas/2026-12');
-    expect(textos(elemento, '.inicio-cartao__meta')).toEqual(['Dezembro · fecha 03/12 · vence 10/12']);
-    expect(elemento.querySelector('.inicio-cartao .flux-num')?.textContent?.replace(/\s/g, ' ')).toBe('R$ 1.113,69');
+    expect(textos(elemento, '.inicio-cartao__meta')).toEqual(['Dezembro · fecha 03/12 · vence 10/12', 'Disponível R$ 732,65']);
+    expect(elemento.querySelector('.inicio-cartao > .flux-num')?.textContent?.replace(/\s/g, ' ')).toBe('R$ 1.113,69');
     expect(elemento.querySelector('.inicio-cartoes a.flux-link')?.getAttribute('href')).toBe('/cartoes');
     expect(elemento.querySelector('.cabecalho__acoes a[href="/importacao"]')?.textContent?.trim()).toBe('Importar extrato');
+  });
+
+  it('o pagamento de fatura nos últimos abre o diálogo dele, e a tela recarrega quando ele muda (Fatia 05b)', () => {
+    const pagamento: ItemDaLista = { ...padaria, id: 40, tipo: 'PAGAMENTO_FATURA', descricao: 'Pagamento da fatura de outubro de 2026', valor: -265.2,
+      cartaoId: 7, cartaoNome: 'Cartão Horizonte', faturaPagaMes: '2026-10' };
+    const { elemento, dialogo, fechamento, lancamentos } = criar(() => of(comContas), novembro, [pagamento]);
+    expect(textos(elemento, '.inicio-ultimos .linha__titulo')).toEqual(['Pagamento da fatura de outubro']);
+    elemento.querySelector<HTMLButtonElement>('.inicio-ultimos .linha')?.click();
+    const [componente, configuracao] = dialogo.open.mock.calls[0] as unknown as [unknown, { data: unknown }];
+    expect(componente).toBe(PagamentoDialogo);
+    expect(configuracao.data).toEqual({ cartaoId: null, mes: null, pagamentoId: 40, hoje: '2026-11-06' });
+    fechamento.next('salvo');
+    expect(lancamentos.ultimos).toHaveBeenCalledTimes(2);
   });
 
   it('sem cartão, o card Cartões convida a cadastrar; sem a lista de cartões, ele some', () => {

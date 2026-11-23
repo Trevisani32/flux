@@ -23,7 +23,7 @@ public record FiltroDaLista(
 
     /**
      * Lê os parâmetros: {@code categoria} é "sem" ou um id; {@code tipo} é "receita",
-     * "despesa" ou "transferencia"; a busca vazia é ignorada.
+     * "despesa", "transferencia" ou, desde a Fatia 05b, "pagamento" (decisão 32); a busca vazia é ignorada.
      */
     public static FiltroDaLista de(YearMonth mes, Long conta, Long cartao, String categoria, String tipo, String busca) {
         if (conta != null && cartao != null) {
@@ -48,6 +48,7 @@ public record FiltroDaLista(
                 case "receita" -> TipoLancamento.RECEITA;
                 case "despesa" -> TipoLancamento.DESPESA;
                 case "transferencia" -> TipoLancamento.TRANSFERENCIA;
+                case "pagamento" -> TipoLancamento.PAGAMENTO_FATURA;
                 default -> throw new CampoInvalidoException("tipo", "Filtro de tipo inválido.");
             };
         }

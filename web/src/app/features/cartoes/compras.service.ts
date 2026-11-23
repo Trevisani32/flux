@@ -16,10 +16,17 @@ export interface ParcelaDaCompra {
   readonly noFlux: boolean;
 }
 
-/** Resposta de POST /api/compras/previa (decisão 18). */
+/**
+ * Resposta de POST /api/compras/previa (decisão 18). Fatia 05b (decisão 38): `disponivelDepois`, o limite disponível
+ * com as parcelas desta compra; e `avisoDaFaturaPaga` (decisão 35), a frase que avisa que o lançamento vai ficar travado
+ * numa fatura paga (a que já estava paga e continua, ou a que passa a ser paga com ele). Opcionais porque os objetos de
+ * teste da 05a não os trazem.
+ */
 export interface PreviaDaCompra {
   readonly parcelas: readonly ParcelaDaCompra[];
   readonly primeiraFatura: { readonly mes: string; readonly fechamento: string; readonly vencimento: string; readonly situacao: SituacaoDaFatura };
+  readonly disponivelDepois?: number;
+  readonly avisoDaFaturaPaga?: string | null;
 }
 
 /** Uma compra ou um estorno, como a API devolve. `valorTotal` é positivo. */
@@ -41,6 +48,11 @@ export interface Compra {
   readonly categoriaArquivada: boolean;
   readonly observacao: string | null;
   readonly parcelasNoFlux: readonly ParcelaDaCompra[];
+  /**
+   * Fatia 05b (decisão 35): com uma parcela numa fatura paga, a frase da trava ("A parcela 1/3 está na fatura de
+   * novembro, que já foi paga: …"); só a descrição, a categoria e a observação mudam. Opcional pelos objetos de teste da 05a.
+   */
+  readonly travaDaFaturaPaga?: string | null;
 }
 
 /** Corpo de POST/PUT /api/compras. O valor total vai positivo. */
@@ -70,7 +82,9 @@ export interface DadosDoEstorno {
 export class ComprasService {
   private readonly http = inject(HttpClient);
 
-  previa(dados: { cartaoId: number; data: string; valorTotal: number; parcelas: number; parcelaInicial: number }): Observable<PreviaDaCompra> {
+  /** `tipo` só vai no estorno (sem ele, a API entende compra); `compraId`, só na edição (a API desconta as parcelas atuais). */
+  previa(dados: { cartaoId: number; data: string; valorTotal: number; parcelas: number; parcelaInicial: number; tipo?: 'ESTORNO';
+    compraId?: number }): Observable<PreviaDaCompra> {
     return this.http.post<PreviaDaCompra>('/api/compras/previa', dados);
   }
 

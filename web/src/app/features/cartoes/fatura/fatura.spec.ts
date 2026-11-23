@@ -7,10 +7,12 @@ import { BehaviorSubject, Observable, of, Subject, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AGORA } from '../../../core/tempo/agora';
+import { ConfirmacaoDialogo, DadosDaConfirmacao } from '../../../shared/confirmacao/confirmacao-dialogo';
 import { CategoriasService, ListaDeCategorias } from '../../categorias/categorias.service';
 import { AjusteDialogo } from '../ajuste-dialogo/ajuste-dialogo';
 import { CartoesService, Fatura, ItemDaFatura } from '../cartoes.service';
 import { CompraDialogo, DadosDoDialogoDeCompra } from '../compra-dialogo/compra-dialogo';
+import { DadosDoDialogoDePagamento, PagamentoDialogo } from '../pagamento-dialogo/pagamento-dialogo';
 import { PaginaDaFatura } from './fatura';
 
 const categorias: ListaDeCategorias = { despesas: { ativas: [], arquivadas: [] }, receitas: { ativas: [], arquivadas: [] } };
@@ -25,7 +27,8 @@ function fatura(parcial: Partial<Fatura>): Fatura {
     cartaoId: 7, cartaoNome: 'Cartão Horizonte', cartaoCor: 'OURO', cartaoArquivado: false, mes: '2026-12', inicio: '2026-11-04',
     fechamento: '2026-12-03', vencimento: '2026-12-10', gravada: true, fechamentoAjustado: false, fechamentoNormal: '2026-12-03', ajusteDe: '2026-11-04',
     ajusteAte: '2026-12-09', ajusteAteOVencimento: true, situacao: 'ABERTA', compras: 200, quantidadeCompras: 2, estornos: 50, quantidadeEstornos: 1,
-    total: 150, depois: 300, depoisAte: '2027-02', primeiroMes: '2026-11', ultimoMes: '2027-12',
+    total: 150, depois: 300, depoisAte: '2027-02', primeiroMes: '2026-11', ultimoMes: '2027-12', pago: 0, quantidadePagamentos: 0, pendente: 150,
+    pagoAMais: 0, pagaFora: false, limite: 5000, disponivel: 732.65, usoDoLimite: 85, contaPagamentoId: 1, pagamentos: [],
     itens: [item({}), item({ lancamentoId: 2, compraId: 11, descricao: 'Padaria Pão Quente', valor: -50, parcela: 1, parcelas: 1, valorTotal: 50,
       categoriaNome: 'Padaria', categoriaMaeNome: 'Alimentação' }),
     item({ lancamentoId: 3, compraId: 12, tipo: 'ESTORNO', descricao: 'Estorno Sapataria', valor: 50, parcelas: 1, valorTotal: 50 })],
@@ -39,6 +42,7 @@ describe('PaginaDaFatura', () => {
     const servico = {
       fatura: vi.fn(() => resposta),
       voltarAoFechamentoNormal: vi.fn(() => of(fatura({}))),
+      desmarcarPagaFora: vi.fn(() => of(fatura({}))),
     };
     const fechamento = new Subject<unknown>();
     const dialogo = { open: vi.fn(() => ({ afterClosed: () => fechamento.asObservable() })) };
@@ -69,11 +73,17 @@ describe('PaginaDaFatura', () => {
     return Array.from(elemento.querySelectorAll(seletor)).map((item) => (item.textContent ?? '').trim().replace(/\s+/g, ' '));
   }
 
+  /** Um botão do topo da página pelo texto. */
+  function doTopo(elemento: HTMLElement, rotulo: string): HTMLButtonElement {
+    return Array.from(elemento.querySelectorAll<HTMLButtonElement>('app-cabecalho-pagina button'))
+      .find((botao) => botao.textContent?.trim() === rotulo) as HTMLButtonElement;
+  }
+
   it('mostra o mês, a situação, a linha do tempo, os totais e os lançamentos (decisões 9 a 11)', () => {
     const { elemento, servico } = criar();
     expect(servico.fatura).toHaveBeenCalledWith(7, '2026-12');
     expect(elemento.querySelector('h1')?.textContent).toBe('Fatura de dezembro de 2026');
-    expect(texto(elemento, '.fatura__trilha')).toBe('Cartões › Cartão Horizonte');
+    expect(texto(elemento, '.fatura__trilha')).toBe('Cartões › Cartão Horizonte · disponível R$ 732,65 de R$ 5.000,00');
     expect(texto(elemento, '.fatura__nome-do-mes')).toBe('Dezembro de 2026');
     expect(texto(elemento, '.fatura__situacao')).toBe('Aberta');
     expect(texto(elemento, '.fatura__nota-da-situacao')).toBe('Fecha em 21 dias');
@@ -122,7 +132,8 @@ describe('PaginaDaFatura', () => {
     fechamento.next('salvo');
     expect(servico.fatura).toHaveBeenCalledTimes(2);
     const botoes = Array.from(elemento.querySelectorAll<HTMLButtonElement>('app-cabecalho-pagina button'));
-    expect(botoes.map((botao) => botao.textContent?.trim())).toEqual(['Ajustar fechamento', 'Novo estorno', 'Mais', 'Nova compra']);
+    expect(botoes.map((botao) => botao.textContent?.trim())).toEqual(['Ajustar fechamento', 'Novo estorno', 'Pagar fatura', 'Mais',
+      'Nova compra']);
     botoes[1].click();
     expect((dialogo.open.mock.calls[1] as unknown as [unknown, { data: DadosDoDialogoDeCompra }])[1].data).toMatchObject({ tipo: 'ESTORNO', id: null });
     botoes[0].click();
@@ -169,4 +180,140 @@ describe('PaginaDaFatura', () => {
     expect(cartaoInvalido.elemento.querySelector('h1')?.textContent).toBe('Fatura');
     expect(texto(cartaoInvalido.elemento, 'app-alerta .flux-alerta__titulo')).toBe('Cartão não encontrado.');
   });
+
+  it('o card do pagamento diz o pago, o pendente vencido, o disponível e os pagamentos; "Pagar fatura" avisa quando ela fica paga (decisões 30 a 34 e 38)',
+    () => {
+      const fechada = fatura({ mes: '2026-11', situacao: 'FECHADA', fechamento: '2026-11-03', vencimento: '2026-11-10', total: 265.2, pago: 100,
+        quantidadePagamentos: 1, pendente: 165.2, disponivel: -120, usoDoLimite: 100,
+        pagamentos: [{ id: 5, data: '2026-11-10', contaId: 1, contaNome: 'Banco Horizonte', valor: -100, origem: 'MANUAL' }] });
+      const { fixture, elemento, servico, dialogo, fechamento, snackBar } = criar(of(fechada), '2026-11');
+      expect(texto(elemento, '.fatura__nota-da-situacao')).toBe('Fechou em 03/11 · venceu em 10/11');
+      expect(texto(elemento, '.fatura__nota-da-situacao .fatura__venceu')).toBe('venceu em 10/11');
+      expect(textos(elemento, '.fatura__valores-do-pagamento .fatura__rotulo')).toEqual(['Pago', 'Pendente', 'Limite disponível']);
+      expect(textos(elemento, '.fatura__valores-do-pagamento .fatura__nota')).toEqual(['1 pagamento', 'venceu em 10/11',
+        'acima do limite em R$ 120,00']);
+      expect(texto(elemento, '.fatura__valores-do-pagamento div:nth-child(2) .valor__texto')).toBe('R$ 165,20');
+      const barra = elemento.querySelector('.fatura__barra') as HTMLElement;
+      expect(barra.classList.contains('fatura__barra--estourada')).toBe(true);
+      expect((barra.firstElementChild as HTMLElement).style.width).toBe('100%');
+      // O topo (com pendente) tem "Pagar fatura" e "Marcar como paga fora do Flux"; a trilha, o disponível negativo.
+      expect(textos(elemento, 'app-cabecalho-pagina button')).toEqual(['Ajustar fechamento', 'Novo estorno', 'Marcar como paga fora do Flux',
+        'Pagar fatura', 'Mais', 'Nova compra']);
+      expect(elemento.querySelector('.fatura__acoes-do-pagamento')).toBeNull();
+      expect(texto(elemento, '.fatura__trilha')).toBe('Cartões › Cartão Horizonte · acima do limite em R$ 120,00');
+      expect(texto(elemento, '.fatura__trilha .fatura__acima-do-limite')).toBe('acima do limite em R$ 120,00');
+      expect(textos(elemento, '.fatura__pagamentos .fatura__cabecalho-da-lista > *')).toEqual(['Pagamentos', 'Saem da conta; não são despesa.']);
+      expect(textos(elemento, '.fatura__pagamento-item .fatura__textos')).toEqual(['10/11 · Banco HorizonteLançado à mão']);
+      expect(texto(elemento, '.fatura__pagamento-item app-valor .valor__texto')).toBe('−R$ 100,00');
+      expect(elemento.querySelector('.fatura__pagamento-item app-valor')?.classList.contains('flux-valor--neutro')).toBe(true);
+
+      elemento.querySelector<HTMLButtonElement>('.fatura__pagamento-item')?.click();
+      const [componente, configuracao] = dialogo.open.mock.calls[0] as unknown as [unknown, { data: DadosDoDialogoDePagamento }];
+      expect(componente).toBe(PagamentoDialogo);
+      expect(configuracao.data).toEqual({ cartaoId: null, mes: null, pagamentoId: 5, hoje: '2026-11-12' });
+
+      doTopo(elemento, 'Pagar fatura').click();
+      expect((dialogo.open.mock.calls[1] as unknown as [unknown, { data: DadosDoDialogoDePagamento }])[1].data)
+        .toEqual({ cartaoId: 7, mes: '2026-11', pagamentoId: null, hoje: '2026-11-12' });
+      servico.fatura.mockReturnValue(of(fatura({ ...fechada, situacao: 'PAGA', pago: 265.2, pendente: 0 })));
+      fechamento.next('pago');
+      fixture.detectChanges();
+      expect(snackBar.open).toHaveBeenCalledWith('Pagamento registrado. A fatura de novembro está paga.', 'Fechar', { duration: 5000 });
+      expect(texto(elemento, '.fatura__situacao')).toBe('Paga');
+    });
+
+  it('a paga não se ajusta nem se paga; marcada fora do Flux, "Desmarcar"; com pago a mais, o alerta (decisões 31, 35 e 36)', () => {
+    const { fixture, elemento, servico, snackBar } = criar(of(fatura({ mes: '2026-10', situacao: 'PAGA', fechamento: '2026-10-03',
+      vencimento: '2026-10-10', total: 410, pago: 460, quantidadePagamentos: 1, pendente: 0, pagoAMais: 50, pagaFora: true })), '2026-10');
+    expect(texto(elemento, '.fatura__situacao')).toBe('Paga');
+    expect(textos(elemento, 'app-cabecalho-pagina button')).toEqual(['Novo estorno', 'Mais', 'Nova compra']);
+    expect(elemento.querySelector('.fatura__nota-da-situacao .fatura__venceu')).toBeNull();
+    expect(textos(elemento, '.fatura__valores-do-pagamento .fatura__nota').slice(0, 2)).toEqual(['paga fora do Flux', 'nada a pagar']);
+    expect(texto(elemento, '.fatura__pagamento app-alerta .flux-alerta__titulo')).toBe('Pago a mais: R$ 50,00.');
+    expect(texto(elemento, '.fatura__pagamento app-alerta .flux-alerta__texto')).toBe('Falta lançar alguma compra desta fatura?');
+    expect(texto(elemento, '.fatura__lista .fatura__cabecalho-da-lista .fatura__nota')).toBe('Paga: só descrição, categoria e observação mudam.');
+    expect(textos(elemento, '.fatura__acoes-do-pagamento button')).toEqual(['Desmarcar paga fora do Flux']);
+    elemento.querySelector<HTMLButtonElement>('.fatura__acoes-do-pagamento button')?.click();
+    fixture.detectChanges();
+    expect(servico.desmarcarPagaFora).toHaveBeenCalledWith(7, '2026-10');
+    expect(snackBar.open).toHaveBeenCalledWith('A fatura voltou a ter o pendente.', 'Fechar', { duration: 4000 });
+  });
+
+  it('a situação nos totais e na pílula: a paga diz "fechou em", com a pílula verde; as outras ficam como na 05a (decisão 34)', () => {
+    const casos = [
+      { parcial: { mes: '2026-10', situacao: 'PAGA', fechamento: '2026-10-03', vencimento: '2026-10-10', pago: 150, quantidadePagamentos: 1,
+        pendente: 0 }, mes: '2026-10', nota: 'fechou em 03/10', pilula: 'Paga' },
+      { parcial: { mes: '2026-11', situacao: 'FECHADA', fechamento: '2026-11-03', vencimento: '2026-11-10' }, mes: '2026-11', nota: 'fechou em 03/11',
+        pilula: 'Fechada' },
+      { parcial: {}, mes: '2026-12', nota: 'até agora; fecha em 03/12', pilula: 'Aberta' },
+      { parcial: { mes: '2027-01', situacao: 'FUTURA', inicio: '2026-12-04', fechamento: '2027-01-03', vencimento: '2027-01-10', pendente: 0 },
+        mes: '2027-01', nota: 'até agora; fecha em 03/01', pilula: 'Futura' },
+    ] as const;
+    for (const caso of casos) {
+      TestBed.resetTestingModule();
+      const { elemento } = criar(of(fatura(caso.parcial)), caso.mes);
+      expect(textos(elemento, '.fatura__totais .fatura__nota')[2]).toBe(caso.nota);
+      const pilula = elemento.querySelector('.fatura__situacao') as HTMLElement;
+      expect(pilula.textContent?.trim()).toBe(caso.pilula);
+      expect(pilula.classList.contains(`fatura__situacao--${caso.pilula.toLowerCase()}`)).toBe(true);
+    }
+  });
+
+  it('"Desmarcar paga fora do Flux" e "Voltar ao fechamento normal" ficam travados durante o pedido: um pedido só (Correções do QA)',
+    () => {
+      const { fixture, elemento, servico } = criar(of(fatura({ mes: '2026-10', situacao: 'PAGA', fechamento: '2026-10-03',
+        vencimento: '2026-10-10', total: 410, pago: 0, pendente: 0, pagaFora: true, fechamentoAjustado: true, fechamentoNormal: '2026-10-05' })),
+      '2026-10');
+      const desmarcar = new Subject<Fatura>();
+      servico.desmarcarPagaFora.mockReturnValue(desmarcar.asObservable());
+      const botao = elemento.querySelector<HTMLButtonElement>('.fatura__acoes-do-pagamento button') as HTMLButtonElement;
+      botao.click();
+      botao.click();
+      fixture.detectChanges();
+      expect(servico.desmarcarPagaFora).toHaveBeenCalledTimes(1);
+      expect(botao.disabled).toBe(true);
+      const voltar = elemento.querySelector<HTMLButtonElement>('.fatura__voltar-ao-normal') as HTMLButtonElement;
+      expect(voltar.disabled).toBe(true);
+      voltar.click();
+      expect(servico.voltarAoFechamentoNormal).not.toHaveBeenCalled();
+      desmarcar.next(fatura({}));
+      desmarcar.complete();
+      fixture.detectChanges();
+      expect(servico.fatura).toHaveBeenCalledTimes(2);
+    });
+
+  it('a nota do limite disponível negativo fica vermelha, como a trilha; a positiva, não (decisão 38, Correções do QA)', () => {
+    const acima = criar(of(fatura({ disponivel: -120, usoDoLimite: 100 })));
+    const nota = Array.from(acima.elemento.querySelectorAll('.fatura__valores-do-pagamento .fatura__nota'))[2];
+    expect(nota.textContent?.trim().replace(/\s+/g, ' ')).toBe('acima do limite em R$ 120,00');
+    expect(nota.classList.contains('fatura__nota--acima')).toBe(true);
+    TestBed.resetTestingModule();
+    const dentro = criar();
+    expect(dentro.elemento.querySelectorAll('.fatura__nota--acima')).toHaveLength(0);
+  });
+
+  it('"Marcar como paga fora do Flux" pede a confirmação com o pendente; na aberta, o antecipado entra na nota; a futura sem pagamento não tem o card',
+    () => {
+      const fechada = criar(of(fatura({ mes: '2026-09', situacao: 'FECHADA', fechamento: '2026-09-03', vencimento: '2026-09-10', total: 312,
+        pago: 200, quantidadePagamentos: 1, pendente: 112 })), '2026-09');
+      doTopo(fechada.elemento, 'Marcar como paga fora do Flux').click();
+      const [componente, configuracao] = fechada.dialogo.open.mock.calls[0] as unknown as [unknown, { data: DadosDaConfirmacao }];
+      expect(componente).toBe(ConfirmacaoDialogo);
+      expect(configuracao.data.titulo).toBe('Marcar a fatura de setembro como paga?');
+      expect(configuracao.data.confirmar).toBe('Marcar como paga');
+      expect(JSON.stringify(configuracao.data.paragrafos).replace(/\u00a0| /g, ' ')).toBe('[["Use para faturas pagas antes de você usar o Flux: '
+        + 'nenhuma conta muda, e os ",{"forte":"R$ 112,00"}," pendentes deixam de contar no limite. Dá para desmarcar depois."]]');
+      fechada.fechamento.next(true);
+      expect(fechada.snackBar.open).toHaveBeenCalledWith('Fatura marcada como paga fora do Flux.', 'Fechar', { duration: 4000 });
+      expect(fechada.servico.fatura).toHaveBeenCalledTimes(2);
+      TestBed.resetTestingModule();
+      const antecipada = criar(of(fatura({ pago: 300, quantidadePagamentos: 1, pendente: 0, pagoAMais: 150 })));
+      expect(texto(antecipada.elemento, '.fatura__nota-da-situacao')).toBe('Fecha em 21 dias · R$ 300,00 pagos');
+      expect(textos(antecipada.elemento, '.fatura__acoes-do-pagamento button')).toEqual([]);
+      expect(doTopo(antecipada.elemento, 'Pagar fatura')).toBeUndefined();
+      expect(antecipada.elemento.querySelector('.fatura__pagamentos')).toBeNull();
+      TestBed.resetTestingModule();
+      const futura = criar(of(fatura({ mes: '2027-01', situacao: 'FUTURA', inicio: '2026-12-04' })), '2027-01');
+      expect(futura.elemento.querySelector('.fatura__pagamento')).toBeNull();
+    });
 });

@@ -17,6 +17,8 @@ describe('Valor', () => {
   }
 
   it.each([
+    // Fatia 05b: o pagamento de fatura leva o "−" em cor neutra (não é despesa).
+    [-265.2, 'pagamento', '−R$ 265,20', 'menos R$ 265,20', 'flux-valor--neutro'],
     [7200, 'sinal', '+R$ 7.200,00', 'mais R$ 7.200,00', 'flux-valor--positivo'],
     [-287.43, 'sinal', '−R$ 287,43', 'menos R$ 287,43', 'flux-valor--negativo'],
     [0, 'sinal', 'R$ 0,00', null, 'flux-valor--neutro'],

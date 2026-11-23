@@ -11,18 +11,23 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.flux.cartoes.CalendarioDoCartao;
 import com.flux.cartoes.CartaoResumo;
 import com.flux.cartoes.CartoesConsulta;
+import com.flux.cartoes.MovimentoDosCartoes;
 import com.flux.categorias.CategoriaResumo;
 import com.flux.categorias.CategoriasConsulta;
 import com.flux.compartilhado.erro.CampoInvalidoException;
 import com.flux.compartilhado.erro.RecursoNaoEncontradoException;
 import com.flux.compartilhado.erro.RegraDeNegocioException;
+import com.flux.contas.ContaResumo;
+import com.flux.contas.ContasConsulta;
 import com.flux.lancamentos.interno.dto.AjusteResponse;
 import com.flux.lancamentos.interno.dto.FaturaResponse;
 import org.springframework.stereotype.Service;
@@ -30,7 +35,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * A fatura de um mês e o ajuste do fechamento dela (decisões 8 a 13, ADR 0017). Uma fatura que ainda não existe
- * aparece com as datas do cartão (decisão 9). O ajuste pega só a trava de cartões (decisão 49).
+ * aparece com as datas do cartão (decisão 9). O ajuste pega só a trava de cartões (decisão 49). Desde a Fatia 05b, a
+ * fatura diz o pago, o pendente, a situação paga, os pagamentos e o limite disponível, e se marca como paga fora do
+ * Flux (decisões 31 a 36 e 38, ADR 0018); a fatura paga não se ajusta, nem o ajuste move compra de ou para ela.
  */
 @Service
 public class FaturaService {
@@ -47,16 +54,18 @@ public class FaturaService {
     private final RegrasDosLancamentos regras;
     private final CartoesConsulta cartoes;
     private final CategoriasConsulta categorias;
+    private final ContasConsulta contas;
     private final Recolocacao recolocacao;
 
     public FaturaService(FaturaRepository faturas, LancamentoRepository lancamentos, CompraRepository compras, RegrasDosLancamentos regras,
-                         CartoesConsulta cartoes, CategoriasConsulta categorias, Recolocacao recolocacao) {
+                         CartoesConsulta cartoes, CategoriasConsulta categorias, ContasConsulta contas, Recolocacao recolocacao) {
         this.faturas = faturas;
         this.lancamentos = lancamentos;
         this.compras = compras;
         this.regras = regras;
         this.cartoes = cartoes;
         this.categorias = categorias;
+        this.contas = contas;
         this.recolocacao = recolocacao;
     }
 
@@ -79,16 +88,50 @@ public class FaturaService {
         return mudarFechamento(usuarioId, cartaoId, mes, null);
     }
 
+    /**
+     * Decisão 36: "Marcar como paga fora do Flux", só na fatura que já fechou pelas datas: o pendente dela vai a zero, sem
+     * lançamento. Pega a trava de cartões, como o ajuste: a marca trava as compras da fatura (decisão 35).
+     */
+    @Transactional
+    public FaturaResponse marcarPagaFora(Long usuarioId, Long cartaoId, String mes) {
+        YearMonth mesDaFatura = mesValido(mes);
+        regras.travarCartoes(usuarioId);
+        CartaoResumo cartao = encontrar(usuarioId, cartaoId);
+        exigirCartaoAtivo(cartao, "marcar a fatura como paga");
+        FaturasDoCartao doCartao = FaturasDoCartao.carregar(faturas, usuarioId, cartao);
+        if (doCartao.situacao(mesDaFatura, regras.hoje()) != CalendarioDoCartao.Situacao.FECHADA) {
+            throw new RegraDeNegocioException("Só uma fatura que já fechou pode ser marcada como paga fora do Flux.", "FATURA_NAO_FECHADA");
+        }
+        doCartao.obter(faturas, mesDaFatura, regras.agora()).marcarPagaFora(regras.agora());
+        return resposta(usuarioId, doCartao, mesDaFatura);
+    }
+
+    /** Decisão 36: "Desmarcar"; a fatura volta a ter o pendente. Sem a marca, não muda nada. */
+    @Transactional
+    public FaturaResponse desmarcarPagaFora(Long usuarioId, Long cartaoId, String mes) {
+        YearMonth mesDaFatura = mesValido(mes);
+        regras.travarCartoes(usuarioId);
+        CartaoResumo cartao = encontrar(usuarioId, cartaoId);
+        exigirCartaoAtivo(cartao, "desmarcar a fatura");
+        FaturasDoCartao doCartao = FaturasDoCartao.carregar(faturas, usuarioId, cartao);
+        doCartao.gravada(mesDaFatura).ifPresent(Fatura::desmarcarPagaFora);
+        return resposta(usuarioId, doCartao, mesDaFatura);
+    }
+
     /** {@code pedida} nula é o fechamento normal. A fatura que não existe é criada para guardar o ajuste (decisão 9). */
     private AjusteResponse mudarFechamento(Long usuarioId, Long cartaoId, String mes, LocalDate pedida) {
         YearMonth mesDaFatura = mesValido(mes);
         regras.travarCartoes(usuarioId);
         CartaoResumo cartao = encontrar(usuarioId, cartaoId);
-        if (cartao.arquivado()) {
-            throw new RegraDeNegocioException(cartao.nome() + " está arquivado. Reative o cartão para ajustar o fechamento.",
-                    "CARTAO_ARQUIVADO");
-        }
+        exigirCartaoAtivo(cartao, "ajustar o fechamento");
         FaturasDoCartao doCartao = FaturasDoCartao.carregar(faturas, usuarioId, cartao);
+        PagamentosDasFaturas pagamentos = PagamentosDasFaturas.carregar(lancamentos, usuarioId, doCartao);
+        LocalDate hoje = regras.hoje();
+        // Decisões 12 e 35: a fatura paga não se ajusta.
+        if (pagamentos.paga(mesDaFatura, hoje)) {
+            throw new RegraDeNegocioException("A fatura de " + nomeDoMes(mesDaFatura, hoje) + " já foi paga: o fechamento não muda.",
+                    "FATURA_PAGA");
+        }
         CalendarioDoCartao calendario = doCartao.calendario();
         CalendarioDoCartao.Limites limites = calendario.limitesDoAjuste(mesDaFatura, doCartao.gravadas());
         LocalDate normal = doCartao.fechamentoNormal(mesDaFatura);
@@ -106,6 +149,7 @@ public class FaturaService {
         if (nova.equals(atual) && gravada.map(Fatura::isFechamentoAjustado).orElse(false) == ajustado) {
             return new AjusteResponse(0, 0, resposta(usuarioId, doCartao, mesDaFatura));
         }
+        Set<YearMonth> pagas = doCartao.porMes().keySet().stream().filter(outro -> pagamentos.paga(outro, hoje)).collect(Collectors.toSet());
         Instant agora = regras.agora();
         Fatura fatura = doCartao.obter(faturas, mesDaFatura, agora);
         fatura.ajustarFechamento(nova, ajustado);
@@ -114,8 +158,11 @@ public class FaturaService {
         if (!nova.equals(atual)) {
             LocalDate de = (nova.isBefore(atual) ? nova : atual).plusDays(1);
             LocalDate ate = nova.isBefore(atual) ? atual : nova;
+            // Decisão 35: o ajuste não move compra de ou para uma fatura paga. As pagas são as de antes do ajuste, lidas antes
+            // de gravar o fechamento novo: ele não muda as datas das outras faturas, e esta não está paga.
             movidas = recolocacao.recolocar(usuarioId, doCartao,
-                    compras.findAllByUsuarioIdAndCartaoIdAndDataCompraBetween(usuarioId, cartao.id(), de, ate), "O ajuste passaria");
+                    compras.findAllByUsuarioIdAndCartaoIdAndDataCompraBetween(usuarioId, cartao.id(), de, ate), "O ajuste passaria",
+                    new Recolocacao.Pagas(pagas, "O ajuste moveria", outro -> nomeDoMes(outro, hoje)));
         }
         return new AjusteResponse(movidas.compras(), movidas.estornos(), resposta(usuarioId, doCartao, mesDaFatura));
     }
@@ -124,7 +171,14 @@ public class FaturaService {
         return cartoes.buscar(usuarioId, cartaoId).orElseThrow(() -> new RecursoNaoEncontradoException("Cartão não encontrado."));
     }
 
-    private static YearMonth mesValido(String mes) {
+    private static void exigirCartaoAtivo(CartaoResumo cartao, String acao) {
+        if (cartao.arquivado()) {
+            throw new RegraDeNegocioException(cartao.nome() + " está arquivado. Reative o cartão para " + acao + ".", "CARTAO_ARQUIVADO");
+        }
+    }
+
+    /** "2026-12" válido; senão, 400 no campo {@code mes}. O pagamento também usa (Fatia 05b). */
+    static YearMonth mesValido(String mes) {
         if (mes == null || !MES.matcher(mes).matches()) {
             throw new CampoInvalidoException("mes", "Mês inválido.");
         }
@@ -133,6 +187,11 @@ public class FaturaService {
 
     private static String nomeDoMes(YearMonth mes) {
         return mes.atDay(1).format(NOME_DO_MES);
+    }
+
+    /** Fatia 05b: "novembro" no ano de hoje; "novembro de 2025" em outro ano (as travas da fatura paga). */
+    static String nomeDoMes(YearMonth mes, LocalDate hoje) {
+        return mes.getYear() == hoje.getYear() ? nomeDoMes(mes) : PagamentoService.nomeDoMes(mes);
     }
 
     private FaturaResponse resposta(Long usuarioId, FaturasDoCartao doCartao, YearMonth mes) {
@@ -146,6 +205,9 @@ public class FaturaService {
         Map<YearMonth, TotalDaFatura> porMes = doCartao.porMes().entrySet().stream()
                 .filter(entrada -> totais.containsKey(entrada.getValue().getId()))
                 .collect(Collectors.toMap(Map.Entry::getKey, entrada -> totais.get(entrada.getValue().getId())));
+        List<PagoDaFatura> todosOsPagos = lancamentos.pagosDoCartao(usuarioId, cartao.id());
+        Set<Long> pagos = todosOsPagos.stream().map(PagoDaFatura::faturaId).collect(Collectors.toSet());
+        PagamentosDasFaturas pagamentos = new PagamentosDasFaturas(doCartao, totais.values(), todosOsPagos);
         Optional<Fatura> gravada = doCartao.gravada(mes);
         TotalDaFatura desta = porMes.get(mes);
         BigDecimal zero = BigDecimal.ZERO.setScale(2);
@@ -153,16 +215,38 @@ public class FaturaService {
                 .map(entrada -> entrada.getValue().total()).reduce(zero, BigDecimal::add).setScale(2, RoundingMode.UNNECESSARY);
         Optional<YearMonth> depoisAte = porMes.keySet().stream().filter(outro -> outro.isAfter(mes)).max(Comparator.naturalOrder());
         YearMonth aberta = doCartao.faturaDe(hoje);
-        YearMonth primeiro = porMes.keySet().stream().min(Comparator.naturalOrder()).filter(outro -> outro.isBefore(aberta)).orElse(aberta);
+        // Fatia 05b: as setas também alcançam a fatura mais antiga com pagamento ou marcada como paga fora do Flux.
+        Stream<YearMonth> comPagamento = doCartao.porMes().entrySet().stream()
+                .filter(entrada -> entrada.getValue().pagaFora() || pagos.contains(entrada.getValue().getId())).map(Map.Entry::getKey);
+        YearMonth primeiro = Stream.concat(porMes.keySet().stream(), comPagamento).min(Comparator.naturalOrder())
+                .filter(outro -> outro.isBefore(aberta)).orElse(aberta);
         YearMonth ate = aberta.plusMonths(MESES_DEPOIS_DA_ABERTA);
         YearMonth ultimo = porMes.keySet().stream().max(Comparator.naturalOrder()).filter(outro -> outro.isAfter(ate)).orElse(ate);
+        PagamentosDasFaturas.Resumo resumo = pagamentos.resumo(mes, hoje);
+        BigDecimal disponivel = cartao.limite().subtract(pagamentos.pendenteDeTodas()).setScale(2, RoundingMode.UNNECESSARY);
         return new FaturaResponse(cartao.id(), cartao.nome(), cartao.cor(), cartao.arquivado(), mes.toString(), doCartao.inicio(mes),
                 datas.fechamento(), datas.vencimento(), gravada.isPresent(), gravada.map(Fatura::isFechamentoAjustado).orElse(false),
                 doCartao.fechamentoNormal(mes), limites.de(), limites.ate(), limites.ateOVencimento(),
-                doCartao.situacao(mes, hoje).name(), desta == null ? zero : desta.somaDasCompras(), desta == null ? 0 : desta.compras(),
+                resumo.situacao().name(), desta == null ? zero : desta.somaDasCompras(), desta == null ? 0 : desta.compras(),
                 desta == null ? zero : desta.somaDosEstornos(), desta == null ? 0 : desta.quantidadeDeEstornos(),
                 desta == null ? zero : desta.total(), depois, depoisAte.map(YearMonth::toString).orElse(null), primeiro.toString(),
-                ultimo.toString(), gravada.map(fatura -> itens(usuarioId, fatura)).orElse(List.of()));
+                ultimo.toString(), gravada.map(fatura -> itens(usuarioId, fatura)).orElse(List.of()), resumo.pago(), resumo.pagamentos(),
+                resumo.pendente(), resumo.pagoAMais(), resumo.pagaFora(), cartao.limite(), disponivel,
+                MovimentoDosCartoes.usoDoLimite(cartao.limite(), pagamentos.pendenteDeTodas()), cartao.contaPagamentoId(),
+                gravada.map(fatura -> pagamentosDa(usuarioId, fatura)).orElse(List.of()));
+    }
+
+    /** Fatia 05b: os pagamentos da fatura, o mais antigo primeiro, com a conta e a origem (decisão 33). */
+    private List<FaturaResponse.Pagamento> pagamentosDa(Long usuarioId, Fatura fatura) {
+        List<Lancamento> daFatura = lancamentos.findAllByUsuarioIdAndFaturaPagaIdOrderByDataAscIdAsc(usuarioId, fatura.getId());
+        if (daFatura.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, ContaResumo> doUsuario = contas.listar(usuarioId).stream().collect(Collectors.toMap(ContaResumo::id, Function.identity()));
+        return daFatura.stream()
+                .map(pagamento -> new FaturaResponse.Pagamento(pagamento.getId(), pagamento.getData(), pagamento.getContaId(),
+                        doUsuario.get(pagamento.getContaId()).nome(), pagamento.getValor(), pagamento.getOrigem().name()))
+                .toList();
     }
 
     /** Os lançamentos da fatura, a compra mais recente primeiro (no mesmo dia, o último gravado em cima). */

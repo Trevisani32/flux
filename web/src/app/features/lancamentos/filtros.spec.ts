@@ -11,6 +11,10 @@ describe('filtros', () => {
     expect(filtrosDaUrl(convertToParamMap({ mes: '2026-10', conta: '3', categoria: '12', tipo: 'despesa', busca: '  mercado ' }), HOJE))
       .toEqual({ mes: '2026-10', conta: 3, cartao: null, categoria: 12, tipo: 'despesa', busca: 'mercado' });
     expect(filtrosDaUrl(convertToParamMap({ categoria: 'sem', tipo: 'transferencia' }), HOJE).categoria).toBe('sem');
+    // Fatia 05b (decisão 32): os pagamentos de fatura.
+    expect(filtrosDaUrl(convertToParamMap({ tipo: 'pagamento' }), HOJE).tipo).toBe('pagamento');
+    expect(parametrosDaApi({ mes: '2026-11', conta: null, cartao: null, categoria: null, tipo: 'pagamento', busca: '' }))
+      .toEqual({ mes: '2026-11', tipo: 'pagamento' });
   });
 
   it('ignora o que não entende na URL', () => {

@@ -34,8 +34,8 @@ public record ListaDoMesResponse(
     }
 
     /**
-     * A faixa da fatura com o filtro de um cartão: as datas, a situação (FUTURA, ABERTA ou FECHADA) e o total =
-     * compras − estornos da fatura inteira, sem os outros filtros.
+     * A faixa da fatura com o filtro de um cartão: as datas, a situação (FUTURA, ABERTA, FECHADA ou, desde a Fatia 05b,
+     * PAGA) e o total = compras − estornos da fatura inteira, sem os outros filtros.
      */
     public record FaturaDoFiltro(Long cartaoId, String cartaoNome, String cartaoCor, String mes, LocalDate fechamento,
                                  LocalDate vencimento, String situacao, BigDecimal total) {

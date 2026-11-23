@@ -1,0 +1,127 @@
+@if (falhaAoCarregar(); as mensagem) {
+  <div class="pagamento">
+    <div class="pagamento__cabecalho">
+      <button type="button" class="pagamento__voltar flux-so-celular" aria-label="Voltar" (click)="cancelar()"><app-icone nome="esquerda" /></button>
+      <h2 mat-dialog-title class="pagamento__titulo">{{ editando ? 'Pagamento' : 'Pagar fatura' }}</h2>
+    </div>
+    <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem">
+      <div class="flux-alerta__acoes"><button mat-stroked-button type="button" (click)="carregar()">Tentar de novo</button></div>
+    </app-alerta>
+    <div class="pagamento__acoes"><button mat-stroked-button type="button" (click)="cancelar()">Fechar</button></div>
+  </div>
+} @else if (carregado(); as atual) {
+  @if (motivoDaSoLeitura(); as motivo) {
+    <div class="pagamento">
+      <div class="pagamento__cabecalho">
+        <button type="button" class="pagamento__voltar flux-so-celular" aria-label="Voltar" (click)="cancelar()"><app-icone nome="esquerda" /></button>
+        <h2 mat-dialog-title class="pagamento__titulo">{{ titulo() }}</h2>
+      </div>
+      <app-alerta tipo="info" icone="arquivar" [titulo]="motivo.titulo"><p class="flux-alerta__texto">Reative {{ motivo.onde }}, na seção "Arquivad{{ motivo.o }}s", para editar ou excluir este pagamento.</p></app-alerta>
+      @if (atual.pagamento; as pagamento) {
+        <dl class="pagamento__ficha">
+          <dt>Valor</dt>
+          <dd><app-valor [valor]="pagamento.valor" tipo="saldo" /></dd>
+          <dt>Data</dt>
+          <dd>{{ dataCurta(pagamento.data) }}</dd>
+          <dt>Conta</dt>
+          <dd>{{ pagamento.contaNome }}</dd>
+          <dt>Cartão</dt>
+          <dd>{{ pagamento.cartaoNome }}</dd>
+          <dt>Observação</dt>
+          <dd>{{ pagamento.observacao ?? '—' }}</dd>
+        </dl>
+      }
+      <div class="pagamento__acoes"><button mat-stroked-button type="button" (click)="cancelar()">Fechar</button></div>
+    </div>
+  } @else {
+    <form class="pagamento" [formGroup]="formulario" (ngSubmit)="salvar()">
+      <div class="pagamento__cabecalho">
+        <button type="button" class="pagamento__voltar flux-so-celular" aria-label="Voltar" [disabled]="enviando()" (click)="cancelar()"><app-icone nome="esquerda" /></button>
+        <span class="pagamento__selo flux-so-desktop" aria-hidden="true"><app-icone nome="pagar" /></span>
+        <div class="pagamento__titulos">
+          <h2 mat-dialog-title class="pagamento__titulo">{{ titulo() }}</h2>
+          @if (atual.fatura; as fatura) {
+            <p class="pagamento__subtitulo">{{ fatura.cartaoNome }} · pendente <b class="flux-num"><app-valor [valor]="fatura.pendente" tipo="saldo" /></b> · vence {{ dataCurta(fatura.vencimento).slice(0, 5) }}</p>
+          } @else if (atual.pagamento; as pagamento) {
+            <p class="pagamento__subtitulo">{{ pagamento.cartaoNome }} · vence {{ dataCurta(pagamento.faturaVencimento).slice(0, 5) }}</p>
+          }
+        </div>
+      </div>
+
+      @if (importado()) {
+        <app-alerta tipo="info" icone="importar" titulo="Pagamento importado"><p class="flux-alerta__texto">Conta, data e valor vêm do extrato e não mudam.</p></app-alerta>
+      } @else if (atual.fatura?.situacao === 'ABERTA') {
+        <app-alerta tipo="info" icone="info" titulo="A fatura ainda está aberta"><p class="flux-alerta__texto">Compras até {{ dataCurta(atual.fatura?.fechamento ?? '').slice(0, 5) }} ainda podem entrar nela.</p></app-alerta>
+      }
+
+      <div class="flux-campo">
+        <label for="pagamento-conta">Sai da conta</label>
+        <div class="flux-entrada" [class.flux-entrada--invalida]="erro('conta') !== null" [class.flux-entrada--travada]="importado()">
+          <select id="pagamento-conta" formControlName="conta" [attr.aria-invalid]="erro('conta') !== null ? 'true' : null" [attr.aria-describedby]="erro('conta') !== null ? 'pagamento-conta-erro' : null">
+            <option [ngValue]="null" disabled>Escolha</option>
+            @for (conta of contas(); track conta.id) {
+              <option [ngValue]="conta.id">{{ conta.nome }}</option>
+            }
+          </select>
+          <app-icone class="flux-entrada__seta" nome="baixo" />
+        </div>
+        @if (erro('conta'); as mensagem) {
+          <p id="pagamento-conta-erro" class="flux-campo__erro">{{ mensagem }}</p>
+        }
+      </div>
+
+      <div class="pagamento__duas">
+        <div class="flux-campo">
+          <label for="pagamento-data">Data</label>
+          <div class="flux-entrada" [class.flux-entrada--invalida]="erro('data') !== null" [class.flux-entrada--travada]="importado()">
+            <input id="pagamento-data" type="date" formControlName="data" [max]="dados.hoje" [attr.aria-invalid]="erro('data') !== null ? 'true' : null" [attr.aria-describedby]="erro('data') !== null ? 'pagamento-data-erro' : null" />
+          </div>
+          @if (erro('data'); as mensagem) {
+            <p id="pagamento-data-erro" class="flux-campo__erro">{{ mensagem }}</p>
+          }
+        </div>
+        <div class="flux-campo">
+          <label for="pagamento-valor">Valor</label>
+          <div class="flux-entrada" [class.flux-entrada--invalida]="erro('valor') !== null" [class.flux-entrada--travada]="importado()">
+            <span class="flux-entrada__prefixo" aria-hidden="true">R$</span>
+            <input id="pagamento-valor" type="text" inputmode="decimal" autocomplete="off" formControlName="valor" (blur)="formatarValor()" [attr.aria-invalid]="erro('valor') !== null ? 'true' : null" [attr.aria-describedby]="erro('valor') !== null ? 'pagamento-valor-erro' : 'pagamento-valor-dica'" />
+          </div>
+          @if (erro('valor'); as mensagem) {
+            <p id="pagamento-valor-erro" class="flux-campo__erro">{{ mensagem }}</p>
+          } @else if (!importado()) {
+            <p id="pagamento-valor-dica" class="flux-dica">Pode ser parcial ou passar do pendente.</p>
+          }
+        </div>
+      </div>
+
+      <div class="flux-campo">
+        <label for="pagamento-observacao">Observação <span class="flux-grupo__opcional">(opcional)</span></label>
+        <div class="flux-entrada flux-entrada--area" [class.flux-entrada--invalida]="erro('observacao') !== null">
+          <textarea id="pagamento-observacao" formControlName="observacao" rows="2" maxlength="1000" [attr.aria-invalid]="erro('observacao') !== null ? 'true' : null" [attr.aria-describedby]="erro('observacao') !== null ? 'pagamento-observacao-erro' : null"></textarea>
+        </div>
+        @if (erro('observacao'); as mensagem) {
+          <p id="pagamento-observacao-erro" class="flux-campo__erro">{{ mensagem }}</p>
+        }
+      </div>
+
+      @if (erroGeral(); as mensagem) {
+        <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem" />
+      }
+
+      <div class="pagamento__acoes">
+        @if (editando && importado()) {
+          <button mat-button type="button" class="pagamento__excluir" [disabled]="enviando()" (click)="desfazer()"><app-icone nome="reativar" [tamanho]="18" />Desfazer</button>
+        } @else if (editando) {
+          <button mat-button type="button" class="pagamento__excluir" [disabled]="enviando()" (click)="excluir()"><app-icone nome="lixeira" [tamanho]="18" />Excluir</button>
+        }
+        <button mat-stroked-button type="button" class="flux-so-desktop" [disabled]="enviando()" (click)="cancelar()">Cancelar</button>
+        <button mat-flat-button type="submit" [disabled]="enviando()">{{ editando ? 'Salvar' : 'Registrar pagamento' }}</button>
+      </div>
+    </form>
+  }
+} @else {
+  <div class="pagamento">
+    <h2 mat-dialog-title class="pagamento__titulo">{{ editando ? 'Pagamento' : 'Pagar fatura' }}</h2>
+    <p class="pagamento__carregando" role="status">Carregando…</p>
+  </div>
+}

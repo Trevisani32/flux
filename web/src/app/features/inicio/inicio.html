@@ -78,6 +78,7 @@
               <span class="inicio-cartao__textos">
                 <a class="inicio-cartao__nome" [routerLink]="['/cartoes', cartao.id, 'faturas', cartao.faturaAberta.mes]">{{ cartao.nome }}</a>
                 <span class="inicio-cartao__meta">{{ nomeDoMesSemAno(cartao.faturaAberta.mes) }} · fecha {{ diaEMes(cartao.faturaAberta.fechamento) }} · vence {{ diaEMes(cartao.faturaAberta.vencimento) }}</span>
+                <span class="inicio-cartao__meta">Disponível <app-valor class="inicio-cartao__disponivel" [valor]="cartao.disponivel" tipo="saldo" /></span>
               </span>
               <span class="flux-num">{{ textoDoTotal(cartao.faturaAberta.total) }}</span>
             </li>

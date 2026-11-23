@@ -6,8 +6,10 @@ import { PreviaDaCompra } from './compras.service';
 
 const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
-/** Decisão 10 da 05a: o nome da situação na pílula. */
-export const ROTULO_DA_SITUACAO: Readonly<Record<SituacaoDaFatura, string>> = { FUTURA: 'Futura', ABERTA: 'Aberta', FECHADA: 'Fechada' };
+/** Decisão 10 da 05a: o nome da situação na pílula; na 05b, "Paga" (decisão 34). */
+export const ROTULO_DA_SITUACAO: Readonly<Record<SituacaoDaFatura, string>> = {
+  FUTURA: 'Futura', ABERTA: 'Aberta', FECHADA: 'Fechada', PAGA: 'Paga',
+};
 
 /** "2026-12-03" vira "03/12". */
 export function diaEMes(dataIso: string): string {
@@ -36,6 +38,11 @@ export function faixaDeMeses(de: string, ate: string, anoNoTexto: boolean): stri
 /** O ano entra no texto quando a fatura não é do ano de hoje ou quando a faixa cruza anos ("2016-11", "2027-08"). */
 export function comAno(hoje: string, ...meses: readonly string[]): boolean {
   return meses.some((mes) => mes.slice(0, 4) !== meses[0].slice(0, 4)) || meses[0].slice(0, 4) !== hoje.slice(0, 4);
+}
+
+/** Fatia 05b: "dezembro" no ano de hoje; em outro ano, "dezembro de 2025" (o título do pagamento e as confirmações). */
+export function nomeDaFatura(mes: string, hoje: string): string {
+  return comAno(hoje, mes) ? nomeDoMes(mes) : mesSemAno(mes);
 }
 
 /** "2026-12" vira "dez/2026". */

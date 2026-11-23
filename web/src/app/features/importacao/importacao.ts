@@ -17,6 +17,7 @@ import { EstadoVazio } from '../../shared/estado-vazio/estado-vazio';
 import { Icone } from '../../shared/icone/icone';
 import { Valor } from '../../shared/valor/valor';
 import { detalheDoErro, propriedadeDoErro, statusDoErro } from '../auth/erros-http';
+import { nomeDaFatura } from '../cartoes/apresentacao';
 import { CategoriasService, ListaDeCategorias } from '../categorias/categorias.service';
 import { ContasService, ListaDeContas } from '../contas/contas.service';
 import { diaEMes } from '../lancamentos/conversao';
@@ -32,7 +33,8 @@ import {
 } from './apresentacao';
 import { abrirExcluidos } from './excluidos-dialogo/excluidos-dialogo';
 import {
-  Amostra, Importacao as ItemDoHistorico, ImportacaoService, ParSugerido, Previa, Resultado, TransferenciaDaImportacao,
+  Amostra, Importacao as ItemDoHistorico, ImportacaoService, PagamentoDaImportacao, ParSugerido, Previa, Resultado,
+  TransferenciaDaImportacao,
 } from './importacao.service';
 import { PerfilCsv } from './perfil-csv/perfil-csv';
 import { ConfirmacaoDaRevisao, Revisao } from './revisao/revisao';
@@ -40,11 +42,12 @@ import { ConfirmacaoDaRevisao, Revisao } from './revisao/revisao';
 /**
  * A página de Importação (decisões 1 a 4 e 27 a 33): "Nova importação" e o histórico; escolhido
  * o arquivo, a página segue para o perfil do CSV (só na primeira vez da conta), a revisão e o
- * resultado, com o indicador de passos do mockup. O CSV com perfil salvo mostra o resumo do perfil
+ * resultado, com o indicador de passos. O CSV com perfil salvo mostra o resumo do perfil
  * e "Revisar" (decisão 12); o OFX vai direto para a revisão. O arquivo só existe aqui, no
  * navegador: recarregar volta ao começo. Na Fatia 04b, o resultado oferece criar regras com as
  * categorias escolhidas à mão na revisão (decisão 20). Na Fatia 04c, o resultado sugere os pares de
- * transferência (decisão 35), e desfazer uma importação com lançamento convertido diz o que acontece
+ * transferência (decisão 35), e desfazer uma importação com lançamento convertido (em transferência ou, desde a Fatia
+ * 05b, em pagamento de fatura) diz o que acontece
  * com o outro lado (decisão 34).
  */
 @Component({
@@ -103,7 +106,7 @@ export class Importacao {
   readonly temContaAtiva = computed(() => (this.contas()?.ativas.length ?? 0) > 0);
   readonly nomeDaConta = computed(() => this.contas()?.ativas.find((conta) => conta.id === this.contaId())?.nome ?? '');
   readonly passos = computed(() => passosDaImportacao(this.passo(), this.previa()?.formato ?? null));
-  /** Enquanto a API lê um OFX, o mockup explica que ele não pede perfil. */
+  /** Enquanto a API lê um OFX, a página explica que ele não pede perfil. */
   readonly lendoOfx = computed(() => this.lendo() && (this.arquivo()?.name.toLowerCase().endsWith('.ofx') ?? false));
   /** O subtítulo do cabeçalho: o arquivo e a conta na revisão e no perfil. */
   readonly subtitulo = computed(() => {
@@ -175,7 +178,7 @@ export class Importacao {
    * arquivo, a revisão de um CSV espera o "Revisar" do resumo do perfil (decisão 12). Os erros
    * aparecem no passo em que a leitura começou: no arquivo, embaixo da área; no perfil e na
    * revisão, no alerta da página. O perfil salvo que não lê o arquivo abre o passo do perfil, com o
-   * alerta (mockup, linha 623): sem isso, a conta não teria outro caminho até o perfil. Com
+   * alerta: sem isso, a conta não teria outro caminho até o perfil. Com
    * `contaDeVolta`, um erro devolve a conta anterior (o "Importar em X" que não deu certo).
    */
   lerArquivo(contaDeVolta: number | null = null): void {
@@ -377,26 +380,34 @@ export class Importacao {
   /**
    * Decisão 32: confirmação com o que sai; com a conta arquivada, só o aviso e o caminho para Contas. Na
    * Fatia 04c (decisão 34), a confirmação diz quantos lançamentos estão em transferências e o que acontece
-   * com o outro lado; com o outro lado numa conta arquivada, também só o aviso.
+   * com o outro lado; com o outro lado numa conta arquivada, também só o aviso. Na Fatia 05b, o mesmo com os
+   * pagamentos de fatura convertidos: a confirmação diz que eles saem e que a fatura volta a ter o pendente; com o
+   * cartão de um deles arquivado, só o aviso e o caminho para Cartões.
    */
   desfazer(item: ItemDoHistorico): void {
     const transferencias = item.transferencias ?? [];
+    const pagamentos = item.pagamentos ?? [];
     const presa = transferencias.find((transferencia) => transferencia.contaArquivada);
-    if (item.contaArquivada || presa !== undefined) {
+    const pagamentoPreso = pagamentos.find((pagamento) => pagamento.cartaoArquivado);
+    if (item.contaArquivada || presa !== undefined || pagamentoPreso !== undefined) {
+      const doCartao = presa === undefined && !item.contaArquivada;
+      const paragrafo: TrechoDeTexto[] = presa !== undefined ? [`A transferência de ${diaEMes(presa.data)} liga esta importação a `,
+        { forte: presa.contaNome }, ', que está arquivada. Reative a conta para desfazer esta importação.']
+        : item.contaArquivada || pagamentoPreso === undefined ? [{ forte: item.contaNome }, ' está arquivada. Reative a conta para desfazer esta importação.']
+          : [`O pagamento de ${diaEMes(pagamentoPreso.data)} liga esta importação a `, { forte: pagamentoPreso.cartaoNome },
+            ', que está arquivado. Reative o cartão para desfazer esta importação.'];
       abrirConfirmacao(this.dialogo, {
         titulo: 'Esta importação não pode ser desfeita agora',
         icone: 'arquivar',
         perigo: false,
-        paragrafos: [presa === undefined ? [{ forte: item.contaNome }, ' está arquivada. Reative a conta para desfazer esta importação.']
-          : [`A transferência de ${diaEMes(presa.data)} liga esta importação a `, { forte: presa.contaNome },
-            ', que está arquivada. Reative a conta para desfazer esta importação.']],
-        confirmar: 'Ir para Contas',
+        paragrafos: [paragrafo],
+        confirmar: doCartao ? 'Ir para Cartões' : 'Ir para Contas',
         cancelar: 'Fechar',
-        falha: 'Não foi possível abrir Contas.',
+        falha: doCartao ? 'Não foi possível abrir Cartões.' : 'Não foi possível abrir Contas.',
         acao: () => of(true),
       }).subscribe((resultado) => {
         if (resultado === true) {
-          void this.router.navigate(['/contas']);
+          void this.router.navigate([doCartao ? '/cartoes' : '/contas']);
         }
       });
       return;
@@ -415,7 +426,7 @@ export class Importacao {
       icone: 'reativar',
       perigo: true,
       paragrafos: [paragrafo, ['O registro fica no histórico. Para trazer as linhas de volta, importe o arquivo de novo.']],
-      aviso: transferencias.length === 0 ? undefined : avisoDasTransferencias(transferencias),
+      aviso: avisoDoDesfazer(transferencias, pagamentos, this.hoje),
       confirmar: 'Desfazer importação',
       falha: 'Não foi possível desfazer. Tente novamente.',
       acao: () => this.servico.desfazer(item.id),
@@ -448,6 +459,43 @@ export class Importacao {
       },
     });
   }
+}
+
+/**
+ * O alerta da confirmação do desfazer: os lançamentos da importação em transferências (decisão 34 da 04c) e os que
+ * viraram pagamento de fatura (Fatia 05b); com os dois, um alerta só, com os dois textos.
+ */
+function avisoDoDesfazer(transferencias: readonly TransferenciaDaImportacao[], pagamentos: readonly PagamentoDaImportacao[],
+  hoje: string): { readonly titulo: string; readonly texto: string } | undefined {
+  if (pagamentos.length === 0) {
+    return transferencias.length === 0 ? undefined : avisoDasTransferencias(transferencias);
+  }
+  const dosPagamentos = avisoDosPagamentos(pagamentos, hoje);
+  if (transferencias.length === 0) {
+    return dosPagamentos;
+  }
+  return {
+    titulo: `${transferencias.length + pagamentos.length} deles estão em transferências ou são pagamentos de fatura`,
+    texto: `${avisoDasTransferencias(transferencias).texto} ${dosPagamentos.texto}`,
+  };
+}
+
+/** Fatia 05b: o pagamento convertido sai com a importação, e a fatura volta a ter o pendente. */
+function avisoDosPagamentos(pagamentos: readonly PagamentoDaImportacao[], hoje: string): { readonly titulo: string; readonly texto: string } {
+  if (pagamentos.length === 1) {
+    const [pagamento] = pagamentos;
+    return {
+      titulo: '1 deles é pagamento de fatura',
+      texto: `O pagamento de ${diaEMes(pagamento.data)} sai, e a fatura de ${nomeDaFatura(pagamento.faturaMes, hoje)} de `
+        + `${pagamento.cartaoNome} volta a ter esse valor pendente.`,
+    };
+  }
+  const nomes = [...new Set(pagamentos.map((pagamento) => pagamento.cartaoNome))];
+  const cartoes = nomes.length === 1 ? nomes[0] : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`;
+  return {
+    titulo: `${pagamentos.length} deles são pagamentos de fatura`,
+    texto: `Os pagamentos saem, e as faturas de ${cartoes} voltam a ter esses valores pendentes.`,
+  };
 }
 
 /** Decisão 34 da 04c: o alerta da confirmação do desfazer quando lançamentos da importação estão em transferências. */

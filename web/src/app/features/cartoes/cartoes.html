@@ -28,14 +28,18 @@
                 <span class="cartoes__total flux-num">{{ textoDoTotal(cartao.faturaAberta.total) }}</span>
                 <a class="flux-link cartoes__ver" [routerLink]="['/cartoes', cartao.id, 'faturas', cartao.faturaAberta.mes]">Ver fatura</a>
               </div>
+              <span class="cartoes__barra" [class.cartoes__barra--estourada]="(cartao.disponivel ?? 0) < 0" aria-hidden="true"><span [style.width.%]="cartao.usoDoLimite ?? 0"></span></span>
               <div class="cartoes__rodape">
-                <span>Limite <app-valor [valor]="cartao.limite" tipo="saldo" /></span>
-                @if (cartao.contaPagamentoArquivada) {
-                  <span class="cartoes__aviso"><app-icone nome="alerta" [tamanho]="14" />Conta de pagamento arquivada: escolha outra</span>
-                } @else if (cartao.proximaFatura.lancamentos > 0) {
-                  <span>Próxima: {{ mesSemAno(cartao.proximaFatura.mes) }}, <b class="flux-num">{{ textoDoTotal(cartao.proximaFatura.total) }}</b></span>
+                <span>Disponível <app-valor class="cartoes__disponivel" [valor]="cartao.disponivel" tipo="saldo" /></span>
+                @if (acimaDoLimite(cartao); as acima) {
+                  <span class="cartoes__acima">Acima do limite em {{ acima }}</span>
+                } @else {
+                  <span>de <span class="flux-num">{{ formatarMoeda(cartao.limite) }}</span> · <span class="flux-num">{{ formatarMoeda(cartao.pendente) }}</span> em faturas a pagar</span>
                 }
               </div>
+              @if (cartao.contaPagamentoArquivada) {
+                <span class="cartoes__aviso"><app-icone nome="alerta" [tamanho]="14" />Conta de pagamento arquivada: escolha outra</span>
+              }
             </section>
           }
         </div>

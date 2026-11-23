@@ -14,7 +14,8 @@ import com.flux.lancamentos.interno.dto.ItemDaLista;
 /**
  * Monta os itens da lista com os nomes de contas, cartões e categorias, lidos uma vez por pedido
  * pelas consultas dos módulos donos (no máximo 50 contas, 20 cartões e 200 categorias por usuário).
- * O lançamento de fatura (Fatia 05a) precisa da compra dele, no mapa {@code compras}.
+ * O lançamento de fatura (Fatia 05a) precisa da compra dele, no mapa {@code compras}; o pagamento de fatura (Fatia
+ * 05b), da fatura que ele paga, no mapa {@code faturasPagas}.
  */
 final class Montagem {
 
@@ -22,14 +23,16 @@ final class Montagem {
     private final Map<Long, CartaoResumo> cartoes;
     private final Map<Long, CategoriaResumo> categorias;
     private final Map<Long, Compra> compras;
+    private final Map<Long, Fatura> faturasPagas;
     private final LocalDate hoje;
 
     Montagem(List<ContaResumo> contas, List<CartaoResumo> cartoes, List<CategoriaResumo> categorias, Map<Long, Compra> compras,
-             LocalDate hoje) {
+             Map<Long, Fatura> faturasPagas, LocalDate hoje) {
         this.contas = contas.stream().collect(Collectors.toMap(ContaResumo::id, Function.identity()));
         this.cartoes = cartoes.stream().collect(Collectors.toMap(CartaoResumo::id, Function.identity()));
         this.categorias = categorias.stream().collect(Collectors.toMap(CategoriaResumo::id, Function.identity()));
         this.compras = compras;
+        this.faturasPagas = faturasPagas;
         this.hoje = hoje;
     }
 
@@ -49,12 +52,29 @@ final class Montagem {
     private ItemDaLista daConta(Lancamento lancamento) {
         ContaResumo conta = contas.get(lancamento.getContaId());
         CategoriaResumo categoria = categoria(lancamento);
+        if (lancamento.pagamento()) {
+            return doPagamento(lancamento, conta);
+        }
         return new ItemDaLista(lancamento.getTipo(), lancamento.getId(), lancamento.getData(), lancamento.getDescricao(),
                 lancamento.getValor(), lancamento.getObservacao(), conta.id(), conta.nome(),
                 categoria == null ? null : categoria.id(), categoria == null ? null : categoria.nome(),
                 categoria == null ? null : categoria.nomeDaMae(), categoria != null && categoria.arquivada(),
                 null, null, null, lancamento.getData().isAfter(hoje), conta.arquivada(), lancamento.getOrigem(),
-                lancamento.getDescricaoBanco(), null, null, null, null, null, false, null, null, null);
+                lancamento.getDescricaoBanco(), null, null, null, null, null, false, null, null, null, null);
+    }
+
+    /**
+     * Fatia 05b (decisão 32): o pagamento de fatura, na conta, com o cartão e o mês da fatura que ele paga. Só leitura com
+     * a conta ou o cartão arquivado (decisão 33).
+     */
+    private ItemDaLista doPagamento(Lancamento lancamento, ContaResumo conta) {
+        Fatura fatura = faturasPagas.get(lancamento.getFaturaPagaId());
+        CartaoResumo cartao = cartoes.get(fatura.getCartaoId());
+        return new ItemDaLista(lancamento.getTipo(), lancamento.getId(), lancamento.getData(), lancamento.getDescricao(),
+                lancamento.getValor(), lancamento.getObservacao(), conta.id(), conta.nome(), null, null, null, false,
+                null, null, null, lancamento.getData().isAfter(hoje), conta.arquivada() || cartao.arquivado(), lancamento.getOrigem(),
+                lancamento.getDescricaoBanco(), null, cartao.id(), cartao.nome(), cartao.cor(), null, false, null, null, null,
+                fatura.mes().toString());
     }
 
     /**
@@ -71,7 +91,7 @@ final class Montagem {
                 categoria == null ? null : categoria.nomeDaMae(), categoria != null && categoria.arquivada(),
                 null, null, null, lancamento.getData().isAfter(hoje), cartao.arquivado(), lancamento.getOrigem(), null, null,
                 cartao.id(), cartao.nome(), cartao.cor(), compra.getId(), compra.estorno(), lancamento.getNumeroParcela(),
-                compra.getParcelas(), compra.getDataCompra());
+                compra.getParcelas(), compra.getDataCompra(), null);
     }
 
     /**
@@ -86,7 +106,7 @@ final class Montagem {
                 referencia.getDescricao(), entrada.getValor(), referencia.getObservacao(), origem.id(), origem.nome(),
                 null, null, null, false, destino.id(), destino.nome(), direcao, referencia.getData().isAfter(hoje),
                 origem.arquivada() || destino.arquivada(), referencia.getOrigem(), null,
-                List.of(lado(saida, origem), lado(entrada, destino)), null, null, null, null, false, null, null, null);
+                List.of(lado(saida, origem), lado(entrada, destino)), null, null, null, null, false, null, null, null, null);
     }
 
     private CategoriaResumo categoria(Lancamento lancamento) {

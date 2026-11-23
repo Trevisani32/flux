@@ -10,7 +10,8 @@ import java.util.List;
  * O que a importação de extratos (Fatia 04a) pede aos lançamentos: os que já existem na conta,
  * para classificar as linhas do arquivo, e gravar, desfazer e contar os importados (ADR 0006 e
  * ADR 0014). Desde a Fatia 04c, também os pares de transferência que o resultado sugere e os
- * importados convertidos em transferência (ADR 0016). Só lançamentos grava na tabela de lançamentos.
+ * importados convertidos em transferência (ADR 0016); desde a Fatia 05b, os que viraram pagamento de fatura (ADR 0018).
+ * Só lançamentos grava na tabela de lançamentos.
  */
 public interface LancamentosImportados {
 
@@ -30,8 +31,9 @@ public interface LancamentosImportados {
     /**
      * Apaga todos os lançamentos da importação, inclusive os editados e os ignorados. Antes, desfaz a
      * conversão dos que estão numa transferência (Fatia 04c, decisão 34): o outro lado volta a ser
-     * receita ou despesa, sem categoria, e o 422 recusa tudo se ele está numa conta arquivada. Exige
-     * transação.
+     * receita ou despesa, sem categoria, e o 422 recusa tudo se ele está numa conta arquivada. Desde a Fatia
+     * 05b, a despesa que virou pagamento de fatura sai junto, e a fatura volta a ter o pendente; o 422 recusa
+     * tudo se o cartão dela está arquivado. Exige transação.
      */
     int desfazer(Long usuarioId, Long importacaoId);
 
@@ -49,6 +51,12 @@ public interface LancamentosImportados {
 
     /** Fatia 04c (decisão 34): os importados do usuário que estão numa transferência, de todas as importações. */
     List<Convertido> convertidos(Long usuarioId);
+
+    /**
+     * Fatia 05b: os importados do usuário que viraram pagamento de fatura, de todas as importações, o mais antigo
+     * primeiro, para o histórico avisar antes do desfazer, que os apaga (como as transferências da 04c).
+     */
+    List<PagamentoConvertido> pagamentosConvertidos(Long usuarioId);
 
     /**
      * Um lançamento que já existe. {@code importacaoId} e {@code chaveImportacao} só no importado;
@@ -96,5 +104,13 @@ public interface LancamentosImportados {
      * outro lado volta a ter se a conversão for desfeita (RECEITA ou DESPESA).
      */
     record Convertido(Long importacaoId, LocalDate data, Long outraContaId, String tipoDoOutroLado) {
+    }
+
+    /**
+     * Um importado que virou pagamento de fatura: a importação, a data dele, o cartão (com o nome e se está arquivado:
+     * arquivado, o desfazer é recusado) e o mês da fatura paga ("2026-11").
+     */
+    record PagamentoConvertido(Long importacaoId, LocalDate data, Long cartaoId, String cartaoNome, boolean cartaoArquivado,
+                               String faturaMes) {
     }
 }

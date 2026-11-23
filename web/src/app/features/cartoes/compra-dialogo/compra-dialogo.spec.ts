@@ -254,7 +254,7 @@ describe('CompraDialogo', () => {
     digitar('#compra-valor', '50');
     escolher('#compra-categoria', 'Reembolsos');
     const pedidoDaPrevia = await previa();
-    expect(pedidoDaPrevia.request.body).toEqual({ cartaoId: 7, data: '2026-11-12', valorTotal: 50, parcelas: 1, parcelaInicial: 1 });
+    expect(pedidoDaPrevia.request.body).toEqual({ cartaoId: 7, data: '2026-11-12', valorTotal: 50, parcelas: 1, parcelaInicial: 1, tipo: 'ESTORNO' });
     pedidoDaPrevia.flush(previaDe(parcelas('2026-12', 1, 50)));
     TestBed.tick();
     expect(painel().querySelector('.flux-dica')?.textContent)
@@ -268,15 +268,44 @@ describe('CompraDialogo', () => {
     expect(snackBar.open).toHaveBeenCalledWith('Estorno lançado.', 'Ver fatura', { duration: 8000 });
   });
 
-  it('a compra que não existe mais mostra o 404', () => {
-    abrirCompra(TestBed.inject(MatDialog), { tipo: 'COMPRA', id: 99, cartaoId: null, hoje: '2026-11-12', categorias }).subscribe();
+  it('a compra que não existe mais mostra o 404; fechar diz "inexistente", para quem abriu recarregar (Correções do QA)', async () => {
+    resultado = null;
+    abrirCompra(TestBed.inject(MatDialog), { tipo: 'COMPRA', id: 99, cartaoId: null, hoje: '2026-11-12', categorias })
+      .subscribe((valor) => (resultado = valor));
     TestBed.tick();
     http.expectOne('/api/cartoes').flush(cartoes);
     http.expectOne('/api/compras/99').flush({ detail: 'Compra não encontrada.' }, { status: 404, statusText: 'Not Found' });
     TestBed.tick();
     expect(painel().querySelector('[role="alert"] .flux-alerta__titulo')?.textContent).toBe('Compra não encontrada.');
     expect(botao('Tentar de novo')).toBeDefined();
+    botao('Fechar').click();
+    await vi.waitFor(() => expect(resultado).toBe('inexistente'));
   });
+
+  it('a compra excluída em outra aba depois de abrir: o 404 ao salvar avisa e fecha com "inexistente", pelo botão e pelo Esc (Correções do QA)',
+    async () => {
+      abrir({ id: 5 }, loja);
+      (await previa()).flush(previaDe(loja.parcelasNoFlux));
+      TestBed.tick();
+      botao('Salvar').click();
+      TestBed.tick();
+      http.expectOne({ method: 'PUT', url: '/api/compras/5' }).flush({ detail: 'Compra não encontrada.' }, { status: 404, statusText: 'Not Found' });
+      TestBed.tick();
+      expect(painel().querySelector('[role="alert"] .flux-alerta__titulo')?.textContent).toBe('Compra não encontrada.');
+      expect(resultado).toBeNull();
+      botao('Cancelar').click();
+      await vi.waitFor(() => expect(resultado).toBe('inexistente'));
+
+      abrir({ id: 5 }, loja);
+      (await previa()).flush(previaDe(loja.parcelasNoFlux));
+      TestBed.tick();
+      botao('Salvar').click();
+      TestBed.tick();
+      http.expectOne({ method: 'PUT', url: '/api/compras/5' }).flush({ detail: 'Compra não encontrada.' }, { status: 404, statusText: 'Not Found' });
+      TestBed.tick();
+      document.querySelector('.cdk-overlay-pane')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await vi.waitFor(() => expect(resultado).toBe('inexistente'));
+    });
 
   it('a categoria que deixou de valer volta como erro do campo', async () => {
     abrir({});
@@ -295,4 +324,88 @@ describe('CompraDialogo', () => {
     TestBed.tick();
     expect(painel().querySelector('#compra-categoria-erro')?.textContent).toBe('Escolha uma categoria ativa.');
   });
+
+  it('com parcela numa fatura paga, o alerta da trava, só os textos mudam e não há "Excluir" (decisão 35 da Fatia 05)', async () => {
+    const trava = 'A parcela 1/10 está na fatura de dezembro, que já foi paga: só a descrição, a categoria e a observação mudam.';
+    abrir({ id: 5 }, { ...loja, travaDaFaturaPaga: trava });
+    expect(normal(painel().querySelector('app-alerta .flux-alerta__titulo')?.textContent)).toBe('Fatura paga');
+    expect(normal(painel().querySelector('app-alerta .flux-alerta__texto')?.textContent)).toBe(trava);
+    for (const seletor of ['#compra-cartao', '#compra-data', '#compra-valor', '#compra-parcelas']) {
+      expect(campo<HTMLInputElement>(seletor).disabled).toBe(true);
+    }
+    expect(campo('#compra-descricao').disabled).toBe(false);
+    expect(painel().querySelectorAll('.compra__cadeado').length).toBe(4);
+    // Correções do QA: as entradas travadas têm a classe de travada (o fundo e a borda tracejada), e "Compra em andamento" também.
+    expect(painel().querySelectorAll('.flux-entrada--travada').length).toBe(4);
+    expect(campo('#compra-descricao').parentElement?.classList.contains('flux-entrada--travada')).toBe(false);
+    expect(painel().querySelector('.compra__andamento')?.classList.contains('compra__andamento--travado')).toBe(true);
+    expect(campo('#compra-descricao').parentElement?.querySelector('.compra__cadeado')).toBeNull();
+    expect(campo('#compra-valor').parentElement?.querySelector('.compra__cadeado')).not.toBeNull();
+    expect(botao('Excluir')).toBeUndefined();
+    // Com a trava, só o alerta dela: o aviso da prévia não aparece.
+    (await previa()).flush({ ...previaDe(parcelas('2026-12', 10, 199)), avisoDaFaturaPaga: 'outro aviso' });
+    TestBed.tick();
+    expect(painel().querySelectorAll('app-alerta')).toHaveLength(1);
+    digitar('#compra-descricao', 'Loja Eletro Fictícia Centro');
+    botao('Salvar').click();
+    TestBed.tick();
+    const pedido = http.expectOne({ method: 'PUT', url: '/api/compras/5' });
+    expect(pedido.request.body).toEqual({ cartaoId: 7, data: '2026-11-09', descricao: 'Loja Eletro Fictícia Centro', categoriaId: 1, observacao: null,
+      valorTotal: 1990, parcelas: 10, parcelaInicial: 1 });
+    pedido.flush({ ...loja, descricao: 'Loja Eletro Fictícia Centro', travaDaFaturaPaga: trava });
+    await vi.waitFor(() => expect(resultado).toBe('salvo'));
+  });
+
+  it('a prévia da Nova compra diz o disponível depois dela; a da edição, não (decisão 38 da Fatia 05)', async () => {
+    abrir({});
+    digitar('#compra-descricao', 'Geladeira');
+    digitar('#compra-valor', '481');
+    (await previa()).flush({ ...previaDe(parcelas('2026-12', 1, 481)), disponivelDepois: 632.65 });
+    TestBed.tick();
+    expect(normal(painel().querySelector('.compra__disponivel')?.textContent)).toBe('Disponível depois desta compra: R$ 632,65');
+    TestBed.inject(MatDialog).closeAll();
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), { provide: MatSnackBar, useValue: snackBar }],
+    });
+    http = TestBed.inject(HttpTestingController);
+    abrir({ id: 5 }, loja);
+    (await previa()).flush({ ...previaDe(parcelas('2026-12', 10, 199)), disponivelDepois: 632.65 });
+    TestBed.tick();
+    expect(painel().querySelector('.compra__disponivel')).toBeNull();
+  });
+
+  it('a prévia avisa antes de salvar que a compra vai ficar travada numa fatura paga, na nova e na edição (decisão 35, dono em 2026-11-20)',
+    async () => {
+      const aviso = 'A compra vai para a fatura de setembro, que já foi paga fora do Flux: ela entra travada, e só a descrição, a categoria e '
+        + 'a observação vão mudar. Para corrigir um engano, desmarque a fatura.';
+      abrir({});
+      digitar('#compra-descricao', 'Esquecida');
+      digitar('#compra-valor', '40');
+      (await previa()).flush({ ...previaDe(parcelas('2026-12', 1, 40)), avisoDaFaturaPaga: null });
+      TestBed.tick();
+      expect(painel().querySelector('app-alerta')).toBeNull();
+      digitar('#compra-valor', '45');
+      (await previa()).flush({ ...previaDe(parcelas('2026-12', 1, 45)), avisoDaFaturaPaga: aviso });
+      TestBed.tick();
+      expect(normal(painel().querySelector('app-alerta .flux-alerta__titulo')?.textContent)).toBe('Vai entrar numa fatura paga');
+      expect(normal(painel().querySelector('app-alerta .flux-alerta__texto')?.textContent)).toBe(aviso);
+      expect(painel().querySelectorAll('.compra__cadeado').length).toBe(0);
+      TestBed.inject(MatDialog).closeAll();
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), { provide: MatSnackBar, useValue: snackBar }],
+      });
+      http = TestBed.inject(HttpTestingController);
+      // Na edição, a prévia leva o id da compra (a API desconta as parcelas dela), e o aviso diz que ela vai ficar travada.
+      const daEdicao = 'A compra vai ficar na fatura de dezembro, que fica paga com ela: ela fica travada, e só a descrição, a categoria e a '
+        + 'observação vão mudar. Para corrigir um engano, exclua ou edite o pagamento dela.';
+      abrir({ id: 5 }, loja);
+      const pedido = await previa();
+      expect(pedido.request.body).toEqual({ cartaoId: 7, data: '2026-11-09', valorTotal: 1990, parcelas: 10, parcelaInicial: 1, compraId: 5 });
+      pedido.flush({ ...previaDe(parcelas('2026-12', 10, 199)), avisoDaFaturaPaga: daEdicao });
+      TestBed.tick();
+      expect(normal(painel().querySelector('app-alerta .flux-alerta__titulo')?.textContent)).toBe('Vai ficar numa fatura paga');
+      expect(normal(painel().querySelector('app-alerta .flux-alerta__texto')?.textContent)).toBe(daEdicao);
+    });
 });

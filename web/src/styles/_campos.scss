@@ -85,7 +85,7 @@
   line-height: 16px;
 }
 
-// Aceite dos termos: checkbox nativo com o visual do mockup.
+// Aceite dos termos: checkbox nativo com o visual do Flux.
 .flux-aceite {
   display: flex;
   align-items: flex-start;
@@ -169,13 +169,21 @@
   color: var(--flux-escuro-texto);
 }
 
-.flux-entrada > select:disabled {
+// O campo desabilitado (o select, o texto e a data) fica com a cor texto-2, sem esmaecer, igual em todo navegador: o
+// Chrome esmaece o select desabilitado por conta própria (opacidade 0,7), e o Safari pinta o texto desabilitado pelo
+// -webkit-text-fill-color.
+.flux-entrada > select:disabled,
+.flux-entrada > input:disabled {
   color: var(--flux-texto-2);
+  -webkit-text-fill-color: var(--flux-texto-2);
   cursor: not-allowed;
+  opacity: 1;
 }
 
+// A entrada travada (o valor que não muda): o fundo card-2 e a borda tracejada.
 .flux-entrada--travada {
   background: var(--flux-card-2);
+  border-style: dashed;
 }
 
 .flux-entrada__seta {
@@ -192,6 +200,12 @@
 .flux-entrada > input[type='date'] {
   color-scheme: dark;
   padding-right: var(--flux-espaco-2);
+}
+
+// O campo de data desabilitado não mostra o ícone do calendário, mas o Chrome guarda o espaço dele: sem isso, o ano da
+// data travada da compra, ao lado do cadeado, era cortado a 375 px.
+.flux-entrada > input[type='date']:disabled::-webkit-calendar-picker-indicator {
+  display: none;
 }
 
 .flux-grupo {

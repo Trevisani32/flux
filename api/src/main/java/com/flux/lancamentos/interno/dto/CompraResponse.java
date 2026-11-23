@@ -7,7 +7,9 @@ import java.util.List;
 /**
  * Uma compra ou um estorno (decisões 14 a 20), resposta de criar, buscar e editar. {@code tipo} é COMPRA ou
  * ESTORNO; {@code valorTotal} é positivo; {@code somenteLeitura}, o cartão arquivado (decisão 5);
- * {@code parcelasNoFlux}, as parcelas gravadas, a primeira antes (o estorno tem uma).
+ * {@code parcelasNoFlux}, as parcelas gravadas, a primeira antes (o estorno tem uma). Fatia 05b (decisão 35):
+ * {@code travaDaFaturaPaga}, com alguma parcela numa fatura paga, a frase que diz qual ("A parcela 1/3 está na fatura de
+ * novembro, que já foi paga: só a descrição, a categoria e a observação mudam."); nula sem fatura paga.
  */
 public record CompraResponse(
         Long id,
@@ -25,5 +27,6 @@ public record CompraResponse(
         String categoriaMaeNome,
         boolean categoriaArquivada,
         String observacao,
-        List<ParcelaDaCompra> parcelasNoFlux) {
+        List<ParcelaDaCompra> parcelasNoFlux,
+        String travaDaFaturaPaga) {
 }
