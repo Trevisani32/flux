@@ -703,7 +703,7 @@ Ver [ADR 0017](decisoes/0017-cartao-de-credito-faturas-e-parcelas.md), que subst
 | 04b | Regras de categorização: cadastro, sugestão na revisão da importação, "Aplicar regras" e "Criar regra" | Concluída |
 | 04c | Conversão de importados em transferência: pares, lado novo, desfazer e sugestão no resultado da importação | Concluída |
 | 05a | Cartões, faturas, compras parceladas, estornos e ajuste de fechamento | Concluída |
-| 05b | Pagamento da fatura, situação paga, paga fora do Flux, conversão do importado em pagamento e limite disponível | Implementada, aguardando publicação |
+| 05b | Pagamento da fatura, situação paga, paga fora do Flux, conversão do importado em pagamento e limite disponível | Concluída |
 | 05c | Importação de fatura de cartão e regras com cartão | — |
 | 06 | Dashboard, relatórios e exportação dos dados | — |
 | 07 | Recorrências, orçamento e projeção de saldo | — |
