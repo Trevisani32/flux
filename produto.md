@@ -71,7 +71,7 @@ O que isso exige do produto:
 | Parcelamento | Compra no cartão dividida em N parcelas, uma por fatura |
 | Estorno | Crédito numa fatura de cartão, que abate o total dela |
 | Pagamento de fatura | Dinheiro que sai de uma conta para pagar a fatura de um cartão. Não é despesa: a despesa é a compra |
-| Importação | Leitura de um extrato OFX ou CSV que vira lançamentos |
+| Importação | Leitura de um extrato de conta ou de uma fatura de cartão, em OFX ou CSV, que vira lançamentos |
 | Regra de categorização | "Se a descrição contém X, use a categoria Y" |
 | Recorrência | Lançamento que se repete (salário, aluguel, assinatura) |
 | Previsto / efetivado | Previsto é algo que ainda vai acontecer. Efetivado já aconteceu e conta no saldo |
@@ -313,6 +313,7 @@ O que isso exige do produto:
 ### 6. Importação de extratos — Fatia 04a
 
 Ver [ADR 0006](decisoes/0006-importacao-idempotente.md) e [ADR 0014](decisoes/0014-importacao-de-extratos.md).
+A importação de fatura de cartão, que usa a mesma tela, está no módulo 8 (Fatia 05c).
 
 - **Formatos:** OFX (versões 1.x em SGML e 2.x em XML) e CSV com perfil, reconhecidos pelo
   conteúdo, não pela extensão. O arquivo pode ter no máximo 5 MB e 3.000 movimentações.
@@ -320,13 +321,15 @@ Ver [ADR 0006](decisoes/0006-importacao-idempotente.md) e [ADR 0014](decisoes/00
   - Data do OFX: o dia do `DTPOSTED`, sem converter fuso. O valor aceita ponto ou vírgula decimal.
   - Descrição: o `MEMO`, senão o `NAME`, senão "Sem descrição", cortada em 255 caracteres. A
     descrição original do banco fica guardada.
-  - Fatura de cartão (OFX de cartão ou o CSV da fatura do Nubank) e extrato de mais de uma conta
-    são recusados. A importação de fatura entra na Fatia 05c (módulo 8).
-- **Conta:** escolhida à mão, antes do arquivo; vem preenchida pelo atalho da conta ou pela última
-  usada na sessão. Se o mesmo extrato OFX já foi importado em outra conta ativa, a revisão avisa e
+  - Extrato de mais de uma conta é recusado. A fatura de cartão (OFX de cartão ou o CSV da fatura
+    do Nubank) numa conta também: "Este arquivo é a fatura de um cartão: escolha um cartão no lugar
+    da conta."; ela entra num cartão (módulo 8).
+- **Conta:** escolhida à mão, antes do arquivo, no campo "Importar em", que desde a 05c lista as
+  contas e os cartões ativos; vem preenchida pelo atalho ou pelo último lugar usado na sessão. Se o
+  mesmo extrato OFX já foi importado em outra conta ativa, a revisão avisa e
   oferece trocar. Do OFX fica só um hash protegido por um segredo do servidor e os 4 últimos dígitos da conta,
   nunca o número.
-- **Perfil de CSV**, salvo por conta, criado na primeira importação de CSV dela e editável na
+- **Perfil de CSV**, salvo por conta (e, desde a 05c, por cartão), criado na primeira importação de CSV dela e editável na
   revisão. Informa:
   - o separador de colunas (vírgula, ponto e vírgula ou tabulação);
   - quantas linhas de cabeçalho pular;
@@ -383,11 +386,12 @@ Ver [ADR 0006](decisoes/0006-importacao-idempotente.md) e [ADR 0014](decisoes/00
 - **Transferência entre contas próprias** aparece nos dois extratos e entra como despesa numa conta
   e receita na outra. O lançamento importado pode ser convertido em transferência, ligado ao da outra
   conta, com o mesmo valor e o sinal oposto (módulo 5).
-- A importação de fatura de cartão entra na Fatia 05c (módulo 8).
+- A importação de fatura de cartão está no módulo 8 (Fatia 05c).
 
-### 7. Regras de categorização — Fatia 04b
+### 7. Regras de categorização — Fatias 04b e 05c
 
-Ver [ADR 0015](decisoes/0015-regras-de-categorizacao.md).
+Ver [ADR 0015](decisoes/0015-regras-de-categorizacao.md) e
+[ADR 0019](decisoes/0019-importacao-de-fatura-e-regras-com-cartao.md).
 
 - **Condição:** **contém**, **começa com** ou **igual a**, aplicada à descrição do extrato no
   lançamento importado e à descrição no lançamento manual. A comparação ignora maiúsculas, acentos,
@@ -395,24 +399,28 @@ Ver [ADR 0015](decisoes/0015-regras-de-categorizacao.md).
   "PAG*UBERTRIP 8812". O texto tem até 255 caracteres e ao menos 2 letras ou números.
 - **Categoria:** obrigatória e ativa. A natureza dela define o tipo: uma regra com categoria de
   despesa só pega despesas, e uma de receita, só receitas.
-- **Conta:** todas as contas ou uma conta ativa. O cartão entra na Fatia 05c; até lá, as regras
-  não olham os lançamentos de fatura. O pagamento de fatura nunca entra: não é receita nem despesa.
+- **Conta ou cartão:** todas as contas e cartões, uma conta ativa ou, desde a 05c, um cartão ativo;
+  nunca uma conta e um cartão juntos. A regra de todas vale também nas compras e nos estornos dos
+  cartões; a de um cartão, só nos dele. O pagamento de fatura nunca entra: não é receita nem despesa.
 - **Descrição legível**, opcional: troca a descrição do lançamento importado ("PAG*UBERTRIP 8812" →
   "Uber"); a do extrato continua guardada. No lançamento manual, a regra só põe a categoria.
 - **Ordem:** a lista é numerada, e vale a primeira regra que casar. A regra nova entra em 1º lugar;
   "Subir" e "Descer" mudam a posição.
-- Cada usuário pode ter até 200 regras. A mesma condição (mesmo texto, condição, natureza e conta)
-  não se repete.
+- Cada usuário pode ter até 200 regras. A mesma condição (mesmo texto, condição, natureza, conta e
+  cartão) não se repete.
 - O diálogo da regra mostra, enquanto ela é escrita, com quantos lançamentos ela casa, quantos deles
   estão sem categoria e até 3 exemplos.
 - **Onde as regras agem:**
-  - na revisão da importação, cada linha para importar vem com a categoria e a descrição da primeira
+  - na revisão da importação, de extrato ou de fatura, cada linha para importar vem com a categoria e a descrição da primeira
     regra que casar, marcada "pela 2ª regra". Trocar a categoria no seletor vale e não volta, e a
     confirmação grava o que a revisão mostrou;
   - em "Aplicar regras": na tela de Regras, no aviso que aparece depois de criar uma regra e em
     Lançamentos com o filtro "Sem categoria". Valem as receitas e despesas sem categoria, manuais e
-    importadas, de contas ativas e de qualquer data. Uma prévia agrupada por regra diz quantos
-    lançamentos cada uma pega; desmarcar uma regra deixa os lançamentos dela sem categoria.
+    importadas, de contas ativas e de qualquer data, e também as compras e os estornos sem categoria
+    de cartões ativos: a regra categoriza a compra inteira, com todas as parcelas, inclusive na
+    fatura paga; cada compra conta uma vez, e o exemplo dela mostra o cartão, a data da compra e o
+    valor total. Uma prévia agrupada por regra diz quantos lançamentos e compras cada uma pega;
+    desmarcar uma regra deixa os lançamentos dela sem categoria.
 - Uma regra nunca troca a categoria que um lançamento já tem, posta à mão ou por outra regra. A
   descrição legível só troca a do importado que ainda está igual à do extrato.
 - **Sugestão de regra:** no resultado da importação, as descrições que ganharam categoria à mão na
@@ -420,9 +428,9 @@ Ver [ADR 0015](decisoes/0015-regras-de-categorizacao.md).
   ganhou uma, o aviso oferece "Criar regra". O texto vem preenchido com a descrição do extrato até o
   primeiro trecho com número ("PAG*UBERTRIP 8812" → "PAG*UBERTRIP"), e tudo pode ser editado antes de
   salvar. Não há sugestão quando uma regra ativa já casa com a descrição.
-- **Categoria e conta da regra:** a regra é uso da categoria; com regras, a categoria não se exclui,
-  só se arquiva. Uma regra com a categoria ou a conta arquivada fica pausada até a reativação.
-  Excluir a conta exclui as regras só dela.
+- **Categoria, conta e cartão da regra:** a regra é uso da categoria; com regras, a categoria não se
+  exclui, só se arquiva. Uma regra com a categoria, a conta ou o cartão arquivado fica pausada até a
+  reativação. Excluir a conta exclui as regras só dela; excluir o cartão, as só dele.
 - Excluir uma regra não muda os lançamentos que ela já categorizou.
 
 ### 8. Cartões de crédito — Fatias 05a, 05b e 05c
@@ -452,7 +460,8 @@ Ver [ADR 0017](decisoes/0017-cartao-de-credito-faturas-e-parcelas.md), que subst
   delas mudam de fatura quando for o caso. Na primeira fatura com os dias novos, o fechamento nunca fica
   antes do dia seguinte ao fechamento da aberta. O diálogo avisa a partir de qual fatura os dias novos
   valem. A exceção é o cartão vazio, sem nenhuma compra ou estorno lançado, sem ajuste de fechamento e, desde a 05b,
-  sem pagamento e sem fatura marcada como paga fora do Flux, como o cartão novo ou aquele cujas compras foram todas
+  sem pagamento e sem fatura marcada como paga fora do Flux e, desde a 05c, sem importação de fatura (nem a desfeita),
+  como o cartão novo ou aquele cujas compras foram todas
   excluídas: nele, os dias novos valem já,
   inclusive na fatura aberta, as faturas vazias que restaram são apagadas, e o diálogo avisa "O cartão
   ainda não tem lançamentos: os dias novos valem já.".
@@ -463,7 +472,8 @@ Ver [ADR 0017](decisoes/0017-cartao-de-credito-faturas-e-parcelas.md), que subst
     ficam só para leitura até ele ser reativado;
   - reativar é recusado se já houver um cartão ativo com o mesmo nome. Cartão arquivado não se edita;
   - excluir só é permitido sem compras, sem estornos e, desde a 05b, sem pagamentos; com eles, o sistema diz quantos
-    são ("tem 12 compras, 1 estorno e 2 pagamentos") e oferece arquivar. As faturas vazias saem junto.
+    são ("tem 12 compras, 1 estorno e 2 pagamentos") e oferece arquivar. As faturas vazias saem junto e, desde a 05c,
+    o registro das importações de fatura, o perfil de CSV e as regras do cartão.
 - **Fatura:**
   - existe uma por cartão por mês de referência, que é o mês do vencimento ("fatura de dezembro"
     vence em dezembro);
@@ -530,8 +540,8 @@ Ver [ADR 0017](decisoes/0017-cartao-de-credito-faturas-e-parcelas.md), que subst
 - **Usos:** a parcela é uso da categoria, como o lançamento. A conta de pagamento é uso da conta. A
   compra e o estorno são uso do cartão ("Este cartão não pode ser excluído porque tem 12 compras e 1
   estorno.").
-- Até a 05c, as regras de categorização não olham os lançamentos de fatura, e a conversão em
-  transferência só vê lançamentos de conta.
+- A conversão em transferência só vê lançamentos de conta. As regras de categorização olham as
+  compras e os estornos desde a 05c (módulo 7).
 
 **Fatia 05b: pagamento da fatura e limite disponível** ([ADR 0018](decisoes/0018-pagamento-da-fatura-e-limite-disponivel.md)).
 
@@ -600,15 +610,22 @@ Ver [ADR 0017](decisoes/0017-cartao-de-credito-faturas-e-parcelas.md), que subst
 - **Usos:** o pagamento é uso da conta (conta como lançamento) e do cartão. A fatura com pagamento ou marcada como paga
   fora do Flux tira o cartão da exceção "os dias novos valem já" da troca de dias.
 
-**Fatia 05c: importação de fatura e regras com cartão.**
+**Fatia 05c: importação de fatura e regras com cartão**
+([ADR 0019](decisoes/0019-importacao-de-fatura-e-regras-com-cartao.md)).
 
-- Formatos: o CSV da fatura do Nubank, CSV de outro banco com perfil e OFX de cartão. O usuário escolhe
-  o cartão, e a fatura vem sugerida pelas datas e pode ser trocada.
-- "Parcela 3/10" no arquivo cria a compra com as parcelas 3 a 10; as seguintes são reconhecidas nas
-  próximas importações.
-- O pagamento no arquivo fica de fora, e as outras linhas negativas viram estorno.
-- A data de cada linha segue a mesma faixa da compra: de 10 anos antes de hoje a 12 meses depois.
-- As regras ganham "Conta ou cartão", e "Aplicar regras" passa a pegar compras sem categoria.
+- **Onde e formatos:** "Importar em" oferece contas e cartões ativos; o atalho do cartão abre a fatura. Aceita OFX de
+  cartão, CSV da fatura Nubank e CSV com perfil do cartão, com os limites da importação de extrato. No Nubank, compras
+  positivas viram despesas e créditos viram estornos; extrato e fatura no destino errado são recusados.
+- **Fatura:** a compra válida mais recente sugere a fatura; são oferecidas a anterior, a sugerida e a seguinte. Todas as
+  linhas entram na fatura escolhida, e pagamento, saldo, total, zero, linha ilegível e data fora da faixa ficam de fora.
+- **Parcelas:** "Parcela 3/10" cria a compra e as parcelas 3 a 10. A mesma compra tem loja, data e número de parcelas
+  iguais; os centavos podem variar até N − 1. Uma parcela já importada com valor diferente recebe o valor do banco, salvo
+  se a fatura dela estiver paga.
+- **Compra e histórico:** compra importada só altera descrição, categoria e observação; excluir apaga de verdade as
+  parcelas e reimportar a traz de volta. Desfazer apaga compras e parcelas, mas é recusado com cartão arquivado ou
+  parcela em fatura paga.
+- **Regras:** uma regra filtra todas as contas e cartões, uma conta ou um cartão. Compras e estornos de cartão contam uma
+  vez, com data da compra e valor total, e a categoria alcança todas as parcelas.
 
 ### 9. Dashboard e relatórios — Fatia 06
 
@@ -704,7 +721,7 @@ Ver [ADR 0017](decisoes/0017-cartao-de-credito-faturas-e-parcelas.md), que subst
 | 04c | Conversão de importados em transferência: pares, lado novo, desfazer e sugestão no resultado da importação | Concluída |
 | 05a | Cartões, faturas, compras parceladas, estornos e ajuste de fechamento | Concluída |
 | 05b | Pagamento da fatura, situação paga, paga fora do Flux, conversão do importado em pagamento e limite disponível | Concluída |
-| 05c | Importação de fatura de cartão e regras com cartão | — |
+| 05c | Importação de fatura de cartão e regras com cartão | Implementada, aguardando publicação |
 | 06 | Dashboard, relatórios e exportação dos dados | — |
 | 07 | Recorrências, orçamento e projeção de saldo | — |
 | 08 | Deploy, demo pública e README completo | — |
