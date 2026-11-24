@@ -268,7 +268,7 @@ describe('CompraDialogo', () => {
     expect(snackBar.open).toHaveBeenCalledWith('Estorno lançado.', 'Ver fatura', { duration: 8000 });
   });
 
-  it('a compra que não existe mais mostra o 404; fechar diz "inexistente", para quem abriu recarregar (Correções do QA)', async () => {
+  it('a compra que não existe mais mostra o 404, sem "Tentar de novo" (Fatia 05c); fechar diz "inexistente", para quem abriu recarregar', async () => {
     resultado = null;
     abrirCompra(TestBed.inject(MatDialog), { tipo: 'COMPRA', id: 99, cartaoId: null, hoje: '2026-11-12', categorias })
       .subscribe((valor) => (resultado = valor));
@@ -277,12 +277,12 @@ describe('CompraDialogo', () => {
     http.expectOne('/api/compras/99').flush({ detail: 'Compra não encontrada.' }, { status: 404, statusText: 'Not Found' });
     TestBed.tick();
     expect(painel().querySelector('[role="alert"] .flux-alerta__titulo')?.textContent).toBe('Compra não encontrada.');
-    expect(botao('Tentar de novo')).toBeDefined();
+    expect(botao('Tentar de novo')).toBeUndefined();
     botao('Fechar').click();
     await vi.waitFor(() => expect(resultado).toBe('inexistente'));
   });
 
-  it('a compra excluída em outra aba depois de abrir: o 404 ao salvar avisa e fecha com "inexistente", pelo botão e pelo Esc (Correções do QA)',
+  it('a compra excluída em outra aba depois de abrir: o 404 ao salvar avisa e fecha com "inexistente", pelo botão e pelo Esc',
     async () => {
       abrir({ id: 5 }, loja);
       (await previa()).flush(previaDe(loja.parcelasNoFlux));
@@ -335,7 +335,7 @@ describe('CompraDialogo', () => {
     }
     expect(campo('#compra-descricao').disabled).toBe(false);
     expect(painel().querySelectorAll('.compra__cadeado').length).toBe(4);
-    // Correções do QA: as entradas travadas têm a classe de travada (o fundo e a borda tracejada), e "Compra em andamento" também.
+    // As entradas travadas têm a classe de travada (o fundo e a borda tracejada), e "Compra em andamento" também.
     expect(painel().querySelectorAll('.flux-entrada--travada').length).toBe(4);
     expect(campo('#compra-descricao').parentElement?.classList.contains('flux-entrada--travada')).toBe(false);
     expect(painel().querySelector('.compra__andamento')?.classList.contains('compra__andamento--travado')).toBe(true);
@@ -407,5 +407,69 @@ describe('CompraDialogo', () => {
       TestBed.tick();
       expect(normal(painel().querySelector('app-alerta .flux-alerta__titulo')?.textContent)).toBe('Vai ficar numa fatura paga');
       expect(normal(painel().querySelector('app-alerta .flux-alerta__texto')?.textContent)).toBe(daEdicao);
+    });
+
+  it('a compra importada da fatura trava a data, o valor e as parcelas, com o alerta, e continua com "Excluir" (decisão 40 da Fatia 05)',
+    async () => {
+      abrir({ id: 5 }, { ...loja, importada: true });
+      expect(normal(painel().querySelector('app-alerta .flux-alerta__titulo')?.textContent)).toBe('Compra importada da fatura');
+      expect(normal(painel().querySelector('app-alerta .flux-alerta__texto')?.textContent))
+        .toBe('Só a descrição, a categoria e a observação mudam: a data, o valor e as parcelas vieram do banco.');
+      for (const seletor of ['#compra-cartao', '#compra-data', '#compra-valor', '#compra-parcelas']) {
+        expect(campo<HTMLInputElement>(seletor).disabled).toBe(true);
+      }
+      expect(campo('#compra-descricao').disabled).toBe(false);
+      expect(painel().querySelectorAll('.compra__cadeado').length).toBe(4);
+      expect(painel().querySelectorAll('.flux-entrada--travada').length).toBe(4);
+      expect(botao('Excluir')).toBeDefined();
+      expect(normal(painel().querySelector('.compra__titulo-previa')?.textContent)).toBe('10x de R$ 199,00');
+      digitar('#compra-descricao', 'Loja Eletro Fictícia Centro');
+      botao('Salvar').click();
+      TestBed.tick();
+      const pedido = http.expectOne({ method: 'PUT', url: '/api/compras/5' });
+      expect(pedido.request.body).toEqual({ cartaoId: 7, data: '2026-11-09', descricao: 'Loja Eletro Fictícia Centro', categoriaId: 1,
+        observacao: null, valorTotal: 1990, parcelas: 10, parcelaInicial: 1 });
+      pedido.flush({ ...loja, descricao: 'Loja Eletro Fictícia Centro', importada: true });
+      await vi.waitFor(() => expect(resultado).toBe('salvo'));
+    });
+
+  it('a falha ao carregar que não é 404 mantém o "Tentar de novo", que pede a compra de novo (Fatia 05c)', () => {
+    abrirCompra(TestBed.inject(MatDialog), { tipo: 'COMPRA', id: 99, cartaoId: null, hoje: '2026-11-12', categorias });
+    TestBed.tick();
+    http.expectOne('/api/cartoes').flush(cartoes);
+    http.expectOne('/api/compras/99').flush(null, { status: 500, statusText: 'Erro' });
+    TestBed.tick();
+    expect(painel().querySelector('[role="alert"] .flux-alerta__titulo')?.textContent).toBe('Não foi possível carregar a compra.');
+    botao('Tentar de novo').click();
+    TestBed.tick();
+    http.expectOne('/api/cartoes').flush(cartoes);
+    http.expectOne('/api/compras/99').flush({ ...loja, id: 99 });
+    TestBed.tick();
+    expect(painel().querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('a compra importada não pede a prévia: as parcelas aparecem onde estão, na fatura escolhida, e não pela data (Fatia 05c)',
+    async () => {
+      // "Parcela 3/10" de 03/09, importada na fatura de outubro: pela data, a 3ª cairia em novembro.
+      abrir({ id: 6 }, { ...loja, id: 6, data: '2026-09-03', descricao: 'Curso Online Ficticio', valorTotal: 999, parcelaInicial: 3,
+        parcelasNoFlux: parcelas('2026-10', 8, 99.9).map((parcela) => ({ ...parcela, numero: parcela.numero + 2 })), importada: true });
+      expect(normal(painel().querySelector('.compra__titulo-previa')?.textContent)).toBe('10x de R$ 99,90');
+      expect(normal(painel().querySelector('.compra__previa')?.textContent))
+        .toContain('3ª na fatura de outubro (vence 10/10/2026) · última em maio de 2027.');
+      await new Promise((pronto) => setTimeout(pronto, 400));
+      http.expectNone({ method: 'POST', url: '/api/compras/previa' });
+    });
+
+  it('o estorno importado diz a fatura dele, sem a dica de "cai na fatura da data", e não pede a prévia (Fatia 05c)',
+    async () => {
+      abrir({ id: 7, tipo: 'ESTORNO' }, { ...loja, id: 7, tipo: 'ESTORNO', descricao: 'Estorno de Loja Ficticia', valorTotal: 15, parcelas: 1,
+        parcelasNoFlux: parcelas('2026-10', 1, 15), importada: true });
+      expect(normal(painel().querySelector('app-alerta .flux-alerta__texto')?.textContent))
+        .toBe('Só a descrição, a categoria e a observação mudam: a data e o valor vieram do banco.');
+      expect(normal(painel().querySelector('.compra__titulo-previa')?.textContent)).toBe('Na fatura de outubro');
+      expect(painel().querySelectorAll('#compra-categoria')).toHaveLength(1);
+      expect(painel().querySelectorAll('label[for="compra-categoria"]')).toHaveLength(1);
+      await new Promise((pronto) => setTimeout(pronto, 400));
+      http.expectNone({ method: 'POST', url: '/api/compras/previa' });
     });
 });

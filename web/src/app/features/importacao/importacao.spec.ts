@@ -7,10 +7,11 @@ import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AGORA } from '../../core/tempo/agora';
+import { Cartao, ListaDeCartoes } from '../cartoes/cartoes.service';
 import { ListaDeCategorias } from '../categorias/categorias.service';
 import { Conta, ListaDeContas } from '../contas/contas.service';
 import { ItemDaLista } from '../lancamentos/lancamentos.service';
-import { NUBANK_CONTA } from './apresentacao';
+import { NUBANK_CONTA, NUBANK_FATURA } from './apresentacao';
 import { Importacao } from './importacao';
 import { Importacao as ItemDoHistorico, LadoSugerido, Previa, Resultado } from './importacao.service';
 import { FluxoDeRegras } from '../regras/fluxo-de-regras';
@@ -23,6 +24,28 @@ function conta(id: number, nome: string): Conta {
 const contas: ListaDeContas = { ativas: [conta(1, 'Banco Horizonte'), conta(2, 'Conta conjunta')], arquivadas: [],
   totais: { geral: 0, disponivel: 0, investimentos: 0 } };
 const categorias: ListaDeCategorias = { despesas: { ativas: [], arquivadas: [] }, receitas: { ativas: [], arquivadas: [] } };
+
+/** Fatia 05c: o cartão de "Importar em". */
+const horizonte = { id: 5, nome: 'Cartão Horizonte' } as Cartao;
+const cartoes: ListaDeCartoes = { ativos: [horizonte], arquivados: [] };
+
+/** Fatia 05c: a prévia de uma fatura (decisões 40 e 41): a sugerida, a anterior e a seguinte, e uma linha "Parcela 3/10". */
+const previaDaFatura: Previa = {
+  hash: 'def', formato: 'CSV', nomeArquivo: 'fatura-dezembro.csv', contaId: null, contaNome: null, dataSaldoInicial: null,
+  dataInicio: '2026-08-20', dataFim: '2026-11-21', arquivoRepetido: null, outraConta: null, perfil: NUBANK_FATURA, origens: [],
+  cartaoId: 5, cartaoNome: 'Cartão Horizonte', dataDaSugestao: '2026-11-21',
+  fatura: { mes: '2026-12', fechamento: '2026-12-03', vencimento: '2026-12-10', situacao: 'ABERTA' },
+  faturas: [{ mes: '2026-11', fechamento: '2026-11-03', vencimento: '2026-11-10', situacao: 'FECHADA' },
+    { mes: '2026-12', fechamento: '2026-12-03', vencimento: '2026-12-10', situacao: 'ABERTA' },
+    { mes: '2027-01', fechamento: '2027-01-03', vencimento: '2027-01-10', situacao: 'FUTURA' }],
+  linhas: [
+    { linha: 3, data: '2026-11-21', descricao: 'Padaria Pao Quente', valor: -22.5, situacao: 'NOVA', motivo: null, marcada: true, futuro: false,
+      erro: null, parecido: null, sugestao: null, parcela: null, parcelas: null, parcelaQueCobre: null, descricaoDaCompra: null },
+    { linha: 2, data: '2026-08-20', descricao: 'Curso Online Ficticio - Parcela 3/10', valor: -120, situacao: 'NOVA', motivo: null,
+      marcada: true, futuro: false, erro: null, parecido: null, sugestao: null, parcela: 3, parcelas: 10, parcelaQueCobre: null,
+      descricaoDaCompra: 'Curso Online Ficticio' },
+  ],
+};
 
 const previa: Previa = {
   hash: 'abc', formato: 'OFX', nomeArquivo: 'extrato.ofx', contaId: 1, contaNome: 'Banco Horizonte', dataSaldoInicial: '2026-10-01',
@@ -55,18 +78,20 @@ describe('Importacao', () => {
     }
   });
 
-  function criar(conta: string | null = null) {
+  /** `parametros`: o atalho da URL ({ conta: '2' } ou, na Fatia 05c, { cartao: '5' }). */
+  function criar(conta: string | null = null, parametros: Record<string, string> = {}, listas = { contas, cartoes }) {
     TestBed.configureTestingModule({
       imports: [Importacao],
       providers: [
         provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
         { provide: AGORA, useValue: () => new Date('2026-11-10T15:00:00Z') },
-        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(conta === null ? {} : { conta }) } } },
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(conta === null ? parametros : { conta }) } } },
       ],
     });
     httpTesting = TestBed.inject(HttpTestingController);
     const fixture = TestBed.createComponent(Importacao);
-    httpTesting.expectOne('/api/contas').flush(contas);
+    httpTesting.expectOne('/api/contas').flush(listas.contas);
+    httpTesting.expectOne('/api/cartoes').flush(listas.cartoes);
     httpTesting.expectOne('/api/categorias').flush(categorias);
     httpTesting.expectOne({ method: 'GET', url: '/api/importacoes' }).flush(historico);
     fixture.detectChanges();
@@ -95,7 +120,7 @@ describe('Importacao', () => {
 
   it('o 413 da API ou do nginx (em HTML) vira a mensagem dos 5 MB; a conta vem da URL', () => {
     const { fixture, componente, elemento } = criar('2');
-    expect(componente.contaId()).toBe(2);
+    expect(componente.destino()).toEqual({ tipo: 'conta', id: 2 });
     componente.escolherArquivo(lista(new File(['x'], 'extrato.ofx')));
     const pedido = httpTesting.expectOne('/api/importacoes/previa');
     expect((pedido.request.body as FormData).get('contaId')).toBe('2');
@@ -161,7 +186,7 @@ describe('Importacao', () => {
     fixture.detectChanges();
     expect(componente.passo()).toBe('revisao');
     expect(alertaDaPagina(elemento)).toBe('Conta conjunta está arquivada. Reative a conta para importar nela.');
-    expect(componente.contaId()).toBe(1);
+    expect(componente.destino()).toEqual({ tipo: 'conta', id: 1 });
   });
 
   it('"Voltar" do perfil aberto pelo "Editar perfil" volta ao resumo ou à revisão, com o mesmo arquivo e a mesma prévia', () => {
@@ -505,5 +530,118 @@ describe('Importacao', () => {
     Array.from(aviso.querySelectorAll('button'))[1].click();
     await vi.waitFor(() => expect(navegar).toHaveBeenCalledWith(['/cartoes']));
     httpTesting.expectNone({ method: 'POST', url: '/api/importacoes/12/desfazer' });
+  });
+
+  it('"Importar em" tem as contas e os cartões; o atalho do cartão o escolhe, e a leitura volta ao arquivo com a fatura sugerida '
+    + '(Fatia 05c, decisão 40)', () => {
+    const { fixture, componente, elemento } = criar(null, { cartao: '5' });
+    const seletor = elemento.querySelector('#importacao-destino') as HTMLSelectElement;
+    expect(elemento.querySelector('label[for="importacao-destino"]')?.textContent).toBe('Importar em');
+    expect(seletor.getAttribute('aria-describedby')).toBe('importacao-destino-dica');
+    expect(Array.from(seletor.querySelectorAll('optgroup')).map((grupo) => `${grupo.label}: ${Array.from(grupo.querySelectorAll('option'))
+      .map((opcao) => opcao.textContent).join(', ')}`)).toEqual(['Contas: Banco Horizonte, Conta conjunta', 'Cartões: Cartão Horizonte']);
+    expect(componente.destino()).toEqual({ tipo: 'cartao', id: 5 });
+
+    componente.escolherArquivo(lista(new File(['date,title,amount'], 'fatura-dezembro.csv')));
+    const pedido = httpTesting.expectOne('/api/importacoes/previa');
+    expect((pedido.request.body as FormData).get('cartaoId')).toBe('5');
+    expect((pedido.request.body as FormData).has('fatura')).toBe(false);
+    pedido.flush(previaDaFatura);
+    fixture.detectChanges();
+
+    expect(componente.passo()).toBe('arquivo');
+    expect(elemento.querySelector('.importacao__arquivo-nome span')?.textContent).toBe('CSV da fatura do Nubank · 2 linhas · de 20/08 a 21/11/2026');
+    expect(elemento.querySelector('.importacao__perfil-resumo span')?.textContent)
+      .toBe('Perfil de Cartão Horizonte: Nubank (fatura) · vírgula · AAAA-MM-DD · ponto decimal · compras positivas');
+    const fatura = elemento.querySelector('#importacao-fatura') as HTMLSelectElement;
+    expect(Array.from(fatura.options).map((opcao) => opcao.textContent)).toEqual(['Novembro de 2026 · fechou 03/11',
+      'Dezembro de 2026 · fecha 03/12', 'Janeiro de 2027 · fecha 03/01']);
+    expect(fatura.selectedOptions[0]?.textContent).toBe('Dezembro de 2026 · fecha 03/12');
+    expect(elemento.querySelector('#importacao-fatura-dica')?.textContent)
+      .toBe('Sugerida pela compra mais recente (21/11). Todas as linhas vão para esta fatura, como no banco.');
+
+    // Outra fatura lê de novo, com ela; "Revisar" abre a revisão com o subtítulo da fatura.
+    componente.escolherFatura('2027-01');
+    expect((httpTesting.expectOne('/api/importacoes/previa').request.body as FormData).get('fatura')).toBe('2027-01');
+    expect(componente.passo()).toBe('arquivo');
+    botao(elemento, 'Revisar').click();
+    fixture.detectChanges();
+    expect(elemento.querySelector('h1')?.textContent).toBe('Revisar importação');
+  });
+
+  it('a revisão da fatura importa com o cartão e a fatura; o resultado diz as parcelas criadas e "Ver fatura" leva a ela (Fatia 05c)', async () => {
+    const { fixture, componente, elemento } = criar(null, { cartao: '5' });
+    const navegar = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    componente.escolherArquivo(lista(new File(['date,title,amount'], 'fatura-dezembro.csv')));
+    httpTesting.expectOne('/api/importacoes/previa').flush(previaDaFatura);
+    componente.passo.set('revisao');
+    fixture.detectChanges();
+    expect(elemento.querySelector('.importacao__subtitulo .flux-so-desktop')?.textContent)
+      .toBe('fatura-dezembro.csv em Cartão Horizonte · fatura de dezembro de 2026 · fecha 03/12 · vence 10/12');
+    expect(elemento.querySelector('.importacao__subtitulo .flux-so-celular')?.textContent)
+      .toBe('fatura-dezembro.csv · Cartão Horizonte · fatura de dezembro');
+
+    componente.importar({ escolhas: [{ linha: 2, categoriaId: null, descricao: null }, { linha: 3, categoriaId: null, descricao: null }],
+      aMao: [], porRegras: 0 });
+    const pedido = httpTesting.expectOne({ method: 'POST', url: '/api/importacoes' });
+    expect(JSON.parse(await ((pedido.request.body as FormData).get('pedido') as Blob).text())).toEqual({ cartaoId: 5, fatura: '2026-12',
+      hash: 'def', linhas: [{ linha: 2, categoriaId: null, descricao: null }, { linha: 3, categoriaId: null, descricao: null }] });
+    const resultado: Resultado = { importacaoId: 14, contaId: null, contaNome: null, importadas: 2, desmarcadas: 1, jaImportadas: 0, deFora: 1,
+      entraramPorOutra: 0, saldoDeHoje: null, mesDaUltimaLinha: '2026-12', pares: [], cartaoId: 5, cartaoNome: 'Cartão Horizonte',
+      fatura: '2026-12', lancamentos: 9, parceladas: [{ descricao: 'Curso Online Ficticio', parcelaInicial: 3, parcelas: 10 }] };
+    pedido.flush(resultado);
+    httpTesting.expectOne({ method: 'GET', url: '/api/importacoes' }).flush(historico);
+    fixture.detectChanges();
+
+    expect(elemento.querySelector('.importacao__titulo-pronto')?.textContent).toBe('2 lançamentos importados');
+    expect(Array.from(elemento.querySelectorAll('.importacao__texto-pronto')).map((texto) => texto.textContent)).toEqual([
+      'em Cartão Horizonte, fatura de dezembro · a compra em 10x criou as parcelas 3 a 10 (9 lançamentos no total)', '1 ficou desmarcado e 1 ficou de fora.']);
+    botao(elemento, 'Ver fatura').click();
+    expect(navegar).toHaveBeenCalledWith(['/cartoes', 5, 'faturas', '2026-12']);
+  });
+
+  it('no histórico, a importação de fatura diz o cartão e a fatura; desfazer com o cartão arquivado só avisa, e a confirmação diz '
+    + 'que as parcelas saem (Fatia 05c)', async () => {
+    const { componente } = criar();
+    const daFatura: ItemDoHistorico = { ...historico[0], id: 14, nomeArquivo: 'fatura-dezembro.csv', contaId: null, contaNome: null,
+      cartaoId: 5, cartaoNome: 'Cartão Horizonte', cartaoArquivado: false, faturaMes: '2026-12', importadas: 4, excluidos: 1, editados: 1 };
+    componente.historico.set([daFatura]);
+    TestBed.tick();
+    const item = document.querySelector('.importacao__item') as HTMLElement;
+    expect(item.querySelector('.importacao__textos span')?.textContent?.trim()).toMatch(/^Cartão Horizonte · fatura de dezembro · 04\/11\/2026/);
+
+    componente.desfazer({ ...daFatura, cartaoArquivado: true });
+    TestBed.tick();
+    const aviso = document.querySelector('app-confirmacao-dialogo') as HTMLElement;
+    expect(aviso.querySelector('.confirmacao__texto')?.textContent).toBe('Cartão Horizonte está arquivado. Reative o cartão para desfazer '
+      + 'esta importação.');
+    expect(Array.from(aviso.querySelectorAll('button')).map((botaoDoAviso) => botaoDoAviso.textContent?.trim())).toEqual(['Fechar', 'Ir para Cartões']);
+    TestBed.inject(MatDialog).closeAll();
+    httpTesting.expectNone({ method: 'POST', url: '/api/importacoes/14/desfazer' });
+
+    componente.desfazer(daFatura);
+    TestBed.tick();
+    const confirmacao = Array.from(document.querySelectorAll('app-confirmacao-dialogo')).at(-1) as HTMLElement;
+    expect(confirmacao.querySelector('.confirmacao__texto')?.textContent?.replace(/\s/g, ' ')).toBe('Os 3 lançamentos que ela trouxe saem de '
+      + 'Cartão Horizonte, inclusive 1 que você editou, com as parcelas seguintes das compras parceladas. O total das faturas muda na hora.');
+    TestBed.inject(MatDialog).closeAll();
+
+    componente.desfazer({ ...historico[0], importadas: 1, excluidos: 0 });
+    TestBed.tick();
+    expect((Array.from(document.querySelectorAll('app-confirmacao-dialogo')).at(-1) as HTMLElement).querySelector('.confirmacao__texto')?.textContent)
+      .toBe('O 1 lançamento que ela trouxe sai de Banco Horizonte, inclusive 1 que você editou. O saldo muda na hora.');
+    TestBed.inject(MatDialog).closeAll();
+
+    componente.desfazer({ ...daFatura, importadas: 1, excluidos: 0, editados: 0 });
+    TestBed.tick();
+    expect((Array.from(document.querySelectorAll('app-confirmacao-dialogo')).at(-1) as HTMLElement).querySelector('.confirmacao__texto')?.textContent)
+      .toBe('O 1 lançamento que ela trouxe sai de Cartão Horizonte, com as parcelas seguintes das compras parceladas. O total das faturas muda na hora.');
+  });
+
+  it('não mostra grupo vazio no destino da importação', () => {
+    const apenasCartoes: ListaDeContas = { ...contas, ativas: [] };
+    const { elemento } = criar(null, {}, { contas: apenasCartoes, cartoes });
+    const seletor = elemento.querySelector('#importacao-destino') as HTMLSelectElement;
+    expect(Array.from(seletor.querySelectorAll('optgroup')).map((grupo) => grupo.label)).toEqual(['Cartões']);
   });
 });

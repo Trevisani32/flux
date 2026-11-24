@@ -168,6 +168,9 @@ export interface ResultadoDoAjuste {
 export class CartoesService {
   private readonly http = inject(HttpClient);
 
+  /** O cartão que abriu o atalho "Importar fatura"; a tela de importação o consome uma única vez. */
+  cartaoDaImportacao: number | null = null;
+
   listar(): Observable<ListaDeCartoes> {
     return this.http.get<ListaDeCartoes>('/api/cartoes');
   }

@@ -1,7 +1,11 @@
 <form class="perfil" [formGroup]="formulario" (ngSubmit)="salvar()">
   @if (sugeriuNubank()) {
     <app-alerta tipo="info" icone="info" titulo="Parece um extrato da conta do Nubank">
-      <p class="flux-alerta__texto">O modelo "Nubank (conta)" já veio preenchido. Confira as colunas e continue. O perfil fica salvo para as próximas importações de {{ contaNome() }}.</p>
+      <p class="flux-alerta__texto">O modelo "Nubank (conta)" já veio preenchido. Confira as colunas e continue. O perfil fica salvo para as próximas importações de {{ nome() }}.</p>
+    </app-alerta>
+  } @else if (sugeriuNubankFatura()) {
+    <app-alerta tipo="info" icone="info" titulo="Parece a fatura do cartão Nubank">
+      <p class="flux-alerta__texto">O modelo "Nubank (fatura)" já veio preenchido. Confira as colunas e continue. O perfil fica salvo para as próximas importações de {{ nome() }}.</p>
     </app-alerta>
   }
   @if (amostra(); as atual) {
@@ -19,7 +23,7 @@
   <div class="perfil__campos">
     <div class="flux-campo">
       <label for="perfil-modelo">Modelo</label>
-      <div class="flux-entrada"><select id="perfil-modelo" formControlName="modelo"><option value="NUBANK_CONTA">Nubank (conta)</option><option value="PERSONALIZADO">Personalizado</option></select><app-icone class="flux-entrada__seta" nome="baixo" /></div>
+      <div class="flux-entrada"><select id="perfil-modelo" formControlName="modelo">@if (doCartao()) {<option value="NUBANK_FATURA">Nubank (fatura)</option>} @else {<option value="NUBANK_CONTA">Nubank (conta)</option>}<option value="PERSONALIZADO">Personalizado</option></select><app-icone class="flux-entrada__seta" nome="baixo" /></div>
     </div>
     <div class="flux-campo">
       <label for="perfil-separador">Separador de colunas</label>
@@ -54,13 +58,21 @@
   <fieldset class="flux-grupo">
     <legend>Valor</legend>
     <div class="flux-segmentado">
-      <label><input type="radio" name="modo" formControlName="modo" value="UMA" />Uma coluna, saídas negativas</label>
-      <label><input type="radio" name="modo" formControlName="modo" value="DUAS" />Entradas e saídas em colunas separadas</label>
+      @if (doCartao()) {
+        <label><input type="radio" name="modo" formControlName="modo" value="UMA" />Uma coluna</label>
+        <label><input type="radio" name="modo" formControlName="modo" value="DUAS" />Créditos e compras em colunas separadas</label>
+      } @else {
+        <label><input type="radio" name="modo" formControlName="modo" value="UMA" />Uma coluna, saídas negativas</label>
+        <label><input type="radio" name="modo" formControlName="modo" value="DUAS" />Entradas e saídas em colunas separadas</label>
+      }
     </div>
+    @if (doCartao() && modo() === 'UMA') {
+      <label class="perfil__compras-positivas"><input type="checkbox" class="flux-caixa" formControlName="comprasPositivas" />Compras vêm positivas</label>
+    }
   </fieldset>
   <div class="perfil__campos">
     <div class="flux-campo">
-      <label for="perfil-valor">{{ modo() === 'DUAS' ? 'Coluna das entradas' : 'Coluna do valor' }}</label>
+      <label for="perfil-valor">{{ modo() === 'DUAS' ? (doCartao() ? 'Coluna dos créditos' : 'Coluna das entradas') : 'Coluna do valor' }}</label>
       <div class="flux-entrada" [class.flux-entrada--invalida]="erroDe('colunaValor') !== null"><select id="perfil-valor" formControlName="colunaValor" [attr.aria-invalid]="erroDe('colunaValor') !== null" [attr.aria-describedby]="erroDe('colunaValor') !== null ? 'perfil-valor-erro' : null">@for (coluna of colunas(); track coluna.numero) {<option [ngValue]="coluna.numero">{{ coluna.rotulo }}</option>}</select><app-icone class="flux-entrada__seta" nome="baixo" /></div>
       @if (erroDe('colunaValor'); as mensagem) {
         <p id="perfil-valor-erro" class="flux-campo__erro" role="alert">{{ mensagem }}</p>
@@ -68,7 +80,7 @@
     </div>
     @if (modo() === 'DUAS') {
       <div class="flux-campo">
-        <label for="perfil-saidas">Coluna das saídas</label>
+        <label for="perfil-saidas">{{ doCartao() ? 'Coluna das compras' : 'Coluna das saídas' }}</label>
         <div class="flux-entrada" [class.flux-entrada--invalida]="erroDe('colunaSaidas') !== null"><select id="perfil-saidas" formControlName="colunaSaidas" [attr.aria-invalid]="erroDe('colunaSaidas') !== null" [attr.aria-describedby]="erroDe('colunaSaidas') !== null ? 'perfil-saidas-erro' : null"><option [ngValue]="null" disabled>Escolha</option>@for (coluna of colunas(); track coluna.numero) {<option [ngValue]="coluna.numero">{{ coluna.rotulo }}</option>}</select><app-icone class="flux-entrada__seta" nome="baixo" /></div>
         @if (erroDe('colunaSaidas'); as mensagem) {
           <p id="perfil-saidas-erro" class="flux-campo__erro" role="alert">{{ mensagem }}</p>
@@ -100,6 +112,6 @@
   }
   <div class="perfil__acoes">
     <button mat-stroked-button type="button" [disabled]="enviando() || lendo()" (click)="voltar.emit()">Voltar</button>
-    <button mat-flat-button type="submit" [disabled]="enviando() || lendo()">Salvar perfil e revisar</button>
+    <button mat-flat-button type="submit" [disabled]="enviando() || lendo()">{{ doCartao() ? 'Salvar perfil e continuar' : 'Salvar perfil e revisar' }}</button>
   </div>
 </form>

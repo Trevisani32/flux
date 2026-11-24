@@ -1,5 +1,5 @@
 <app-cabecalho-pagina [titulo]="passo() === 'revisao' ? 'Revisar importação' : passo() === 'perfil' ? 'Como ler este CSV' : 'Importação'">
-  <p complemento class="importacao__subtitulo">{{ subtitulo() }}</p>
+  <p complemento class="importacao__subtitulo">@if (subtituloCurto(); as curto) {<span class="flux-so-desktop">{{ subtitulo() }}</span><span class="flux-so-celular">{{ curto }}</span>} @else {{{ subtitulo() }}}</p>
   @if (passo() === 'perfil' || passo() === 'revisao') {
     <ng-container [ngTemplateOutlet]="indicadorDePassos" />
   }
@@ -21,7 +21,7 @@
     }
     @switch (passo()) {
       @case ('arquivo') {
-        @if (!temContaAtiva()) {
+        @if (!temOndeImportar()) {
           <app-estado-vazio icone="contas" titulo="Cadastre uma conta primeiro" texto="A importação acontece numa conta: escolha onde os lançamentos do extrato vão entrar.">
             <a mat-flat-button routerLink="/contas" [queryParams]="{ nova: 'conta' }">Cadastrar conta</a>
           </app-estado-vazio>
@@ -33,23 +33,38 @@
             </div>
             <div class="importacao__campos">
               <div class="flux-campo">
-                <label for="importacao-conta">Conta</label>
+                <label for="importacao-destino">Importar em</label>
                 <div class="flux-entrada">
-                  <select id="importacao-conta" [value]="contaId() ?? ''" [disabled]="lendo()" (change)="escolherConta($any($event.target).value)">
+                  <select id="importacao-destino" [value]="valorDoDestino()" [disabled]="lendo()" (change)="escolherDestino($any($event.target).value)" aria-describedby="importacao-destino-dica">
                     <option value="" disabled>Escolha</option>
-                    @for (conta of lista.ativas; track conta.id) {
-                      <option [value]="conta.id" [selected]="conta.id === contaId()">{{ conta.nome }}</option>
+                    @if (lista.ativas.length > 0) {
+                      <optgroup label="Contas">
+                        @for (conta of lista.ativas; track conta.id) {
+                          <option [value]="'conta:' + conta.id" [selected]="'conta:' + conta.id === valorDoDestino()">{{ conta.nome }}</option>
+                        }
+                      </optgroup>
+                    }
+                    @if ((cartoes()?.ativos ?? []).length > 0) {
+                      <optgroup label="Cartões">
+                        @for (cartao of cartoes()?.ativos ?? []; track cartao.id) {
+                          <option [value]="'cartao:' + cartao.id" [selected]="'cartao:' + cartao.id === valorDoDestino()">{{ cartao.nome }}</option>
+                        }
+                      </optgroup>
                     }
                   </select>
                   <app-icone class="flux-entrada__seta" nome="baixo" />
                 </div>
-                <p class="flux-dica">Os lançamentos do extrato entram nesta conta. Só aparecem as contas ativas.</p>
+                <p id="importacao-destino-dica" class="flux-dica">O extrato entra numa conta; a fatura, num cartão. Só aparecem os ativos.</p>
               </div>
               <label class="importacao__arquivo" [class.importacao__arquivo--invalido]="erroDoArquivo() !== null" for="importacao-arquivo" (dragover)="$event.preventDefault()" (drop)="soltar($event)">
                 <input #seletorDeArquivo id="importacao-arquivo" type="file" accept=".ofx,.csv,.txt" [disabled]="lendo()" (change)="escolherArquivo($any($event.target).files); $any($event.target).value = ''" [attr.aria-describedby]="erroDoArquivo() !== null ? 'importacao-arquivo-erro' : 'importacao-arquivo-dica'" />
                 @if (arquivo(); as escolhido) {
                   <app-icone [nome]="erroDoArquivo() !== null ? 'alerta' : 'documento'" [tamanho]="28" />
-                  <span class="importacao__arquivo-nome"><b>{{ escolhido.name }}</b><span>{{ tamanhoDoArquivo(escolhido.size) }} · {{ nomeDaConta() }}</span></span>
+                  @if ((previa()?.cartaoNome ?? null) !== null && !lendo()) {
+                    <span class="importacao__arquivo-nome"><b>{{ escolhido.name }}</b><span>{{ resumoDaFatura(previa()!) }}</span></span>
+                  } @else {
+                    <span class="importacao__arquivo-nome"><b>{{ escolhido.name }}</b><span>{{ tamanhoDoArquivo(escolhido.size) }} · {{ nomeDoDestino() }}</span></span>
+                  }
                 } @else {
                   <app-icone nome="importar" [tamanho]="28" />
                   <span class="importacao__arquivo-titulo flux-so-desktop">Arraste o extrato aqui ou escolha o arquivo</span>
@@ -72,7 +87,21 @@
             } @else if (previa(); as lida) {
               @if (lida.perfil; as perfil) {
                 @let resumo = resumoDoPerfil(perfil);
-                <p class="importacao__perfil-resumo"><span>Perfil de {{ lida.contaNome }}: <b>{{ resumo.modelo }}</b> · {{ resumo.detalhes }}</span><button type="button" class="importacao__link" (click)="editarPerfil()">Editar perfil</button></p>
+                <p class="importacao__perfil-resumo"><span>Perfil de {{ lida.cartaoNome ?? lida.contaNome }}: <b>{{ resumo.modelo }}</b> · {{ resumo.detalhes }}</span><button type="button" class="importacao__link" (click)="editarPerfil()">Editar perfil</button></p>
+              }
+              @if (lida.fatura; as fatura) {
+                <div class="flux-campo importacao__fatura">
+                  <label for="importacao-fatura">Fatura</label>
+                  <div class="flux-entrada">
+                    <select id="importacao-fatura" [value]="fatura.mes" (change)="escolherFatura($any($event.target).value)" aria-describedby="importacao-fatura-dica">
+                      @for (opcao of lida.faturas ?? []; track opcao.mes) {
+                        <option [value]="opcao.mes" [selected]="opcao.mes === fatura.mes">{{ rotuloDaFatura(opcao, hoje) }}</option>
+                      }
+                    </select>
+                    <app-icone class="flux-entrada__seta" nome="baixo" />
+                  </div>
+                  <p id="importacao-fatura-dica" class="flux-dica">{{ dicaDaFatura(lida.dataDaSugestao ?? null) }}</p>
+                </div>
               }
               <div class="importacao__acoes-arquivo">
                 <button mat-stroked-button type="button" (click)="recomecar()">Trocar arquivo</button>
@@ -84,7 +113,7 @@
       }
       @case ('perfil') {
         @if (amostra(); as amostraAtual) {
-          <app-perfil-csv [arquivo]="arquivo()!" [contaId]="contaId()!" [contaNome]="nomeDaConta()" [amostraInicial]="amostraAtual" [lendo]="lendo()" (salvo)="perfilSalvo()" (voltar)="voltarDoPerfil()" />
+          <app-perfil-csv [arquivo]="arquivo()!" [destino]="destino()!" [nome]="nomeDoDestino()" [amostraInicial]="amostraAtual" [lendo]="lendo()" (salvo)="perfilSalvo()" (voltar)="voltarDoPerfil()" />
         }
       }
       @case ('pronto') {
@@ -93,14 +122,24 @@
             <ng-container [ngTemplateOutlet]="indicadorDePassos" />
             <span class="importacao__selo" aria-hidden="true"><app-icone nome="sucesso" [tamanho]="32" /></span>
             <h2 class="importacao__titulo-pronto" id="importacao-pronto">{{ frases()?.titulo }}</h2>
+            @if (notaDaFatura(); as nota) {
+              <p class="importacao__texto-pronto importacao__nota-da-fatura">{{ nota }}</p>
+            }
             @if (frases()?.texto; as texto) {
               <p class="importacao__texto-pronto">{{ texto }}</p>
             }
-            <p class="importacao__texto-pronto">Saldo de hoje de {{ atual.contaNome }}: <app-valor [valor]="atual.saldoDeHoje" tipo="saldo" /></p>
-            <div class="importacao__acoes-pronto">
-              <button mat-stroked-button type="button" (click)="recomecar()">Importar outro arquivo</button>
-              <button mat-flat-button type="button" (click)="verLancamentos(atual.contaId, atual.mesDaUltimaLinha)">Ver lançamentos</button>
-            </div>
+            @if ((atual.cartaoId ?? null) !== null && (atual.fatura ?? null) !== null) {
+              <div class="importacao__acoes-pronto">
+                <button mat-stroked-button type="button" (click)="recomecar()">Importar outro arquivo</button>
+                <button mat-flat-button type="button" (click)="verFatura(atual.cartaoId, atual.fatura)">Ver fatura</button>
+              </div>
+            } @else {
+              <p class="importacao__texto-pronto">Saldo de hoje de {{ atual.contaNome }}: <app-valor [valor]="atual.saldoDeHoje" tipo="saldo" /></p>
+              <div class="importacao__acoes-pronto">
+                <button mat-stroked-button type="button" (click)="recomecar()">Importar outro arquivo</button>
+                <button mat-flat-button type="button" (click)="verLancamentos(atual.contaId ?? 0, atual.mesDaUltimaLinha)">Ver lançamentos</button>
+              </div>
+            }
           </section>
           @if (falhaNasSugestoes() || sugestoesDeRegra().length > 0 || paresSugeridos().length > 0) {
             <div class="importacao__cartoes">
@@ -177,7 +216,11 @@
                   @let resumo = resumoDoHistorico(item);
                   <span class="importacao__textos">
                     <b>{{ item.nomeArquivo }}</b>
-                    <span>{{ item.contaNome }} · {{ dataHoraCurta(item.criadaEm) }} · de {{ dataCurta(item.dataInicio).slice(0, 5) }} a {{ dataCurta(item.dataFim).slice(0, 5) }}</span>
+                    @if ((item.cartaoId ?? null) !== null) {
+                      <span>{{ linhaDoHistoricoDaFatura(item, hoje) }}</span>
+                    } @else {
+                      <span>{{ item.contaNome }} · {{ dataHoraCurta(item.criadaEm) }} · {{ periodoDoArquivo(item.dataInicio, item.dataFim) }}</span>
+                    }
                     <span class="importacao__resumo-celular flux-so-celular">{{ resumo.titulo }}@if (resumo.nota) { · {{ resumo.nota }}}</span>
                   </span>
                   <span class="importacao__lado">
@@ -215,8 +258,12 @@
 
 <mat-menu #menuDaImportacao="matMenu" class="flux-menu" xPosition="before">
   <ng-template matMenuContent let-item="item">
-    <button mat-menu-item type="button" (click)="verLancamentos(item.contaId, item.dataFim.slice(0, 7))"><app-icone matMenuItemIcon nome="lancamentos" />Ver lançamentos</button>
-    @if (item.excluidos > 0) {
+    @if ((item.cartaoId ?? null) !== null) {
+      <button mat-menu-item type="button" (click)="verFatura(item.cartaoId, item.faturaMes)"><app-icone matMenuItemIcon nome="cartao" />Ver fatura</button>
+    } @else {
+      <button mat-menu-item type="button" (click)="verLancamentos(item.contaId, item.dataFim.slice(0, 7))"><app-icone matMenuItemIcon nome="lancamentos" />Ver lançamentos</button>
+    }
+    @if ((item.cartaoId ?? null) === null && item.excluidos > 0) {
       <button mat-menu-item type="button" (click)="verExcluidos(item)"><app-icone matMenuItemIcon nome="lixeira" />Ver excluídos ({{ item.excluidos }})</button>
     }
     <button mat-menu-item type="button" class="flux-menu__perigo" (click)="desfazer(item)"><app-icone matMenuItemIcon nome="reativar" />Desfazer importação</button>

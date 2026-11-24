@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Observable, Subject, map, tap } from 'rxjs';
+import { map, Observable, Subject, tap } from 'rxjs';
 
 import { abrirAplicarRegras } from './aplicar-dialogo/aplicar-dialogo';
 import { AVISO_SEM_CONTAGEM, avisoDaRegraCriada, avisoDosAplicados } from './apresentacao';
@@ -52,14 +52,15 @@ export class FluxoDeRegras {
   /** A prévia de "Aplicar regras" (com `regraId`, só a dela). Aplicada, avisa e emite em `aplicadas$`. */
   aplicar(regraId: number | null = null): Observable<number | undefined> {
     return abrirAplicarRegras(this.dialogo, regraId).pipe(
-      tap((categorizados) => {
-        if (categorizados !== undefined) {
-          this.snackBar.open(avisoDosAplicados(categorizados), 'Fechar', { duration: 5000 });
-          if (categorizados > 0) {
-            this.aplicadas.next(categorizados);
+      tap((aplicados) => {
+        if (aplicados !== undefined) {
+          this.snackBar.open(avisoDosAplicados(aplicados.categorizados, aplicados.compras), 'Fechar', { duration: 5000 });
+          if (aplicados.categorizados > 0) {
+            this.aplicadas.next(aplicados.categorizados);
           }
         }
       }),
+      map((aplicados) => aplicados?.categorizados),
     );
   }
 

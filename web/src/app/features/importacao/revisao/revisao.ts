@@ -12,7 +12,10 @@ import { ListaDeCategorias } from '../../categorias/categorias.service';
 import { rotuloDoDia } from '../../lancamentos/apresentacao';
 import { fraseDaCondicao } from '../../regras/apresentacao';
 import { EscolhaAMao } from '../../regras/regras.service';
-import { chaveDaDescricao, contagens, fraseDasOrigens, fraseDoParecido, rotuloDaSituacao, textoDoBotaoImportar } from '../apresentacao';
+import {
+  chaveDaDescricao, contagens, fraseDaCorrecao, fraseDaJaImportadaNaFatura, fraseDasOrigens, fraseDoParecido, fraseDoParecidoNaFatura,
+  parcelasParaCorrigir, rotuloDaSituacao, textoDaLinhaDaFatura, textoDasParcelas, textoDoBotaoImportar, tituloDasCorrecoes,
+} from '../apresentacao';
 import { Escolha, LinhaDaPrevia, Previa } from '../importacao.service';
 import { abrirSeletorDeCategoria, opcoesDoSeletor } from '../seletor-de-categoria/seletor-de-categoria';
 
@@ -49,7 +52,9 @@ function sugeridas(previa: Previa): Map<number, number> {
  * importadas" (as 3 mais recentes, com a origem) e "Ficam de fora" recolhidas, e a barra fixa que
  * só conta as marcadas (o front não soma dinheiro). No celular, os grupos viram pílulas. Emite as
  * escolhas; quem chama envia o arquivo de novo. Na Fatia 04b, a linha que uma regra pega já vem com
- * a categoria e a descrição legível da regra; o seletor troca a categoria, e nada a muda de volta.
+ * a categoria e a descrição legível da regra; o seletor troca a categoria, e nada a muda de volta. Na Fatia 05c, a
+ * revisão da fatura diz o que cada linha é (o estorno, a compra à vista e as parcelas que "Parcela k/N" cria), a
+ * provável duplicada do cartão e a parcela já importada, e a barra conta as parcelas que as compras parceladas criam.
  */
 @Component({
   selector: 'app-revisao',
@@ -74,7 +79,13 @@ export class Revisao {
 
   readonly dataHoraCurta = dataHoraCurta;
   readonly fraseDoParecido = fraseDoParecido;
+  readonly fraseDoParecidoNaFatura = fraseDoParecidoNaFatura;
+  readonly fraseDaJaImportadaNaFatura = fraseDaJaImportadaNaFatura;
   readonly fraseDasOrigens = fraseDasOrigens;
+  readonly fraseDaCorrecao = fraseDaCorrecao;
+  readonly tituloDasCorrecoes = tituloDasCorrecoes;
+  /** Fatia 05c: a revisão é de uma fatura de cartão. */
+  readonly naFatura = computed(() => this.previa().cartaoId != null);
   readonly contagens = computed(() => contagens(this.previa().linhas));
   readonly novas = computed(() => this.doGrupo('NOVA'));
   readonly provaveis = computed(() => this.doGrupo('PROVAVEL'));
@@ -90,7 +101,13 @@ export class Revisao {
   readonly jaImportadas = computed(() => this.previa().linhas.filter((linha) => linha.situacao === 'JA_IMPORTADA'));
   readonly deFora = computed(() => this.previa().linhas
     .filter((linha) => linha.situacao === 'FORA' || linha.situacao === 'ANTES_DO_SALDO_INICIAL'));
-  /** A API manda a mais recente primeiro: as 3 do mockup. */
+  /**
+   * Fatia 05c ("Corrigir ao importar"): as parcelas já importadas com outros centavos. Vão sempre na confirmação, sem caixa;
+   * sem nenhuma linha marcada, o botão só corrige.
+   */
+  readonly correcoes = computed(() => this.previa().linhas.filter((linha) => linha.valorNoFlux != null));
+  readonly parcelasParaCorrigir = computed(() => parcelasParaCorrigir(this.correcoes().length));
+  /** A API manda a mais recente primeiro: ficam as 3 mais recentes. */
   readonly jaMaisRecentes = computed(() => this.jaImportadas().slice(0, 3));
   readonly temAntesDoSaldoInicial = computed(() => this.deFora().some((linha) => linha.situacao === 'ANTES_DO_SALDO_INICIAL'));
   /** "Continuar em Poupança" esconde o aviso de outra conta, até a próxima revisão. */
@@ -112,12 +129,24 @@ export class Revisao {
   /** As linhas que ganharam categoria no seletor (decisão 15 da 04b): a escolha do usuário vence a regra. */
   readonly escolhidas = linkedSignal<Previa, ReadonlySet<number>>({ source: this.previa, computation: () => new Set() });
   readonly quantidadeMarcadas = computed(() => this.marcadas().size);
-  readonly textoDoBotao = computed(() => this.enviando() ? 'Importando…' : textoDoBotaoImportar(this.quantidadeMarcadas()));
+  /** Fatia 05c: "a compra em 10x cria 8 parcelas", com as parceladas marcadas. */
+  readonly textoDasParcelas = computed(() => textoDasParcelas(this.previa().linhas.filter((linha) => this.marcadas().has(linha.linha))));
+  readonly textoDoBotao = computed(() => {
+    if (this.enviando()) {
+      return this.algumaMarcada() ? 'Importando…' : 'Corrigindo…';
+    }
+    return !this.algumaMarcada() && this.correcoes().length > 0 ? `Corrigir ${this.parcelasParaCorrigir()}`
+      : textoDoBotaoImportar(this.quantidadeMarcadas());
+  });
   readonly todasMarcadas = computed(() => this.quantidadeMarcadas() === this.contagens().paraImportar);
   readonly algumaMarcada = computed(() => this.quantidadeMarcadas() > 0);
+  readonly podeConfirmar = computed(() => this.algumaMarcada() || this.correcoes().length > 0);
   readonly jaAbertas = signal(false);
-  /** O texto aprovado (decisão 14) recolhe as duas; o quadro 949 mostrava "Ficam de fora" aberto, e vale o texto. */
-  readonly foraAbertas = signal(false);
+  /**
+   * Na fatura, o pagamento que veio no arquivo precisa ficar à vista antes da confirmação: ele não é um estorno e deve ser
+   * registrado pela conta. Na importação de extrato, a lista continua recolhida até a pessoa abri-la.
+   */
+  readonly foraAbertas = linkedSignal<Previa, boolean>({ source: this.previa, computation: (previa) => previa.cartaoId != null });
   private readonly nomes = computed(() => {
     const nomes = new Map<number, string>();
     const lista = this.categorias();
@@ -140,6 +169,12 @@ export class Revisao {
 
   rotulo(linha: LinhaDaPrevia): string {
     return rotuloDaSituacao(linha, this.previa().dataSaldoInicial, this.hoje());
+  }
+
+  /** Fatia 05c: o que a linha da fatura é ("À vista", "Cria a compra com as parcelas 3 a 10 (até julho de 2027)"). */
+  textoDaFatura(linha: LinhaDaPrevia): { readonly longo: string; readonly curto: string } | null {
+    const fatura = this.previa().fatura;
+    return fatura == null ? null : textoDaLinhaDaFatura(linha, fatura.mes, this.hoje());
   }
 
   dataDaLinha(linha: LinhaDaPrevia): string {
@@ -172,7 +207,7 @@ export class Revisao {
     return sugestao === null ? null : `Sugerida pela ${sugestao.posicao}ª regra: ${this.condicaoDaRegra(linha)}`;
   }
 
-  /** "contém "uber"", depois de "pela 2ª regra" na linha do desktop (#d-revisao). */
+  /** "contém "uber"", depois de "pela 2ª regra" na linha do desktop. */
   condicaoDaRegra(linha: LinhaDaPrevia): string {
     return linha.sugestao === null ? '' : fraseDaCondicao(linha.sugestao.condicao, linha.sugestao.texto);
   }
@@ -248,25 +283,33 @@ export class Revisao {
 
   /**
    * As escolhas das marcadas, com a descrição que a revisão mostrou (decisão 15 da 04b), e as que
-   * ganharam categoria à mão, para as sugestões de regra do resultado (decisão 20 da 04b).
+   * ganharam categoria à mão, para as sugestões de regra do resultado (decisão 20 da 04b). Na fatura (Fatia 05c), as
+   * parcelas para corrigir vão junto, sem categoria.
    */
   confirmar(): void {
-    if (this.enviando() || !this.algumaMarcada()) {
+    if (this.enviando() || !this.podeConfirmar()) {
       return;
     }
     const marcadas = this.previa().linhas.filter((linha) => this.marcadas().has(linha.linha));
-    const escolhas: Escolha[] = marcadas.map((linha) => ({
+    const escolhas: Escolha[] = [...marcadas.map((linha) => ({
       linha: linha.linha,
       categoriaId: this.categoriaDaLinha().get(linha.linha) ?? null,
       descricao: linha.sugestao?.descricao ?? null,
-    }));
+    })), ...this.correcoes().map((linha) => ({ linha: linha.linha, categoriaId: null, descricao: null }))];
     const aMao: EscolhaAMao[] = marcadas.flatMap((linha) => {
       const categoriaId = this.categoriaDaLinha().get(linha.linha);
       return this.escolhidas().has(linha.linha) && categoriaId !== undefined && linha.descricao !== null
-        ? [{ contaId: this.previa().contaId, descricaoBanco: linha.descricao, descricao: linha.sugestao?.descricao ?? null, categoriaId }]
+        ? [{ ...this.lugarDaEscolha(), descricaoBanco: linha.descricaoDaCompra ?? linha.descricao, descricao: linha.sugestao?.descricao ?? null,
+          categoriaId }]
         : [];
     });
     this.importar.emit({ escolhas, aMao, porRegras: marcadas.filter((linha) => this.porRegra(linha)).length });
+  }
+
+  /** A conta da revisão ou, na fatura (Fatia 05c), o cartão: a sugestão de regra olha as regras dele. */
+  private lugarDaEscolha(): { readonly contaId: number | null; readonly cartaoId?: number | null } {
+    const previa = this.previa();
+    return previa.cartaoId != null ? { contaId: null, cartaoId: previa.cartaoId } : { contaId: previa.contaId };
   }
 
   private doGrupo(situacao: Grupo): LinhaDoGrupo[] {

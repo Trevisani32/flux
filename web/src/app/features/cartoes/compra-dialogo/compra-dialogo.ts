@@ -17,7 +17,7 @@ import { camposDoErro, codigoDoErro, detalheDoErro, statusDoErro } from '../../a
 import { ListaDeCategorias } from '../../categorias/categorias.service';
 import { dataLimite } from '../../lancamentos/lancamento-dialogo/lancamento-dialogo';
 import { nomeDoMes, OpcaoDeCategoria, opcoesDeCategoria } from '../../lancamentos/apresentacao';
-import { dataMinimaDaCompra, dicaDoEstorno, TextoDaPrevia, textoDaPrevia, textoDaCategoria } from '../apresentacao';
+import { dataMinimaDaCompra, dicaDoEstorno, TextoDaPrevia, textoDaPrevia, textoDaCategoria, textoDasParcelasNoFlux } from '../apresentacao';
 import { Cartao, CartoesService } from '../cartoes.service';
 import { Compra, ComprasService, DadosDaCompra, DadosDoEstorno, PreviaDaCompra, TipoDaCompra } from '../compras.service';
 
@@ -33,8 +33,8 @@ export interface DadosDoDialogoDeCompra {
 }
 
 /**
- * Como o diálogo fecha quando algo mudou; sem mudança, fecha sem resultado. "inexistente" (Correções do QA da 05b): a
- * compra não existe mais, excluída em outra aba, ao carregar ou ao salvar, e quem abriu recarrega.
+ * Como o diálogo fecha quando algo mudou; sem mudança, fecha sem resultado. "inexistente": a compra não existe mais,
+ * excluída em outra aba, ao carregar ou ao salvar, e quem abriu recarrega.
  */
 export type ResultadoDaCompra = 'salvo' | 'excluido' | 'inexistente';
 
@@ -109,6 +109,8 @@ export class CompraDialogo {
   readonly dataCurta = dataCurta;
   readonly carregado = signal<Carregado | null>(null);
   readonly falhaAoCarregar = signal<string | null>(null);
+  /** Fatia 05c: a compra que não existe mais (404 ao carregar) não volta; o alerta fica sem o "Tentar de novo". */
+  readonly naoExisteMais = signal(false);
   readonly formulario = new FormGroup({
     cartao: new FormControl<number | null>(this.dados.cartaoId),
     data: new FormControl(this.dados.hoje, { nonNullable: true }),
@@ -150,6 +152,11 @@ export class CompraDialogo {
     return quantas === 1 ? 'Lançar compra' : `Lançar ${quantas} parcelas`;
   });
   readonly textoDaPrevia = computed<TextoDaPrevia | null>(() => {
+    const compra = this.carregado()?.compra ?? null;
+    // Fatia 05c: a compra importada não pede prévia; o texto diz onde as parcelas estão de verdade.
+    if (compra?.importada === true) {
+      return textoDasParcelasNoFlux(compra, this.dados.hoje);
+    }
     const previa = this.previa();
     return previa === null ? null : textoDaPrevia(previa, this.dados.hoje);
   });
@@ -157,6 +164,10 @@ export class CompraDialogo {
   readonly dicaDoEstorno = computed(() => dicaDoEstorno(this.previa()?.primeiraFatura ?? null, this.dados.hoje));
   /** Decisão 35 (05b): a frase da trava, com uma parcela numa fatura paga; nula sem ela. */
   readonly travaDaFaturaPaga = computed(() => this.carregado()?.compra?.travaDaFaturaPaga ?? null);
+  /** Fatia 05c (decisão 40): a compra importada da fatura; só os textos mudam, e ela se exclui. */
+  readonly importada = computed(() => this.carregado()?.compra?.importada === true);
+  /** Os campos que regravam as parcelas ficam travados com a fatura paga (05b) ou na compra importada (05c). */
+  readonly travado = computed(() => this.travaDaFaturaPaga() !== null || this.importada());
   /**
    * Decisão 35 (05b, dono em 2026-11-20): a frase da prévia quando o lançamento vai ficar travado numa fatura paga, na
    * compra e no estorno novos e na edição (a que diminui o valor e deixa a fatura paga). Com a trava, só o alerta dela.
@@ -199,6 +210,7 @@ export class CompraDialogo {
     merge(controles.cartao.valueChanges, controles.data.valueChanges, controles.valor.valueChanges, controles.parcelas.valueChanges,
       controles.andamento.valueChanges, controles.parcelaInicial.valueChanges).pipe(
       debounceTime(300),
+      filter(() => !this.importada()),
       map(() => this.chaveDaPrevia()),
       distinctUntilChanged(),
       switchMap(() => this.pedirPrevia()),
@@ -228,6 +240,7 @@ export class CompraDialogo {
         if (statusDoErro(erro) === 404) {
           this.marcarInexistente();
         }
+        this.naoExisteMais.set(statusDoErro(erro) === 404);
         this.falhaAoCarregar.set(statusDoErro(erro) === 404
           ? detalheDoErro(erro, this.estorno ? 'Estorno não encontrado.' : 'Compra não encontrada.')
           : this.estorno ? 'Não foi possível carregar o estorno.' : 'Não foi possível carregar a compra.');
@@ -257,7 +270,7 @@ export class CompraDialogo {
     this.referencia.close(this.inexistente ? 'inexistente' : undefined);
   }
 
-  /** Correções do QA (05b): depois do 404, o Esc e o clique fora também fecham com "inexistente". */
+  /** Depois do 404, o Esc e o clique fora também fecham com "inexistente". */
   private marcarInexistente(): void {
     if (this.inexistente) {
       return;
@@ -356,8 +369,9 @@ export class CompraDialogo {
     controles.parcelaInicial.setValue(String(compra.parcelaInicial));
     controles.categoria.setValue(compra.categoriaId);
     controles.observacao.setValue(compra.observacao ?? '');
-    // Decisão 35 (05b): com uma parcela numa fatura paga, o que regrava as parcelas fica travado.
-    if ((compra.travaDaFaturaPaga ?? null) !== null) {
+    // Decisão 35 (05b): com uma parcela numa fatura paga, o que regrava as parcelas fica travado; na compra importada da
+    // fatura (05c, decisão 40), também.
+    if ((compra.travaDaFaturaPaga ?? null) !== null || compra.importada === true) {
       for (const controle of [controles.cartao, controles.data, controles.valor, controles.parcelas, controles.andamento, controles.parcelaInicial]) {
         controle.disable({ emitEvent: false });
       }

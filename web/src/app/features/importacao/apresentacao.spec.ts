@@ -2,11 +2,13 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { describe, expect, it } from 'vitest';
 
 import {
-  chaveDaDescricao, contagens, erroDeTamanho, fraseDasOrigens, fraseDoParecido, frasesDoResultado, LIMITE_DO_ARQUIVO, mensagemDaCategoria,
-  mensagemDoArquivo, NUBANK_CONTA, PassoDoIndicador, passosDaImportacao, pedePerfil, perfilNaoLe, resumoDoHistorico, resumoDoPerfil,
-  rotuloDaSituacao, tamanhoDoArquivo, textoDoBotaoImportar,
+  chaveDaDescricao, contagens, dicaDaFatura, erroDeTamanho, fraseDaCorrecao, fraseDaJaImportadaNaFatura, fraseDasOrigens, fraseDoParecido,
+  fraseDoParecidoNaFatura, frasesDoResultado, LIMITE_DO_ARQUIVO, linhaDoHistoricoDaFatura, mensagemDaCategoria, mensagemDoArquivo,
+  notaDoResultadoDaFatura, NUBANK_CONTA, NUBANK_FATURA, parcelasParaCorrigir, PassoDoIndicador, passosDaImportacao, pedePerfil, perfilNaoLe,
+  periodoDoArquivo, resumoDaFatura, resumoDoHistorico, resumoDoPerfil, rotuloDaFatura, rotuloDaSituacao, subtituloDaRevisaoDaFatura,
+  tamanhoDoArquivo, textoDaLinhaDaFatura, textoDasParcelas, textoDoBotaoImportar, tituloDasCorrecoes,
 } from './apresentacao';
-import { Importacao, LinhaDaPrevia, Resultado } from './importacao.service';
+import { Importacao, LinhaDaPrevia, Previa, Resultado } from './importacao.service';
 
 function linha(parcial: Partial<LinhaDaPrevia>): LinhaDaPrevia {
   return { linha: 1, data: '2026-11-05', descricao: 'CAFE', valor: -6, situacao: 'NOVA', motivo: null, marcada: true, futuro: false,
@@ -85,7 +87,7 @@ describe('apresentação da importação', () => {
       .toBe('Vieram de 2 importações anteriores e não entram de novo.');
   });
 
-  it('escreve o histórico como o mockup e reconhece os 422 do perfil e da categoria', () => {
+  it('escreve o histórico com os textos aprovados e reconhece os 422 do perfil e da categoria', () => {
     const item: Importacao = { id: 1, nomeArquivo: 'extrato-novembro.ofx', contaId: 1, contaNome: 'Banco Horizonte', contaArquivada: false,
       criadaEm: '2026-11-10T17:32:00Z', dataInicio: '2026-09-28', dataFim: '2026-11-09', importadas: 7, jaImportadas: 34, desmarcadas: 6,
       deFora: 4, editados: 0, excluidos: 0, desfeitaEm: null };
@@ -124,9 +126,80 @@ describe('apresentação da importação', () => {
       texto: '3 linhas já tinham entrado por outra importação e ficaram de fora.',
     });
     expect(frasesDoResultado(resultado({})).texto).toBe('');
-    // Fatia 04b: as categorizadas por regras vêm primeiro (#d-resultado), nunca mais que as importadas.
+    // Fatia 05c ("Corrigir ao importar"): a parcela corrigida, mesmo sem nada importado.
+    expect(frasesDoResultado(resultado({ importadas: 0, importacaoId: null, jaImportadas: 0, desmarcadas: 1, corrigidas: 1 }))).toEqual({
+      titulo: 'Nada novo foi importado', texto: '1 parcela já importada ficou com o valor do banco. 1 ficou desmarcado.',
+    });
+    expect(frasesDoResultado(resultado({ importadas: 2, jaImportadas: 0, corrigidas: 3 })).texto)
+      .toBe('3 parcelas já importadas ficaram com o valor do banco.');
+    // Fatia 04b: as categorizadas por regras vêm primeiro, nunca mais que as importadas.
     expect(frasesDoResultado(resultado({ importadas: 9, jaImportadas: 31 }), 6).texto).toBe('6 categorizados por regras e 31 já tinham sido importados.');
     expect(frasesDoResultado(resultado({ importadas: 1 }), 1).texto).toBe('1 categorizado por regra.');
     expect(frasesDoResultado(resultado({ importadas: 1 }), 2).texto).toBe('1 categorizado por regra.');
+  });
+
+  it('a fatura (Fatia 05c): o seletor e a dica da fatura, o arquivo lido, o que cada linha é, a parcela e o pagamento', () => {
+    expect(rotuloDaFatura({ mes: '2026-11', fechamento: '2026-11-03', vencimento: '2026-11-10', situacao: 'FECHADA' }, '2026-11-10'))
+      .toBe('Novembro de 2026 · fechou 03/11');
+    expect(rotuloDaFatura({ mes: '2027-01', fechamento: '2027-01-03', vencimento: '2027-01-10', situacao: 'FUTURA' }, '2026-11-10'))
+      .toBe('Janeiro de 2027 · fecha 03/01');
+    expect(dicaDaFatura('2026-11-21')).toBe('Sugerida pela compra mais recente (21/11). Todas as linhas vão para esta fatura, como no banco.');
+    expect(dicaDaFatura(null)).toBe('Sugerida pela data de hoje. Todas as linhas vão para esta fatura, como no banco.');
+    const previa = { formato: 'OFX', perfil: null, linhas: [linha({})], dataInicio: '2026-11-05', dataFim: '2026-11-05' } as unknown as Previa;
+    expect(resumoDaFatura(previa)).toBe('OFX de cartão · 1 linha · de 05/11 a 05/11/2026');
+    expect(resumoDaFatura({ ...previa, formato: 'CSV', perfil: NUBANK_FATURA }))
+      .toBe('CSV da fatura do Nubank · 1 linha · de 05/11 a 05/11/2026');
+    expect(periodoDoArquivo('2025-12-03', '2026-11-20')).toBe('de 03/12/2025 a 20/11/2026');
+    expect(periodoDoArquivo('2015-01-10', '2028-01-10')).toBe('de 10/01/2015 a 10/01/2028');
+    expect(periodoDoArquivo('2015-01-10', '2015-01-10')).toBe('de 10/01 a 10/01/2015');
+    expect(subtituloDaRevisaoDaFatura({ ...previa, nomeArquivo: 'fatura.csv', cartaoNome: 'Cartão Horizonte', fatura: {
+      mes: '2026-11', fechamento: '2026-11-03', vencimento: '2026-11-10', situacao: 'FECHADA',
+    } }, '2026-11-12')).toBe('fatura.csv em Cartão Horizonte · fatura de novembro de 2026 · fechou 03/11 · vence 10/11');
+    expect(resumoDoPerfil(NUBANK_FATURA)).toEqual({ modelo: 'Nubank (fatura)', detalhes: 'vírgula · AAAA-MM-DD · ponto decimal · compras positivas' });
+
+    const parcela = linha({ descricao: 'Curso - Parcela 3/10', valor: -120, parcela: 3, parcelas: 10 });
+    expect(textoDaLinhaDaFatura(parcela, '2026-12', '2026-11-10')).toEqual({
+      longo: 'Cria a compra com as parcelas 3 a 10 (até julho de 2027)', curto: 'cria as parcelas 3 a 10' });
+    expect(textoDaLinhaDaFatura(linha({ valor: -4.37 }), '2026-12', '2026-11-10')).toEqual({ longo: 'À vista', curto: 'À vista' });
+    expect(textoDaLinhaDaFatura(linha({ valor: 15 }), '2026-12', '2026-11-10')).toBeNull();
+    const parecido = { descricao: 'Mercado Bom Preço', data: '2026-11-04', manual: true, excluido: false, criadoEm: '2026-11-06T13:00:00Z',
+      excluidoEm: null };
+    expect(fraseDoParecidoNaFatura(linha({ valor: -312.45 }), parecido).longo.replace(/\s/g, ' '))
+      .toBe('Parece Mercado Bom Preço, lançada à mão (R$ 312,45 em 04/11).');
+    expect(fraseDoParecidoNaFatura(parcela, { ...parecido, manual: false })).toEqual({
+      longo: 'Parece a parcela 3/10 de Mercado Bom Preço, importada em 06/11.', curto: 'importada em 06/11' });
+    expect(fraseDaJaImportadaNaFatura({ ...parcela, parecido })).toBe('A parcela 3/10 de Mercado Bom Preço já está no Flux');
+    expect(fraseDaJaImportadaNaFatura(linha({ parecido }))).toBeNull();
+    const corrige = { ...parcela, situacao: 'JA_IMPORTADA' as const, valor: -33.33, valorNoFlux: -33.34, parcela: 2, parcelas: 3,
+      parecido: { ...parecido, descricao: 'Fone Fictício', manual: false } };
+    expect(fraseDaCorrecao(corrige).replace(/\s/g, ' ')).toBe('A parcela 2/3 de Fone Fictício: R$ 33,34 no Flux, R$ 33,33 no arquivo.');
+    expect(tituloDasCorrecoes(1)).toBe('1 parcela já importada fica com o valor do banco');
+    expect(tituloDasCorrecoes(2)).toBe('2 parcelas já importadas ficam com o valor do banco');
+    expect(parcelasParaCorrigir(1)).toBe('1 parcela');
+    expect(parcelasParaCorrigir(12)).toBe('12 parcelas');
+    expect(textoDasParcelas([parcela, linha({})])).toBe('a compra em 10x cria 8 parcelas');
+    expect(textoDasParcelas([parcela, { ...parcela, parcela: 1, parcelas: 3 }])).toBe('as 2 compras parceladas criam 11 parcelas');
+    expect(textoDasParcelas([linha({})])).toBeNull();
+    expect(rotuloDaSituacao(linha({ situacao: 'FORA', motivo: 'PAGAMENTO_DA_FATURA' }), null, '2026-11-10')).toBe('Pagamento da fatura: registre pela conta');
+    expect(rotuloDaSituacao(linha({ situacao: 'FORA', motivo: 'DATA_ANTES_DO_LIMITE' }), null, '2026-11-10')).toBe('Data antes de 10/11/2016');
+    expect(rotuloDaSituacao(linha({ situacao: 'FORA', motivo: 'COMPRA_JA_NO_FLUX', parcela: 2, parcelas: 10, parcelaQueCobre: 3 }), null,
+      '2026-11-10')).toBe('A compra já está no Flux a partir da parcela 3/10');
+    expect(rotuloDaSituacao(linha({ situacao: 'FORA', motivo: 'PARCELA_DO_ARQUIVO', parcela: 6, parcelas: 10, parcelaQueCobre: 5 }), null,
+      '2026-11-10')).toBe('Entra com a parcela 5/10 deste arquivo');
+  });
+
+  it('o resultado e o histórico da fatura (Fatia 05c) dizem o cartão, a fatura e as parcelas criadas', () => {
+    const daFatura = resultado({ contaId: null, contaNome: null, saldoDeHoje: null, cartaoId: 5, cartaoNome: 'Cartão Horizonte', fatura: '2026-12',
+      importadas: 4, lancamentos: 11, parceladas: [{ descricao: 'Curso', parcelaInicial: 3, parcelas: 10 }] });
+    expect(frasesDoResultado(daFatura).titulo).toBe('4 lançamentos importados');
+    expect(notaDoResultadoDaFatura(daFatura, '2026-11-10'))
+      .toBe('em Cartão Horizonte, fatura de dezembro · a compra em 10x criou as parcelas 3 a 10 (11 lançamentos no total)');
+    expect(notaDoResultadoDaFatura({ ...daFatura, parceladas: [{ descricao: 'A', parcelaInicial: 3, parcelas: 10 },
+      { descricao: 'B', parcelaInicial: 1, parcelas: 3 }] }, '2026-11-10'))
+      .toBe('em Cartão Horizonte, fatura de dezembro · as 2 compras parceladas criaram 11 parcelas (11 lançamentos no total)');
+    expect(notaDoResultadoDaFatura({ ...daFatura, fatura: '2027-01', parceladas: [] }, '2026-11-10')).toBe('em Cartão Horizonte, fatura de janeiro de 2027');
+    expect(notaDoResultadoDaFatura(resultado({}), '2026-11-10')).toBeNull();
+    const item = { cartaoNome: 'Cartão Horizonte', faturaMes: '2026-12', criadaEm: '2026-11-04T23:41:00Z' } as Importacao;
+    expect(linhaDoHistoricoDaFatura(item, '2026-11-10')).toMatch(/^Cartão Horizonte · fatura de dezembro · 04\/11\/2026/);
   });
 });

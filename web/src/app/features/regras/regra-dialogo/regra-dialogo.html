@@ -66,12 +66,21 @@
       }
     </div>
     <div class="flux-campo">
-      <label for="regra-conta">Conta</label>
+      <label for="regra-conta">Conta ou cartão</label>
       <div class="flux-entrada" [class.flux-entrada--invalida]="erro('conta') !== null">
         <select id="regra-conta" formControlName="conta" [attr.aria-invalid]="erro('conta') !== null ? 'true' : null" [attr.aria-describedby]="erro('conta') !== null ? 'regra-conta-erro' : null">
-          <option [ngValue]="null">Todas as contas</option>
-          @for (opcao of opcoesDeConta(); track opcao.id) {
-            <option [ngValue]="opcao.id">{{ opcao.rotulo }}</option>
+          <option [ngValue]="null">Todas as contas e cartões</option>
+          <optgroup label="Contas">
+            @for (opcao of opcoesDeConta(); track opcao.valor) {
+              <option [ngValue]="opcao.valor">{{ opcao.rotulo }}</option>
+            }
+          </optgroup>
+          @if (opcoesDeCartao().length > 0) {
+            <optgroup label="Cartões">
+              @for (opcao of opcoesDeCartao(); track opcao.valor) {
+                <option [ngValue]="opcao.valor">{{ opcao.rotulo }}</option>
+              }
+            </optgroup>
           }
         </select>
         <app-icone class="flux-entrada__seta" nome="baixo" />

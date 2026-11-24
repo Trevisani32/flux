@@ -96,6 +96,11 @@ export class Cartoes {
     void this.router.navigate(['/cartoes', cartao.id, 'faturas', cartao.faturaAberta.mes]);
   }
 
+  importarFatura(cartao: Cartao): void {
+    this.servico.cartaoDaImportacao = cartao.id;
+    void this.router.navigate(['/importacao'], { queryParams: { cartao: cartao.id } });
+  }
+
   /** Decisão 5: com lançamentos em faturas que não fecharam, a confirmação diz quanto; sem eles, arquiva direto. */
   arquivar(cartao: Cartao): void {
     if (cartao.lancamentosEmAberto === 0) {

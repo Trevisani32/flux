@@ -6,7 +6,7 @@ const ROTULOS: Readonly<Record<CondicaoDaRegra, string>> = {
   IGUAL_A: 'igual a',
 };
 
-/** As condições do select, na ordem do mockup. */
+/** As condições do select, na ordem aprovada. */
 export const CONDICOES: readonly { readonly valor: CondicaoDaRegra; readonly rotulo: string }[] = [
   { valor: 'CONTEM', rotulo: ROTULOS.CONTEM },
   { valor: 'COMECA_COM', rotulo: ROTULOS.COMECA_COM },
@@ -34,21 +34,32 @@ export function nomeDaCategoria(nome: string, mae: string | null): string {
   return mae === null ? nome : `${mae} › ${nome}`;
 }
 
-/** A segunda linha da regra na lista: "Despesas · todas as contas · descrição vira "Uber"". */
+/**
+ * A segunda linha da regra na lista: "Despesas · todas as contas e cartões · descrição vira "Uber"", ou "só Banco
+ * Horizonte", ou, desde a Fatia 05c, "só Cartão Horizonte".
+ */
 export function metaDaRegra(regra: Regra): string {
-  const partes = [regra.natureza === 'RECEITA' ? 'Receitas' : 'Despesas', regra.contaNome === null ? 'todas as contas' : `só ${regra.contaNome}`];
+  const lugar = regra.contaNome !== null ? `só ${regra.contaNome}` : regra.cartaoNome != null ? `só ${regra.cartaoNome}` : 'todas as contas e cartões';
+  const partes = [regra.natureza === 'RECEITA' ? 'Receitas' : 'Despesas', lugar];
   if (regra.descricao !== null) {
     partes.push(`descrição vira "${regra.descricao}"`);
   }
   return partes.join(' · ');
 }
 
-/** "Pausada: Lazer está arquivada" (decisões 23 e 24); a categoria vem antes da conta. */
+/**
+ * "Pausada: Lazer está arquivada" (decisões 23 e 24); a categoria vem antes da conta. Desde a Fatia 05c, "Pausada: Cartão
+ * Lua está arquivado".
+ */
 export function motivoDaPausa(regra: Regra): string | null {
   if (!regra.pausada) {
     return null;
   }
-  return regra.categoriaArquivada ? `Pausada: ${regra.categoriaNome} está arquivada` : `Pausada: ${regra.contaNome ?? 'a conta'} está arquivada`;
+  if (regra.categoriaArquivada) {
+    return `Pausada: ${regra.categoriaNome} está arquivada`;
+  }
+  return regra.cartaoArquivado === true ? `Pausada: ${regra.cartaoNome ?? 'o cartão'} está arquivado`
+    : `Pausada: ${regra.contaNome ?? 'a conta'} está arquivada`;
 }
 
 /** "1 lançamento" ou "37 lançamentos". */
@@ -95,11 +106,20 @@ export function avisoDaRegraCriada(semCategoria: number): string {
 }
 
 /** O aviso curto depois de aplicar. */
-export function avisoDosAplicados(categorizados: number): string {
+export function avisoDosAplicados(categorizados: number, compras = 0): string {
   if (categorizados === 0) {
     return 'Nenhum lançamento mudou.';
   }
-  return categorizados === 1 ? '1 lançamento categorizado.' : `${quantidadeDeLancamentos(categorizados)} categorizados.`;
+  if (compras === 0) {
+    return categorizados === 1 ? '1 lançamento categorizado.' : `${quantidadeDeLancamentos(categorizados)} categorizados.`;
+  }
+  // Fatia 05c: a compra do cartão conta 1, com todas as parcelas; o aviso a conta à parte dos lançamentos de conta.
+  const dasCompras = compras === 1 ? '1 compra do cartão' : `${compras.toLocaleString('pt-BR')} compras do cartão`;
+  const lancamentos = categorizados - compras;
+  if (lancamentos === 0) {
+    return `${dasCompras} ${compras === 1 ? 'categorizada' : 'categorizadas'}, com todas as parcelas.`;
+  }
+  return `${quantidadeDeLancamentos(lancamentos)} e ${dasCompras} categorizados.`;
 }
 
 /** A prévia do diálogo: "Casa com 6 lançamentos seus, 4 sem categoria". */

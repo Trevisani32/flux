@@ -8,7 +8,7 @@ import { dataCurta } from '../../../shared/datas/data-curta';
 import { Valor } from '../../../shared/valor/valor';
 import { codigoDoErro, detalheDoErro, propriedadeDoErro, statusDoErro } from '../../auth/erros-http';
 import { condicaoNoInicio, nomeDaCategoria, notaDoGrupo, quantidadeDeLancamentos, textoDoAplicar } from '../apresentacao';
-import { Aplicacao, RegrasService } from '../regras.service';
+import { Aplicacao, Aplicados, RegrasService } from '../regras.service';
 
 export interface DadosDoAplicar {
   /** Só o grupo desta regra (decisão 19); nulo = todas. */
@@ -32,7 +32,7 @@ const FALHA = 'Não foi possível aplicar as regras. Tente novamente.';
 })
 export class AplicarDialogo {
   private readonly servico = inject(RegrasService);
-  private readonly referencia = inject<MatDialogRef<AplicarDialogo, number>>(MatDialogRef);
+  private readonly referencia = inject<MatDialogRef<AplicarDialogo, Aplicados>>(MatDialogRef);
 
   readonly dados = inject<DadosDoAplicar>(MAT_DIALOG_DATA);
   readonly aplicacao = signal<Aplicacao | null>(null);
@@ -117,7 +117,7 @@ export class AplicarDialogo {
     this.recarregada.set(false);
     this.referencia.disableClose = true;
     this.servico.aplicar(regras).subscribe({
-      next: (categorizados) => this.referencia.close(categorizados),
+      next: (resultado) => this.referencia.close(resultado),
       error: (erro: unknown) => {
         const status = statusDoErro(erro);
         this.erro.set(status === 400 || status === 422 ? detalheDoErro(erro, FALHA) : FALHA);
@@ -132,8 +132,8 @@ export class AplicarDialogo {
 }
 
 /** Abre a prévia (tela cheia no celular); emite quantos lançamentos ganharam categoria, ou undefined. */
-export function abrirAplicarRegras(dialogo: MatDialog, regraId: number | null): Observable<number | undefined> {
-  return dialogo.open<AplicarDialogo, DadosDoAplicar, number>(AplicarDialogo, {
+export function abrirAplicarRegras(dialogo: MatDialog, regraId: number | null): Observable<import('../regras.service').Aplicados | undefined> {
+  return dialogo.open<AplicarDialogo, DadosDoAplicar, import('../regras.service').Aplicados>(AplicarDialogo, {
     data: { regraId },
     panelClass: ['flux-dialogo', 'flux-dialogo--cheio-no-celular'],
     width: '540px',

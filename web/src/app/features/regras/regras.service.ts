@@ -7,8 +7,9 @@ import { Natureza } from '../categorias/categorias.service';
 export type CondicaoDaRegra = 'CONTEM' | 'COMECA_COM' | 'IGUAL_A';
 
 /**
- * Uma regra como a API devolve (GET /api/regras). `contaId` nulo = todas as contas. `pausada`: a
- * categoria ou a conta está arquivada, e a regra não age (decisões 23 e 24).
+ * Uma regra como a API devolve (GET /api/regras). `contaId` e `cartaoId` (Fatia 05c) nulos = todas as contas e cartões.
+ * `pausada`: a categoria, a conta ou o cartão está arquivado, e a regra não age (decisões 23 e 24; 44 da 05c). Os campos
+ * do cartão são opcionais: a API manda sempre, e os objetos de teste da 04b não os trazem.
  */
 export interface Regra {
   readonly id: number;
@@ -18,6 +19,9 @@ export interface Regra {
   readonly contaId: number | null;
   readonly contaNome: string | null;
   readonly contaArquivada: boolean;
+  readonly cartaoId?: number | null;
+  readonly cartaoNome?: string | null;
+  readonly cartaoArquivado?: boolean;
   readonly natureza: Natureza;
   readonly categoriaId: number;
   readonly categoriaNome: string;
@@ -27,11 +31,12 @@ export interface Regra {
   readonly pausada: boolean;
 }
 
-/** Corpo de POST e PUT /api/regras: a natureza vem da categoria (decisão 6). */
+/** Corpo de POST e PUT /api/regras: a natureza vem da categoria (decisão 6); a conta ou o cartão (Fatia 05c), nunca os dois. */
 export interface DadosDaRegra {
   readonly condicao: CondicaoDaRegra;
   readonly texto: string;
   readonly contaId: number | null;
+  readonly cartaoId?: number | null;
   readonly categoriaId: number;
   readonly descricao: string | null;
 }
@@ -47,6 +52,7 @@ export interface PedidoDePrevia {
   readonly condicao: CondicaoDaRegra;
   readonly texto: string;
   readonly contaId: number | null;
+  readonly cartaoId?: number | null;
   readonly categoriaId: number | null;
 }
 
@@ -72,9 +78,13 @@ export interface Aplicacao {
   readonly grupos: readonly GrupoDaAplicacao[];
 }
 
-/** Um importado que ganhou categoria à mão (decisão 20). `descricao`: a que o usuário vê, se mudou. */
+/**
+ * Um importado que ganhou categoria à mão (decisão 20). `descricao`: a que o usuário vê, se mudou. A conta do importado
+ * ou, desde a Fatia 05c, o cartão da linha da fatura.
+ */
 export interface EscolhaAMao {
-  readonly contaId: number;
+  readonly contaId: number | null;
+  readonly cartaoId?: number | null;
   readonly descricaoBanco: string;
   readonly descricao: string | null;
   readonly categoriaId: number;
@@ -90,6 +100,15 @@ export interface SugestaoDeRegra {
   readonly natureza: Natureza;
   readonly descricao: string | null;
   readonly deDescricao: string;
+}
+
+/**
+ * O que "Aplicar regras" categorizou: cada lançamento de conta conta 1, e cada compra do cartão (Fatia 05c) conta 1, com
+ * todas as parcelas; `compras` diz quantas das `categorizados` são compras ou estornos do cartão.
+ */
+export interface Aplicados {
+  readonly categorizados: number;
+  readonly compras: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -127,8 +146,9 @@ export class RegrasService {
     return this.http.get<Aplicacao>('/api/regras/aplicacao', { params });
   }
 
-  aplicar(regras: readonly number[]): Observable<number> {
-    return this.http.post<{ categorizados: number }>('/api/regras/aplicacao', { regras }).pipe(map((resposta) => resposta.categorizados));
+  aplicar(regras: readonly number[]): Observable<Aplicados> {
+    return this.http.post<{ categorizados: number; compras?: number }>('/api/regras/aplicacao', { regras })
+      .pipe(map((resposta) => ({ categorizados: resposta.categorizados, compras: resposta.compras ?? 0 })));
   }
 
   sugestoes(itens: readonly EscolhaAMao[]): Observable<SugestaoDeRegra[]> {
