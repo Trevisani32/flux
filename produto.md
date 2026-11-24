@@ -166,7 +166,7 @@ O que isso exige do produto:
      letras, apóstrofos e hífens; senão, por "Usuário".
 
 
-**Fatia 06:** **exportar meus dados**, um arquivo com todos os dados do usuário
+**Fatia 06b:** **exportar meus dados**, um arquivo com todos os dados do usuário
 (LGPD, direito de portabilidade).
 
 ### 2. Contas — Fatia 03a
@@ -535,8 +535,11 @@ Ver [ADR 0017](decisoes/0017-cartao-de-credito-faturas-e-parcelas.md), que subst
     fatura" e sem o saldo do dia;
   - entradas e saídas contam as parcelas e os estornos. O saldo das contas não muda com a compra;
   - abrir uma parcela ou um estorno abre o diálogo da compra (ou do estorno).
-- **Início:** o card "Cartões" mostra cada cartão ativo com a fatura aberta e, desde a 05b, o disponível. "Últimos
-  lançamentos" fica só com os lançamentos de conta (o pagamento de fatura entra: é da conta).
+- **Início:** desde a 06a, o card "Próximas faturas" mostra, de cada cartão ativo, as faturas fechadas com pendente (a
+  vencida com "venceu em 05/11" em laranja) e a aberta, quando tem lançamento, na ordem do vencimento; a fechada mostra o
+  pendente, e a aberta, o total até agora e o disponível do cartão. A futura e a paga ficam fora; sem nada a pagar,
+  "Nenhuma fatura a pagar."; clicar abre a fatura. "Últimos lançamentos" fica só com os lançamentos de conta (o pagamento
+  de fatura entra: é da conta).
 - **Usos:** a parcela é uso da categoria, como o lançamento. A conta de pagamento é uso da conta. A
   compra e o estorno são uso do cartão ("Este cartão não pode ser excluído porque tem 12 compras e 1
   estorno.").
@@ -627,19 +630,28 @@ Ver [ADR 0017](decisoes/0017-cartao-de-credito-faturas-e-parcelas.md), que subst
 - **Regras:** uma regra filtra todas as contas e cartões, uma conta ou um cartão. Compras e estornos de cartão contam uma
   vez, com data da compra e valor total, e a categoria alcança todas as parcelas.
 
-### 9. Dashboard e relatórios — Fatia 06
+### 9. Dashboard e relatórios — Fatias 06a e 06b
 
-- Para o mês escolhido: receitas, despesas, resultado e saldo total das contas.
-- Gastos por categoria no mês, com as subcategorias ao expandir, comparados com a
-  média dos 3 meses anteriores.
-- Receitas × despesas dos últimos 12 meses.
-- Evolução do saldo total, no fim de cada mês, nos últimos 12 meses.
-- Próximas faturas, com valor e vencimento.
-- O gasto no cartão conta no mês do vencimento da fatura, e cada parcela no mês da sua fatura.
-  O estorno é receita: um tênis devolvido aparece em Compras e em Reembolsos, e o resultado do
-  mês fica certo (módulo 8).
-- Clicar num número abre a lista de lançamentos já filtrada.
-- Transferências e pagamentos de fatura ficam fora de receitas e despesas.
+Ver [ADR 0020](decisoes/0020-graficos-sem-biblioteca-e-modulo-de-relatorios.md).
+
+**Fatia 06a: relatórios e o Início.**
+
+- **Relatórios:** página no menu, com o mês na URL; vai do primeiro dado ao mês atual e um mês fora dessa faixa abre o atual.
+- **Saldo total:** o atual é o do Início; no passado, o do último dia. A conta entra do saldo inicial até a véspera do
+  arquivamento no fuso de São Paulo; investimento entra e, antes do primeiro saldo inicial, aparece “—”. O card leva a Contas.
+- **Receitas e despesas:** só lançamentos de receita e despesa, inclusive parcelas no vencimento e estornos como receita;
+  transferências e pagamentos de fatura ficam fora. Resultado é receitas menos despesas e os cards levam à lista filtrada.
+- **Média e comparação:** até três meses anteriores, com meses sem gasto valendo zero; média em centavos e percentual inteiro
+  com HALF_UP, mostrado como acima, abaixo, igual ou novo.
+- **Gastos por categoria:** despesas principais, subcategorias e “Direto em”; inclui Sem categoria e arquivadas, ordena por
+  gasto, média e nome, mostra barra, média, comparação e links para a lista.
+- **Gráficos:** receitas × despesas e saldo dos últimos até 12 meses, com balão, teclado, leitor de tela e alternativa de
+  tabela. Os gráficos são desenhados pelo próprio Flux, sem biblioteca.
+- **Estados:** sem conta orienta a cadastrar; antes do primeiro saldo inicial, o saldo não é inventado.
+- **Início:** “Ver relatório” fica ao lado de “Ver lançamentos”. “Próximas faturas” lista, por vencimento, fechadas com
+  pendente e abertas com lançamento; vencida fica laranja, a aberta mostra total e disponível, e clicar abre a fatura.
+
+**Fatia 06b:** exportar meus dados (módulo 1).
 
 ### 10. Recorrências — Fatia 07
 
@@ -698,7 +710,6 @@ Ver [ADR 0017](decisoes/0017-cartao-de-credito-faturas-e-parcelas.md), que subst
 
 | Ponto | Decidir em |
 |---|---|
-| Biblioteca de gráficos | Fatia 06 |
 | Recorrência: gravar as ocorrências no banco ou calcular quando precisar | Fatia 07 |
 | Demo: conta compartilhada, usuário temporário por visitante ou cadastro com dados de exemplo | Fatia 08 |
 | Provedor de e-mail em produção (SMTP) | Fatia 08 |
@@ -721,7 +732,8 @@ Ver [ADR 0017](decisoes/0017-cartao-de-credito-faturas-e-parcelas.md), que subst
 | 04c | Conversão de importados em transferência: pares, lado novo, desfazer e sugestão no resultado da importação | Concluída |
 | 05a | Cartões, faturas, compras parceladas, estornos e ajuste de fechamento | Concluída |
 | 05b | Pagamento da fatura, situação paga, paga fora do Flux, conversão do importado em pagamento e limite disponível | Concluída |
-| 05c | Importação de fatura de cartão e regras com cartão | Implementada, aguardando publicação |
-| 06 | Dashboard, relatórios e exportação dos dados | — |
+| 05c | Importação de fatura de cartão e regras com cartão | Concluída |
+| 06a | Dashboard e relatórios: página Relatórios, gráficos sem biblioteca e próximas faturas no Início | Implementada, aguardando publicação |
+| 06b | Exportação dos dados (LGPD) | — |
 | 07 | Recorrências, orçamento e projeção de saldo | — |
 | 08 | Deploy, demo pública e README completo | — |
