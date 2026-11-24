@@ -72,6 +72,9 @@ class Recolocacao {
         int compras = 0;
         int estornos = 0;
         for (Compra compra : candidatas.stream().sorted(Comparator.comparing(Compra::getId)).toList()) {
+            if (compra.importada()) {
+                continue;
+            }
             List<Lancamento> daCompra = parcelas.getOrDefault(compra.getId(), List.of());
             if (daCompra.isEmpty()) {
                 continue;

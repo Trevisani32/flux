@@ -21,4 +21,11 @@ public interface CompraRepository extends JpaRepository<Compra, Long> {
 
     /** Uso do cartão (decisão 28). */
     long countByUsuarioIdAndCartaoIdAndTipo(Long usuarioId, Long cartaoId, TipoCompra tipo);
+
+    long countByUsuarioIdAndImportacaoId(Long usuarioId, Long importacaoId);
+
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("delete from Compra c where c.usuarioId = :usuarioId and c.importacaoId = :importacaoId")
+    int apagarDaImportacao(@org.springframework.data.repository.query.Param("usuarioId") Long usuarioId,
+                           @org.springframework.data.repository.query.Param("importacaoId") Long importacaoId);
 }

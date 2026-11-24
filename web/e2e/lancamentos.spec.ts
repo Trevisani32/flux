@@ -216,8 +216,32 @@ function extratoDeHoje(): Buffer {
 async function escolherOExtrato(page: Page): Promise<void> {
   await irPeloMenu(page, 'Importação');
   await expect(page.getByRole('heading', { name: 'Importação', level: 1 })).toBeVisible();
-  await page.getByLabel('Conta', { exact: true }).selectOption({ label: 'Conta Aurora' });
+  await page.getByLabel('Importar em', { exact: true }).selectOption({ label: 'Conta Aurora' });
   await page.locator('#importacao-arquivo').setInputFiles({ name: 'extrato.ofx', mimeType: 'application/x-ofx', buffer: extratoDeHoje() });
+}
+
+async function conferirRevisaoResponsiva(page: Page): Promise<void> {
+  const original = page.viewportSize();
+  try {
+    await page.setViewportSize({ width: 960, height: 900 });
+    await expect(page.locator('mat-sidenav')).not.toHaveClass(/lateral--gaveta/);
+    await expect.poll(async () => page.locator('.revisao__descricao').first().evaluate((elemento) => elemento.getBoundingClientRect().width))
+      .toBeGreaterThanOrEqual(360);
+    expect(await semRolagemHorizontal(page)).toBe(true);
+
+    await page.setViewportSize({ width: 1100, height: 900 });
+    expect(await semRolagemHorizontal(page)).toBe(true);
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expect(page.locator('mat-sidenav')).toHaveClass(/lateral--gaveta/);
+    await expect.poll(async () => page.locator('main').evaluate((elemento) => elemento.getBoundingClientRect().left))
+      .toBeLessThanOrEqual(1);
+    expect(await semRolagemHorizontal(page)).toBe(true);
+  } finally {
+    if (original) {
+      await page.setViewportSize(original);
+    }
+  }
 }
 
 test('importa um OFX: revisão, categoria nas linhas iguais, resultado e a lista', async ({ page }) => {
@@ -227,6 +251,7 @@ test('importa um OFX: revisão, categoria nas linhas iguais, resultado e a lista
   await escolherOExtrato(page);
 
   await expect(page.getByRole('heading', { name: 'Revisar importação', level: 1 })).toBeVisible();
+  await conferirRevisaoResponsiva(page);
   await expect(page.locator('.revisao__nome-do-grupo')).toHaveText(['Novas · 3']);
   await page.getByRole('button', { name: 'Categoria de CAFE DA ESQUINA: Sem categoria' }).first().click();
   const seletor = page.getByRole('dialog');
@@ -362,7 +387,7 @@ test('a revisão seguinte vem categorizada pelas regras, e "Aplicar regras" de L
     '2ª: Contém pix recebido, categoria Outras receitas']);
 
   await irPeloMenu(page, 'Importação');
-  await page.getByLabel('Conta', { exact: true }).selectOption({ label: 'Conta Aurora' });
+  await page.getByLabel('Importar em', { exact: true }).selectOption({ label: 'Conta Aurora' });
   await page.locator('#importacao-arquivo').setInputFiles({ name: 'extrato-2.ofx', mimeType: 'application/x-ofx', buffer: segundoExtratoDeHoje() });
   await expect(page.getByRole('heading', { name: 'Revisar importação', level: 1 })).toBeVisible();
   await expect(page.locator('.revisao__descricao b')).toHaveText(['Pix recebido', 'CAFE DA ESQUINA']);
@@ -431,7 +456,7 @@ test('o resultado da importação sugere o par, "Converter" liga os dois, e a co
   await expect(novo).toBeHidden();
 
   await irPeloMenu(page, 'Importação');
-  await page.getByLabel('Conta', { exact: true }).selectOption({ label: 'Conta Aurora' });
+  await page.getByLabel('Importar em', { exact: true }).selectOption({ label: 'Conta Aurora' });
   await page.locator('#importacao-arquivo').setInputFiles({ name: 'extrato-3.ofx', mimeType: 'application/x-ofx', buffer: terceiroExtratoDeHoje() });
   await expect(page.getByRole('heading', { name: 'Revisar importação', level: 1 })).toBeVisible();
   await page.getByRole('button', { name: 'Importar 1 lançamento' }).click();
@@ -806,5 +831,33 @@ test('paga a fatura fechada, que fica paga, trava a compra dela e devolve o limi
   await irPeloMenu(page, 'Cartões');
   await expect(page.locator('.cartoes__disponivel .valor__texto')).toHaveText(/^R\$\s5\.000,00$/);
   await expect(page.locator('.cartoes__rodape > span').nth(1)).toHaveText(/^de\sR\$\s5\.000,00\s·\sR\$\s0,00\sem faturas a pagar$/);
+  expect(await semRolagemHorizontal(page)).toBe(true);
+});
+
+test('importa a fatura do cartão pelo CSV do Nubank: perfil, fatura sugerida, parcela 3/10, compra importada e desfazer (Fatia 05c)', async ({ page }) => {
+  const mes = mesDeHoje(-1);
+  await entrar(page);
+  await irPeloMenu(page, 'Cartões');
+  await page.getByRole('button', { name: 'Ações de Cartão Horizonte' }).click();
+  await page.getByRole('menuitem', { name: 'Importar fatura' }).click();
+  await expect(page).toHaveURL(/\/importacao\?cartao=\d+/);
+  await expect(page.getByLabel('Importar em', { exact: true }).locator('option:checked')).toHaveText('Cartão Horizonte');
+  const csv = `date,title,amount\n${mes}-05,Padaria Pao Quente,22.50\n${mes}-04,Estorno de Loja Ficticia,-30.00\n${mes}-03,Curso Online Ficticio - Parcela 3/10,99.90\n${mes}-06,Pagamento recebido,-500.00\n`;
+  await page.locator('#importacao-arquivo').setInputFiles({ name: 'fatura-e2e.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+  await expect(page.getByRole('heading', { name: 'Como ler este CSV', level: 1 })).toBeVisible();
+  await expect(page.getByText('Parece a fatura do cartão Nubank')).toBeVisible();
+  await expect(page.getByLabel('Compras vêm positivas', { exact: true })).toBeChecked();
+  await page.getByRole('button', { name: 'Salvar perfil e continuar' }).click();
+  await expect(page.getByRole('button', { name: 'Revisar' })).toBeVisible();
+  await expect(page.locator('#importacao-fatura')).toHaveValue(mes);
+  await page.getByRole('button', { name: 'Revisar' }).click();
+  await expect(page.getByText('Pagamento da fatura: registre pela conta')).toBeVisible();
+  await conferirRevisaoResponsiva(page);
+  await expect(page.getByRole('button', { name: 'Importar 3 lançamentos' })).toBeVisible();
+  await page.getByRole('button', { name: 'Importar 3 lançamentos' }).click();
+  await expect(page.getByRole('heading', { name: '3 lançamentos importados', level: 2 })).toBeVisible();
+  await page.getByRole('button', { name: 'Ver fatura' }).click();
+  await expect(page).toHaveURL(new RegExp(`/cartoes/\\d+/faturas/${mes}$`));
+  await expect(page.locator('.fatura__pilula').filter({ visible: true })).toHaveText(['Estorno', '3/10']);
   expect(await semRolagemHorizontal(page)).toBe(true);
 });

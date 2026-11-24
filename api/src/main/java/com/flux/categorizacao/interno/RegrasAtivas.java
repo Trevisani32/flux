@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.flux.categorias.CategoriaResumo;
+import com.flux.cartoes.CartaoResumo;
 import com.flux.contas.ContaResumo;
 
 /**
@@ -16,21 +17,31 @@ final class RegrasAtivas {
 
     private final List<Regra> ativas;
 
+    RegrasAtivas(List<Regra> regrasEmOrdem, Map<Long, CategoriaResumo> categorias, Map<Long, ContaResumo> contas,
+                  Map<Long, CartaoResumo> cartoes) {
+        this.ativas = regrasEmOrdem.stream().filter(regra -> !pausada(regra, categorias, contas, cartoes)).toList();
+    }
+
     RegrasAtivas(List<Regra> regrasEmOrdem, Map<Long, CategoriaResumo> categorias, Map<Long, ContaResumo> contas) {
-        this.ativas = regrasEmOrdem.stream().filter(regra -> !pausada(regra, categorias, contas)).toList();
+        this(regrasEmOrdem, categorias, contas, Map.of());
     }
 
     /** Categoria arquivada (ou que sumiu), ou o filtro numa conta arquivada (ou que sumiu). */
-    static boolean pausada(Regra regra, Map<Long, CategoriaResumo> categorias, Map<Long, ContaResumo> contas) {
+    static boolean pausada(Regra regra, Map<Long, CategoriaResumo> categorias, Map<Long, ContaResumo> contas,
+                           Map<Long, CartaoResumo> cartoes) {
         CategoriaResumo categoria = categorias.get(regra.getCategoriaId());
         if (categoria == null || categoria.arquivada()) {
             return true;
         }
-        if (regra.getContaId() == null) {
+        if (regra.getContaId() != null) {
+            ContaResumo conta = contas.get(regra.getContaId());
+            return conta == null || conta.arquivada();
+        }
+        if (regra.getCartaoId() == null) {
             return false;
         }
-        ContaResumo conta = contas.get(regra.getContaId());
-        return conta == null || conta.arquivada();
+        CartaoResumo cartao = cartoes.get(regra.getCartaoId());
+        return cartao == null || cartao.arquivado();
     }
 
     /** "RECEITA" para valor positivo, "DESPESA" para negativo (ADR 0002). */
@@ -42,14 +53,25 @@ final class RegrasAtivas {
      * A primeira regra da natureza que casa com o alvo na conta, ou nula. {@code alvo} já é a
      * {@link Comparacao#chave(String)} da descrição do extrato (ou da descrição, no lançamento manual).
      */
-    Regra primeira(Long contaId, String natureza, String alvo) {
+    Regra primeira(Long contaId, Long cartaoId, String natureza, String alvo) {
         for (Regra regra : ativas) {
-            if (regra.getNatureza().equals(natureza) && (regra.getContaId() == null || regra.getContaId().equals(contaId))
+            if (regra.getNatureza().equals(natureza)
+                    && (regra.getContaId() == null && regra.getCartaoId() == null
+                    || regra.getContaId() != null && regra.getContaId().equals(contaId)
+                    || regra.getCartaoId() != null && regra.getCartaoId().equals(cartaoId))
                     && regra.getCondicao().casa(alvo, regra.getTextoChave())) {
                 return regra;
             }
         }
         return null;
+    }
+
+    static boolean pausada(Regra regra, Map<Long, CategoriaResumo> categorias, Map<Long, ContaResumo> contas) {
+        return pausada(regra, categorias, contas, Map.of());
+    }
+
+    Regra primeira(Long contaId, String natureza, String alvo) {
+        return primeira(contaId, null, natureza, alvo);
     }
 
     boolean vazia() {

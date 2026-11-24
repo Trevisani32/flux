@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Aplicacao, GrupoDaAplicacao } from '../regras.service';
+import { Aplicacao, Aplicados, GrupoDaAplicacao } from '../regras.service';
 import { abrirAplicarRegras } from './aplicar-dialogo';
 
 function grupo(parcial: Partial<GrupoDaAplicacao>): GrupoDaAplicacao {
@@ -23,7 +23,7 @@ const aplicacao: Aplicacao = {
 
 describe('AplicarDialogo', () => {
   let httpTesting: HttpTestingController;
-  let resultado: number | undefined | null;
+  let resultado: Aplicados | undefined | null;
 
   beforeEach(() => {
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
@@ -62,7 +62,7 @@ describe('AplicarDialogo', () => {
     httpTesting.expectOne({ method: 'GET', url: '/api/regras/aplicacao' }).flush(aplicacao);
     TestBed.tick();
     expect(textos('.aplicar__texto')).toEqual(['37 lançamentos sem categoria casam com 2 regras. Transferências, excluídos e lançamentos de '
-      + 'contas arquivadas ficam de fora, e nenhuma categoria escolhida é trocada.']);
+      + 'contas ou cartões arquivados ficam de fora, e nenhuma categoria escolhida é trocada.']);
     expect(textos('.aplicar__regra')).toEqual(['2ª · Contém uber → Transporte › App de transporte', '3ª · Contém ifood → Alimentação › Delivery']);
     expect(textos('.aplicar__nota')).toEqual(['e a descrição vira "Uber" · 1 lançado à mão: só a categoria muda']);
     expect(textos('.aplicar__quantidade')).toEqual(['21', '16']);
@@ -86,9 +86,9 @@ describe('AplicarDialogo', () => {
     TestBed.tick();
     const pedido = httpTesting.expectOne({ method: 'POST', url: '/api/regras/aplicacao' });
     expect(pedido.request.body).toEqual({ regras: [31] });
-    pedido.flush({ categorizados: 21 });
+    pedido.flush({ categorizados: 21, compras: 0 });
     TestBed.tick();
-    await vi.waitFor(() => expect(resultado).toBe(21));
+    await vi.waitFor(() => expect(resultado).toEqual({ categorizados: 21, compras: 0 }));
   });
 
   it('com a regra, pede só a dela; o erro ao carregar tem "Tentar de novo"; sem nada, avisa e só tem "Fechar"', async () => {

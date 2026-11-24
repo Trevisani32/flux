@@ -30,8 +30,11 @@ describe('apresentação das regras', () => {
     expect(posicaoDaNova(regra({ texto: 'uber eats' }))).toBe('Entra em 1º lugar, antes de "contém uber eats". Dá para mudar a ordem na lista.');
   });
 
-  it('a meta da linha e o motivo da pausa (decisões 23 e 24)', () => {
-    expect(metaDaRegra(regra({}))).toBe('Despesas · todas as contas');
+  it('a meta da linha e o motivo da pausa (decisões 23 e 24; o cartão, decisão 44 da 05c)', () => {
+    expect(metaDaRegra(regra({}))).toBe('Despesas · todas as contas e cartões');
+    expect(metaDaRegra(regra({ cartaoId: 6, cartaoNome: 'Cartão Horizonte' }))).toBe('Despesas · só Cartão Horizonte');
+    expect(motivoDaPausa(regra({ pausada: true, cartaoId: 8, cartaoNome: 'Cartão Lua', cartaoArquivado: true })))
+      .toBe('Pausada: Cartão Lua está arquivado');
     expect(metaDaRegra(regra({ natureza: 'RECEITA', contaId: 1, contaNome: 'Banco Horizonte', descricao: 'Salário' })))
       .toBe('Receitas · só Banco Horizonte · descrição vira "Salário"');
     expect(motivoDaPausa(regra({}))).toBeNull();
@@ -54,6 +57,11 @@ describe('apresentação das regras', () => {
     expect(avisoDosAplicados(0)).toBe('Nenhum lançamento mudou.');
     expect(avisoDosAplicados(1)).toBe('1 lançamento categorizado.');
     expect(avisoDosAplicados(37)).toBe('37 lançamentos categorizados.');
+    // Fatia 05c: a compra do cartão conta 1, com todas as parcelas, à parte dos lançamentos de conta.
+    expect(avisoDosAplicados(5, 2)).toBe('3 lançamentos e 2 compras do cartão categorizados.');
+    expect(avisoDosAplicados(2, 1)).toBe('1 lançamento e 1 compra do cartão categorizados.');
+    expect(avisoDosAplicados(1, 1)).toBe('1 compra do cartão categorizada, com todas as parcelas.');
+    expect(avisoDosAplicados(4, 4)).toBe('4 compras do cartão categorizadas, com todas as parcelas.');
     expect(tituloDaPrevia(0, 0)).toBe('Não casa com nenhum lançamento seu ainda');
     expect(tituloDaPrevia(1, 1)).toBe('Casa com 1 lançamento seu, 1 sem categoria');
     expect(tituloDaPrevia(6, 4)).toBe('Casa com 6 lançamentos seus, 4 sem categoria');

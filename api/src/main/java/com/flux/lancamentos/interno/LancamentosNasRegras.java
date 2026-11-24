@@ -10,6 +10,8 @@ import java.util.stream.Collectors;
 
 import com.flux.categorias.CategoriaResumo;
 import com.flux.categorias.CategoriasConsulta;
+import com.flux.cartoes.CartaoResumo;
+import com.flux.cartoes.CartoesConsulta;
 import com.flux.contas.ContaResumo;
 import com.flux.contas.ContasConsulta;
 import com.flux.lancamentos.LancamentosParaRegras;
@@ -32,14 +34,16 @@ public class LancamentosNasRegras implements LancamentosParaRegras {
     private final LancamentoRepository repositorio;
     private final RegrasDosLancamentos regras;
     private final ContasConsulta contas;
+    private final CartoesConsulta cartoes;
     private final CategoriasConsulta categorias;
     private final EntityManager entityManager;
 
     public LancamentosNasRegras(LancamentoRepository repositorio, RegrasDosLancamentos regras, ContasConsulta contas,
-                                CategoriasConsulta categorias, EntityManager entityManager) {
+                                CartoesConsulta cartoes, CategoriasConsulta categorias, EntityManager entityManager) {
         this.repositorio = repositorio;
         this.regras = regras;
         this.contas = contas;
+        this.cartoes = cartoes;
         this.categorias = categorias;
         this.entityManager = entityManager;
     }
@@ -48,18 +52,20 @@ public class LancamentosNasRegras implements LancamentosParaRegras {
     @Transactional(readOnly = true)
     public List<Candidato> receitasEDespesas(Long usuarioId) {
         return repositorio.paraAsRegras(usuarioId, TipoLancamento.TRANSFERENCIA).stream()
-                .map(linha -> new Candidato(linha.id(), linha.contaId(), linha.data(), linha.valor(), linha.descricao(),
-                        linha.descricaoBanco(), linha.categoriaId()))
+                .map(linha -> new Candidato(linha.id(), linha.contaId(), linha.cartaoId(), linha.compraId(), linha.data(), linha.valor(),
+                        linha.descricao(), linha.descricaoBanco(), linha.categoriaId()))
                 .toList();
     }
 
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public int categorizar(Long usuarioId, List<Categorizacao> categorizacoes) {
-        regras.travarContasECategorias(usuarioId);
+        regras.travarContasCartoesECategorias(usuarioId);
         Map<Long, CategoriaResumo> doUsuario = categorias.listar(usuarioId).stream()
                 .collect(Collectors.toMap(CategoriaResumo::id, Function.identity()));
         Set<Long> contasAtivas = contas.listar(usuarioId).stream().filter(conta -> !conta.arquivada()).map(ContaResumo::id)
+                .collect(Collectors.toSet());
+        Set<Long> cartoesAtivos = cartoes.listar(usuarioId).stream().filter(cartao -> !cartao.arquivado()).map(CartaoResumo::id)
                 .collect(Collectors.toSet());
         Map<Long, Categorizacao> porLancamento = categorizacoes.stream()
                 .collect(Collectors.toMap(Categorizacao::lancamentoId, Function.identity(), (primeira, outra) -> primeira));
@@ -72,8 +78,13 @@ public class LancamentosNasRegras implements LancamentosParaRegras {
             for (Lancamento lancamento : lote) {
                 Categorizacao categorizacao = porLancamento.get(lancamento.getId());
                 CategoriaResumo categoria = doUsuario.get(categorizacao.categoriaId());
-                if (serve(lancamento, categoria, contasAtivas)) {
-                    lancamento.categorizarPorRegra(categoria.id(), categorizacao.descricao(), agora);
+                if (serve(lancamento, categoria, contasAtivas, cartoesAtivos)) {
+                    if (lancamento.getCompraId() == null) {
+                        lancamento.categorizarPorRegra(categoria.id(), categorizacao.descricao(), agora);
+                    } else {
+                        repositorio.findAllByUsuarioIdAndCompraIdInOrderByCompraIdAscNumeroParcelaAsc(usuarioId, List.of(lancamento.getCompraId()))
+                                .forEach(parcela -> parcela.categorizarPorRegra(categoria.id(), categorizacao.descricao(), agora));
+                    }
                     mudaram++;
                 }
             }
@@ -88,9 +99,11 @@ public class LancamentosNasRegras implements LancamentosParaRegras {
      * Receita ou despesa de conta (a de fatura só entra na 05c, decisão 27 da 05a) ainda sem categoria, não excluída,
      * em conta ativa, e a categoria ativa e da natureza.
      */
-    private static boolean serve(Lancamento lancamento, CategoriaResumo categoria, Set<Long> contasAtivas) {
-        return !lancamento.transferencia() && !lancamento.deFatura() && lancamento.getIgnoradoEm() == null && lancamento.getCategoriaId() == null
-                && contasAtivas.contains(lancamento.getContaId()) && categoria != null && !categoria.arquivada()
+    private static boolean serve(Lancamento lancamento, CategoriaResumo categoria, Set<Long> contasAtivas, Set<Long> cartoesAtivos) {
+        boolean lugarAtivo = lancamento.deFatura() ? cartoesAtivos.contains(lancamento.getCartaoId())
+                : contasAtivas.contains(lancamento.getContaId());
+        return !lancamento.transferencia() && !lancamento.pagamento() && lancamento.getIgnoradoEm() == null
+                && lancamento.getCategoriaId() == null && lugarAtivo && categoria != null && !categoria.arquivada()
                 && categoria.natureza().equals(lancamento.getTipo().name());
     }
 }

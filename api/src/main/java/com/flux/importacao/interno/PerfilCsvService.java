@@ -14,6 +14,8 @@ import com.flux.compartilhado.erro.RecursoNaoEncontradoException;
 import com.flux.compartilhado.erro.RegraDeNegocioException;
 import com.flux.contas.ContaResumo;
 import com.flux.contas.ContasConsulta;
+import com.flux.cartoes.CartaoResumo;
+import com.flux.cartoes.CartoesConsulta;
 import com.flux.importacao.interno.dto.AmostraResponse;
 import com.flux.importacao.interno.leitura.ExtratoLido;
 import com.flux.importacao.interno.leitura.FormatoCsv;
@@ -30,11 +32,13 @@ public class PerfilCsvService {
 
     private final PerfilCsvRepository perfis;
     private final ContasConsulta contas;
+    private final CartoesConsulta cartoes;
     private final Clock clock;
 
-    public PerfilCsvService(PerfilCsvRepository perfis, ContasConsulta contas, Clock clock) {
+    public PerfilCsvService(PerfilCsvRepository perfis, ContasConsulta contas, CartoesConsulta cartoes, Clock clock) {
         this.perfis = perfis;
         this.contas = contas;
+        this.cartoes = cartoes;
         this.clock = clock;
     }
 
@@ -43,6 +47,13 @@ public class PerfilCsvService {
         contaDoUsuario(usuarioId, contaId);
         return perfis.findByContaIdAndUsuarioId(contaId, usuarioId).map(PerfilCsv::formato)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Esta conta ainda não tem perfil de CSV."));
+    }
+
+    @Transactional(readOnly = true)
+    public FormatoCsv buscarDoCartao(Long usuarioId, Long cartaoId) {
+        cartaoDoUsuario(usuarioId, cartaoId);
+        return perfis.findByCartaoIdAndUsuarioId(cartaoId, usuarioId).map(PerfilCsv::formato)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Este cartão ainda não tem perfil de CSV."));
     }
 
     /** Cria ou troca o perfil da conta ativa, dentro da trava de contas (a conta não some no meio). */
@@ -59,37 +70,60 @@ public class PerfilCsvService {
         return perfis.save(perfil).formato();
     }
 
+    @Transactional
+    public FormatoCsv salvarDoCartao(Long usuarioId, Long cartaoId, FormatoCsv formato) {
+        exigirColunasDiferentes(formato);
+        cartoes.travar(usuarioId);
+        CartaoResumo cartao = cartaoDoUsuario(usuarioId, cartaoId);
+        if (cartao.arquivado()) {
+            throw new RegraDeNegocioException(cartao.nome() + " está arquivado. Reative o cartão para importar nele.", "CARTAO_ARQUIVADO");
+        }
+        PerfilCsv perfil = perfis.findByCartaoIdAndUsuarioId(cartaoId, usuarioId).orElseGet(() -> PerfilCsv.doCartao(usuarioId, cartaoId));
+        perfil.alterar(formato, Instant.now(clock).truncatedTo(ChronoUnit.MICROS));
+        return perfis.save(perfil).formato();
+    }
+
     /**
      * As primeiras linhas do CSV e a primeira movimentação lida com o formato pedido (ou com o
      * sugerido: o do Nubank pelo cabeçalho, ou um palpite pelo separador mais frequente).
      */
     public AmostraResponse amostra(byte[] bytes, FormatoCsv pedido) {
+        return amostra(bytes, pedido, false);
+    }
+
+    public AmostraResponse amostra(byte[] bytes, FormatoCsv pedido, boolean cartao) {
         if (bytes.length == 0 || TextoDoArquivo.binario(bytes)) {
-            throw new RegraDeNegocioException("Não reconhecemos este arquivo. Envie o extrato da conta em OFX ou CSV.",
-                    "ARQUIVO_INVALIDO");
+            throw new RegraDeNegocioException(cartao ? "Não reconhecemos este arquivo. Envie a fatura do cartão em OFX ou CSV."
+                    : "Não reconhecemos este arquivo. Envie o extrato da conta em OFX ou CSV.", "ARQUIVO_INVALIDO");
         }
         String texto = TextoDoArquivo.decodificar(bytes);
         if (TextoDoArquivo.ofx(texto)) {
             throw new RegraDeNegocioException("Este arquivo é um OFX: ele não precisa de perfil.", "ARQUIVO_OFX");
         }
-        if (TextoDoArquivo.faturaDoNubank(texto)) {
-            throw new RegraDeNegocioException("Este CSV parece ser a fatura do cartão Nubank. A importação de faturas chega junto "
-                    + "com os cartões.", "EXTRATO_DE_CARTAO");
+        if (TextoDoArquivo.faturaDoNubank(texto) && !cartao) {
+            throw new RegraDeNegocioException("Este arquivo é a fatura de um cartão: escolha um cartão no lugar da conta.",
+                    "EXTRATO_DE_CARTAO");
+        }
+        if (TextoDoArquivo.cabecalhoDoNubank(texto) && cartao) {
+            throw new RegraDeNegocioException("Este arquivo é o extrato de uma conta: escolha uma conta no lugar do cartão.",
+                    "EXTRATO_DE_CONTA");
         }
         boolean nubank = TextoDoArquivo.cabecalhoDoNubank(texto);
-        FormatoCsv formato = pedido != null ? pedido : nubank ? FormatoCsv.NUBANK_CONTA : sugerido(texto);
+        boolean nubankFatura = TextoDoArquivo.faturaDoNubank(texto);
+        FormatoCsv formato = pedido != null ? pedido : nubankFatura ? FormatoCsv.NUBANK_FATURA
+                : nubank ? FormatoCsv.NUBANK_CONTA : sugerido(texto);
         List<List<String>> linhas = LeitorCsv.registros(texto, formato.separador().caractere()).stream()
                 .limit(LINHAS_DA_AMOSTRA).toList();
         List<ExtratoLido.Linha> lidas = new LeitorCsv(formato).ler(texto).linhas();
         if (lidas.isEmpty()) {
-            return new AmostraResponse(linhas, nubank ? "NUBANK_CONTA" : null, formato, null,
+            return new AmostraResponse(linhas, nubankFatura ? "NUBANK_FATURA" : nubank ? "NUBANK_CONTA" : null, formato, null,
                     "O arquivo não tem nenhuma linha depois do cabeçalho.");
         }
         ExtratoLido.Linha primeira = lidas.getFirst();
         return primeira.legivel()
-                ? new AmostraResponse(linhas, nubank ? "NUBANK_CONTA" : null, formato,
+                ? new AmostraResponse(linhas, nubankFatura ? "NUBANK_FATURA" : nubank ? "NUBANK_CONTA" : null, formato,
                         new AmostraResponse.PrimeiraLinha(primeira.data(), primeira.descricao(), primeira.valor()), null)
-                : new AmostraResponse(linhas, nubank ? "NUBANK_CONTA" : null, formato, null,
+                : new AmostraResponse(linhas, nubankFatura ? "NUBANK_FATURA" : nubank ? "NUBANK_CONTA" : null, formato, null,
                         "Linha " + primeira.numero() + ": " + primeira.erro() + ".");
     }
 
@@ -97,9 +131,13 @@ public class PerfilCsvService {
         return contas.buscar(usuarioId, contaId).orElseThrow(() -> new RecursoNaoEncontradoException("Conta não encontrada."));
     }
 
+    private CartaoResumo cartaoDoUsuario(Long usuarioId, Long cartaoId) {
+        return cartoes.buscar(usuarioId, cartaoId).orElseThrow(() -> new RecursoNaoEncontradoException("Cartão não encontrado."));
+    }
+
     /**
      * Data, descrição, valor, saídas e identificador em colunas diferentes. Entradas e saídas na
-     * mesma coluna têm a mensagem do campo das saídas (mockup, "Campos do perfil").
+     * mesma coluna têm a mensagem do campo das saídas.
      */
     private static void exigirColunasDiferentes(FormatoCsv formato) {
         if (formato.colunaSaidas() != null && formato.colunaSaidas().equals(formato.colunaValor())) {

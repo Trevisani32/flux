@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
 
 import com.flux.categorias.CategoriaResumo;
 import com.flux.categorias.CategoriasConsulta;
+import com.flux.cartoes.CartaoResumo;
+import com.flux.cartoes.CartoesConsulta;
 import com.flux.categorizacao.interno.dto.OrdemRequest;
 import com.flux.categorizacao.interno.dto.PreviaDaRegraRequest;
 import com.flux.categorizacao.interno.dto.PreviaDaRegraResponse;
@@ -46,14 +48,16 @@ public class RegraService {
 
     private final RegraRepository repositorio;
     private final ContasConsulta contas;
+    private final CartoesConsulta cartoes;
     private final CategoriasConsulta categorias;
     private final LancamentosParaRegras lancamentos;
     private final Clock clock;
 
-    public RegraService(RegraRepository repositorio, ContasConsulta contas, CategoriasConsulta categorias,
+    public RegraService(RegraRepository repositorio, ContasConsulta contas, CartoesConsulta cartoes, CategoriasConsulta categorias,
                         LancamentosParaRegras lancamentos, Clock clock) {
         this.repositorio = repositorio;
         this.contas = contas;
+        this.cartoes = cartoes;
         this.categorias = categorias;
         this.lancamentos = lancamentos;
         this.clock = clock;
@@ -129,16 +133,27 @@ public class RegraService {
     public PreviaDaRegraResponse previa(Long usuarioId, PreviaDaRegraRequest pedido) {
         String chave = chaveValida(TextoComparavel.limparEspacos(pedido.texto()));
         String natureza = pedido.categoriaId() == null ? null : categoria(usuarioId, pedido.categoriaId()).natureza();
+        if (pedido.contaId() != null && pedido.cartaoId() != null) {
+            throw new CampoInvalidoException("cartaoId", "Escolha uma conta ou um cartão, não os dois.");
+        }
         if (pedido.contaId() != null) {
             conta(usuarioId, pedido.contaId());
         }
+        if (pedido.cartaoId() != null) {
+            cartao(usuarioId, pedido.cartaoId());
+        }
         Set<Long> ativas = contas.listar(usuarioId).stream().filter(conta -> !conta.arquivada()).map(ContaResumo::id)
+                .collect(Collectors.toSet());
+        Set<Long> cartoesAtivos = cartoes.listar(usuarioId).stream().filter(cartao -> !cartao.arquivado()).map(CartaoResumo::id)
                 .collect(Collectors.toSet());
         int casam = 0;
         int semCategoria = 0;
         List<PreviaDaRegraResponse.Exemplo> exemplos = new ArrayList<>();
         for (LancamentosParaRegras.Candidato candidato : lancamentos.receitasEDespesas(usuarioId)) {
-            if (!ativas.contains(candidato.contaId()) || (pedido.contaId() != null && !pedido.contaId().equals(candidato.contaId()))
+            boolean lugarAtivo = candidato.cartaoId() == null ? ativas.contains(candidato.contaId())
+                    : cartoesAtivos.contains(candidato.cartaoId());
+            if (!lugarAtivo || (pedido.contaId() != null && !pedido.contaId().equals(candidato.contaId()))
+                    || (pedido.cartaoId() != null && !pedido.cartaoId().equals(candidato.cartaoId()))
                     || (natureza != null && !natureza.equals(RegrasAtivas.natureza(candidato.valor())))
                     || !pedido.condicao().casa(Comparacao.chave(candidato.textoParaRegras()), chave)) {
                 continue;
@@ -164,16 +179,23 @@ public class RegraService {
     public List<SugestaoResponse> sugestoes(Long usuarioId, SugestoesRequest pedido) {
         Map<Long, CategoriaResumo> doUsuario = mapaDeCategorias(usuarioId);
         Map<Long, ContaResumo> contasDoUsuario = mapaDeContas(usuarioId);
+        Map<Long, CartaoResumo> cartoesDoUsuario = mapaDeCartoes(usuarioId);
         for (SugestoesRequest.Item item : pedido.itens()) {
             if (!doUsuario.containsKey(item.categoriaId())) {
                 throw categoriaNaoEncontrada();
             }
-            if (!contasDoUsuario.containsKey(item.contaId())) {
+            if ((item.contaId() == null) == (item.cartaoId() == null)) {
+                throw new CampoInvalidoException("contaId", "Escolha uma conta ou um cartão.");
+            }
+            if (item.contaId() != null && !contasDoUsuario.containsKey(item.contaId())) {
                 throw contaNaoEncontrada();
+            }
+            if (item.cartaoId() != null && !cartoesDoUsuario.containsKey(item.cartaoId())) {
+                throw new RegraDeNegocioException("Cartão não encontrado.", "CARTAO_INVALIDO");
             }
         }
         List<Regra> regras = repositorio.findAllByUsuarioIdOrderByPosicao(usuarioId);
-        RegrasAtivas ativas = new RegrasAtivas(regras, doUsuario, contasDoUsuario);
+        RegrasAtivas ativas = new RegrasAtivas(regras, doUsuario, contasDoUsuario, cartoesDoUsuario);
         List<SugestaoResponse> sugestoes = new ArrayList<>();
         Set<String> vistas = new HashSet<>();
         for (SugestoesRequest.Item item : pedido.itens()) {
@@ -182,13 +204,15 @@ public class RegraService {
             }
             CategoriaResumo categoria = doUsuario.get(item.categoriaId());
             String doExtrato = TextoComparavel.limparEspacos(item.descricaoBanco());
-            if (categoria.arquivada() || ativas.primeira(item.contaId(), categoria.natureza(), Comparacao.chave(doExtrato)) != null) {
+            if (categoria.arquivada() || ativas.primeira(item.contaId(), item.cartaoId(), categoria.natureza(),
+                    Comparacao.chave(doExtrato)) != null) {
                 continue;
             }
             String texto = TextoSugerido.de(doExtrato);
             String chave = Comparacao.chave(texto);
             boolean igual = regras.stream().anyMatch(regra -> regra.getNatureza().equals(categoria.natureza())
-                    && regra.getCondicao() == Condicao.CONTEM && regra.getTextoChave().equals(chave) && regra.getContaId() == null);
+                    && regra.getCondicao() == Condicao.CONTEM && regra.getTextoChave().equals(chave) && regra.getContaId() == null
+                    && regra.getCartaoId() == null);
             if (igual || !Comparacao.temLetrasOuNumerosSuficientes(chave) || !vistas.add(categoria.natureza() + ":" + chave)) {
                 continue;
             }
@@ -204,6 +228,7 @@ public class RegraService {
     /** Contas e depois categorias (ADR 0012): ninguém exclui a categoria nem a conta da regra no meio. */
     private void travar(Long usuarioId) {
         contas.travar(usuarioId);
+        cartoes.travar(usuarioId);
         categorias.travar(usuarioId);
     }
 
@@ -218,16 +243,26 @@ public class RegraService {
         if (categoria.arquivada() && (atual == null || !categoria.id().equals(atual.getCategoriaId()))) {
             throw new RegraDeNegocioException("Escolha uma categoria ativa.", "CATEGORIA_INVALIDA");
         }
+        if (pedido.contaId() != null && pedido.cartaoId() != null) {
+            throw new CampoInvalidoException("cartaoId", "Escolha uma conta ou um cartão, não os dois.");
+        }
         if (pedido.contaId() != null) {
             ContaResumo conta = conta(usuarioId, pedido.contaId());
             if (conta.arquivada() && (atual == null || !conta.id().equals(atual.getContaId()))) {
                 throw new RegraDeNegocioException("Escolha uma conta ativa.", "CONTA_INVALIDA");
             }
         }
+        if (pedido.cartaoId() != null) {
+            CartaoResumo cartao = cartao(usuarioId, pedido.cartaoId());
+            if (cartao.arquivado() && (atual == null || !cartao.id().equals(atual.getCartaoId()))) {
+                throw new RegraDeNegocioException("Escolha um cartão ativo.", "CARTAO_INVALIDO");
+            }
+        }
         regras.stream()
                 .filter(outra -> atual == null || !outra.getId().equals(atual.getId()))
                 .filter(outra -> outra.getNatureza().equals(categoria.natureza()) && outra.getCondicao() == pedido.condicao()
-                        && outra.getTextoChave().equals(chave) && Objects.equals(outra.getContaId(), pedido.contaId()))
+                        && outra.getTextoChave().equals(chave) && Objects.equals(outra.getContaId(), pedido.contaId())
+                        && Objects.equals(outra.getCartaoId(), pedido.cartaoId()))
                 .findFirst()
                 .ifPresent(outra -> {
                     throw new RegraDeNegocioException("Já existe uma regra igual: a " + outra.getPosicao() + "ª, "
@@ -235,7 +270,7 @@ public class RegraService {
                 });
         String descricao = pedido.descricao() == null || pedido.descricao().isBlank() ? null
                 : TextoComparavel.limparEspacos(pedido.descricao());
-        return new Dados(pedido.condicao(), texto, pedido.contaId(), categoria.natureza(), categoria.id(), descricao);
+        return new Dados(pedido.condicao(), texto, pedido.contaId(), pedido.cartaoId(), categoria.natureza(), categoria.id(), descricao);
     }
 
     /** A categoria do usuário, arquivada ou não; inexistente ou de outro usuário dá 422 (ADR 0007). */
@@ -246,6 +281,11 @@ public class RegraService {
     /** A conta do usuário, arquivada ou não; inexistente ou de outro usuário dá 422 (ADR 0007). */
     private ContaResumo conta(Long usuarioId, Long contaId) {
         return contas.buscar(usuarioId, contaId).orElseThrow(RegraService::contaNaoEncontrada);
+    }
+
+    private CartaoResumo cartao(Long usuarioId, Long cartaoId) {
+        return cartoes.buscar(usuarioId, cartaoId)
+                .orElseThrow(() -> new RegraDeNegocioException("Cartão não encontrado.", "CARTAO_INVALIDO"));
     }
 
     private static RegraDeNegocioException categoriaNaoEncontrada() {
@@ -265,7 +305,7 @@ public class RegraService {
     }
 
     private void aplicar(Regra regra, Dados dados) {
-        regra.alterar(dados.condicao(), dados.texto(), dados.contaId(), dados.natureza(), dados.categoriaId(), dados.descricao(),
+        regra.alterar(dados.condicao(), dados.texto(), dados.contaId(), dados.cartaoId(), dados.natureza(), dados.categoriaId(), dados.descricao(),
                 agora());
     }
 
@@ -275,7 +315,7 @@ public class RegraService {
     }
 
     private Nomes nomes(Long usuarioId) {
-        return new Nomes(mapaDeCategorias(usuarioId), mapaDeContas(usuarioId));
+        return new Nomes(mapaDeCategorias(usuarioId), mapaDeContas(usuarioId), mapaDeCartoes(usuarioId));
     }
 
     private Map<Long, CategoriaResumo> mapaDeCategorias(Long usuarioId) {
@@ -286,24 +326,31 @@ public class RegraService {
         return contas.listar(usuarioId).stream().collect(Collectors.toMap(ContaResumo::id, Function.identity()));
     }
 
+    private Map<Long, CartaoResumo> mapaDeCartoes(Long usuarioId) {
+        return cartoes.listar(usuarioId).stream().collect(Collectors.toMap(CartaoResumo::id, Function.identity()));
+    }
+
     /** Microssegundos, a precisão do TIMESTAMPTZ. */
     private Instant agora() {
         return Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
     }
 
-    private record Dados(Condicao condicao, String texto, Long contaId, String natureza, Long categoriaId, String descricao) {
+    private record Dados(Condicao condicao, String texto, Long contaId, Long cartaoId, String natureza, Long categoriaId,
+                         String descricao) {
     }
 
     /** Os nomes de categorias e contas, lidos uma vez por pedido, para as respostas. */
-    private record Nomes(Map<Long, CategoriaResumo> categorias, Map<Long, ContaResumo> contas) {
+    private record Nomes(Map<Long, CategoriaResumo> categorias, Map<Long, ContaResumo> contas, Map<Long, CartaoResumo> cartoes) {
 
         RegraResponse resposta(Regra regra) {
             CategoriaResumo categoria = categorias.get(regra.getCategoriaId());
             ContaResumo conta = regra.getContaId() == null ? null : contas.get(regra.getContaId());
+            CartaoResumo cartao = regra.getCartaoId() == null ? null : cartoes.get(regra.getCartaoId());
             return new RegraResponse(regra.getId(), regra.getPosicao(), regra.getCondicao().name(), regra.getTexto(), regra.getContaId(),
-                    conta == null ? null : conta.nome(), conta != null && conta.arquivada(), regra.getNatureza(), regra.getCategoriaId(),
+                    conta == null ? null : conta.nome(), conta != null && conta.arquivada(), regra.getCartaoId(),
+                    cartao == null ? null : cartao.nome(), cartao != null && cartao.arquivado(), regra.getNatureza(), regra.getCategoriaId(),
                     categoria.nome(), categoria.nomeDaMae(), categoria.arquivada(), regra.getDescricao(),
-                    RegrasAtivas.pausada(regra, categorias, contas));
+                    RegrasAtivas.pausada(regra, categorias, contas, cartoes));
         }
     }
 }

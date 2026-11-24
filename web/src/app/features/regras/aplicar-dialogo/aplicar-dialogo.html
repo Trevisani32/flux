@@ -3,7 +3,7 @@
     <h2 mat-dialog-title class="aplicar__titulo">Aplicar regras</h2>
     @if (aplicacao(); as atual) {
       @if (atual.total > 0) {
-        <p class="aplicar__texto">{{ quantidadeDeLancamentos(atual.total) }} sem categoria {{ atual.total === 1 ? 'casa' : 'casam' }} com {{ atual.grupos.length === 1 ? '1 regra' : atual.grupos.length + ' regras' }}. Transferências, excluídos e lançamentos de contas arquivadas ficam de fora, e nenhuma categoria escolhida é trocada.</p>
+        <p class="aplicar__texto">{{ quantidadeDeLancamentos(atual.total) }} sem categoria {{ atual.total === 1 ? 'casa' : 'casam' }} com {{ atual.grupos.length === 1 ? '1 regra' : atual.grupos.length + ' regras' }}. Transferências, excluídos e lançamentos de contas ou cartões arquivados ficam de fora, e nenhuma categoria escolhida é trocada.</p>
       }
     }
   </div>

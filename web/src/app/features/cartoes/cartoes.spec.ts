@@ -147,4 +147,10 @@ describe('Cartoes', () => {
     fechamentos[0].next('alternativa');
     expect((dialogo.open.mock.calls[1] as unknown as [unknown, { data: DadosDaConfirmacao }])[1].data.titulo).toBe('Arquivar Cartão Horizonte?');
   });
+
+  it('"Importar fatura", no menu do cartão, leva à Importação com o cartão (decisão 40 da Fatia 05)', () => {
+    const { componente, navegar } = criar();
+    componente.importarFatura(lista.ativos[0]);
+    expect(navegar).toHaveBeenCalledWith(['/importacao'], { queryParams: { cartao: lista.ativos[0].id } });
+  });
 });

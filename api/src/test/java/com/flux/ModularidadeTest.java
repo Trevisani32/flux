@@ -24,7 +24,7 @@ class ModularidadeTest {
      * categorias e cartões e implementa as interfaces deles (MovimentoDasContas, UsoDaConta, LimpezaDaConta,
      * UsoDaCategoria, MovimentoDosCartoes, UsoDoCartao, TrocaDeDias); cartões depende só de contas e implementa
      * UsoDaConta (a conta de pagamento, Fatia 05a); as regras (categorizacao) dependem de contas, categorias e lançamentos e
-     * implementam UsoDaCategoria e LimpezaDaConta; a importação depende de lançamentos, de contas e
+     * implementam UsoDaCategoria e LimpezaDaConta; a importação depende de lançamentos, de contas, de cartões e
      * das regras; ninguém depende da importação; contas, categorias e lançamentos não dependem das
      * regras, e contas e categorias não dependem dos cartões.
      */
@@ -34,8 +34,9 @@ class ModularidadeTest {
         assertThat(dependenciasDiretas("categorias")).containsExactlyInAnyOrder("compartilhado", "acesso");
         assertThat(dependenciasDiretas("cartoes")).containsExactlyInAnyOrder("compartilhado", "contas");
         assertThat(dependenciasDiretas("lancamentos")).containsExactlyInAnyOrder("compartilhado", "contas", "categorias", "cartoes");
-        assertThat(dependenciasDiretas("categorizacao")).containsExactlyInAnyOrder("compartilhado", "contas", "categorias", "lancamentos");
-        assertThat(dependenciasDiretas("importacao")).containsExactlyInAnyOrder("compartilhado", "contas", "lancamentos", "categorizacao");
+        assertThat(dependenciasDiretas("categorizacao")).containsExactlyInAnyOrder("compartilhado", "contas", "categorias", "cartoes",
+                "lancamentos");
+        assertThat(dependenciasDiretas("importacao")).containsExactlyInAnyOrder("compartilhado", "contas", "lancamentos", "categorizacao", "cartoes");
         assertThat(dependenciasDiretas("acesso")).doesNotContain("contas", "categorias", "lancamentos", "importacao", "categorizacao", "cartoes");
     }
 

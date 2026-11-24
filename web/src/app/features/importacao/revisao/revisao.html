@@ -12,7 +12,15 @@
 }
 @if (atual.arquivoRepetido; as repetido) {
   <app-alerta [tipo]="repetido.mesmaConta ? 'info' : 'atencao'" [icone]="repetido.mesmaConta ? 'info' : 'alerta'" [titulo]="'Este arquivo já foi importado em ' + dataHoraCurta(repetido.importadoEm) + ', em ' + repetido.contaNome">
-    <p class="flux-alerta__texto">{{ repetido.mesmaConta ? 'O que já entrou aparece como "Já importada".' : 'Confira se a conta escolhida está certa.' }}</p>
+    <p class="flux-alerta__texto">{{ repetido.mesmaConta ? 'O que já entrou aparece como "Já importada".' : naFatura() ? 'Confira se o cartão escolhido está certo.' : 'Confira se a conta escolhida está certa.' }}</p>
+  </app-alerta>
+}
+@if (correcoes().length > 0) {
+  <app-alerta tipo="info" icone="info" [titulo]="tituloDasCorrecoes(correcoes().length)">
+    @for (linha of correcoes(); track linha.linha) {
+      <p class="flux-alerta__texto">{{ fraseDaCorrecao(linha) }}</p>
+    }
+    <p class="flux-alerta__texto">Com o valor do arquivo, a fatura fica igual à do banco.</p>
   </app-alerta>
 }
 
@@ -22,7 +30,7 @@
     <div class="revisao__faixa-regras"><span class="revisao__numero">{{ porRegras() }}</span><span class="revisao__rotulo"><span class="flux-so-desktop">Categorizadas por regras</span><span class="flux-so-celular">Por regras</span></span><span class="revisao__nota">mude no botão da categoria</span></div>
   }
   <div><span class="revisao__numero">{{ contagens().jaImportadas }}</span><span class="revisao__rotulo">Já importadas</span><span class="revisao__nota">ficam de fora sozinhas</span></div>
-  <div class="revisao__faixa-fora"><span class="revisao__numero">{{ contagens().deFora }}</span><span class="revisao__rotulo">Ficam de fora</span><span class="revisao__nota">antes do saldo inicial, saldo, zero ou ilegível</span></div>
+  <div class="revisao__faixa-fora"><span class="revisao__numero">{{ contagens().deFora }}</span><span class="revisao__rotulo">Ficam de fora</span><span class="revisao__nota">{{ naFatura() ? 'pagamento da fatura, saldo, zero ou ilegível' : 'antes do saldo inicial, saldo, zero ou ilegível' }}</span></div>
 </section>
 
 <div class="revisao__grupos flux-so-celular" role="group" aria-label="Grupo">
@@ -42,7 +50,7 @@
     <div class="revisao__cabecalho">
       <div>
         <h2 class="revisao__titulo" id="revisao-importar">Para importar</h2>
-        <p class="revisao__explica">Desmarque o que não quer lançar e escolha as categorias. Depois, só a data e o valor não mudam.</p>
+        <p class="revisao__explica">{{ naFatura() ? 'Compras positivas no arquivo viram despesas; créditos, estornos.' : 'Desmarque o que não quer lançar e escolha as categorias. Depois, só a data e o valor não mudam.' }}</p>
       </div>
       @if (atual.formato === 'CSV') {
         <button type="button" class="revisao__link" (click)="editarPerfil.emit()">Editar perfil do CSV</button>
@@ -76,6 +84,15 @@
                 }
                 <span class="revisao__meta">
                   <span class="revisao__pilula" [class.revisao__pilula--provavel]="item.linha.situacao === 'PROVAVEL'">{{ rotulo(item.linha) }}</span>
+                  @if (naFatura() && (item.linha.valor ?? 0) > 0) {
+                    <span class="revisao__pilula revisao__pilula--estorno">Estorno</span>
+                  }
+                  @if ((item.linha.parcela ?? null) !== null) {
+                    <span class="revisao__pilula revisao__pilula--parcela">{{ item.linha.parcela }}/{{ item.linha.parcelas }}</span>
+                  }
+                  @if (item.linha.situacao === 'NOVA' && textoDaFatura(item.linha); as texto) {
+                    <span class="flux-so-desktop">{{ texto.longo }}</span><span class="flux-so-celular">{{ texto.curto }}</span>
+                  }
                   @if (porRegra(item.linha) && item.linha.sugestao; as sugestao) {
                     <span class="revisao__por">pela {{ sugestao.posicao }}ª regra</span>
                     <span class="revisao__condicao-regra flux-so-desktop">{{ condicaoDaRegra(item.linha) }}</span>
@@ -85,7 +102,12 @@
                     <span>Agendado no banco: marque se quiser lançar.</span>
                   }
                   @if (item.linha.situacao === 'PROVAVEL' && item.linha.parecido; as parecido) {
-                    <span>{{ fraseDoParecido(parecido) }}</span>
+                    @if (naFatura()) {
+                      @let frase = fraseDoParecidoNaFatura(item.linha, parecido);
+                      <span class="flux-so-desktop">{{ frase.longo }}</span><span class="flux-so-celular">{{ frase.curto }}</span>
+                    } @else {
+                      <span>{{ fraseDoParecido(parecido) }}</span>
+                    }
                   }
                 </span>
               </span>
@@ -107,7 +129,7 @@
         <p class="revisao__explica-grupo">{{ fraseDasOrigens(atual.origens) }}@if (jaImportadas().length > 3) { As 3 mais recentes:}</p>
         <ul class="revisao__curta">
           @for (linha of jaMaisRecentes(); track linha.linha) {
-            <li><span>{{ dataDaLinha(linha) }}</span><span class="revisao__curta-descricao">{{ linha.descricao }}</span><span class="revisao__pilula revisao__pilula--cinza">{{ rotulo(linha) }}</span><app-valor [valor]="linha.valor" /></li>
+            <li><span>{{ dataDaLinha(linha) }}</span><span class="revisao__curta-descricao">{{ linha.descricao }}@if (fraseDaJaImportadaNaFatura(linha); as frase) {<span class="revisao__curta-nota"> · {{ frase }}</span>}</span><span class="revisao__pilula revisao__pilula--cinza">{{ rotulo(linha) }}</span><app-valor [valor]="linha.valor" /></li>
           }
         </ul>
       </div>
@@ -115,14 +137,14 @@
   </section>
 }
 @if (deFora().length > 0) {
-  <section class="flux-card revisao__dobravel" [class.revisao__oculto-no-celular]="grupoNoCelular() !== 'fora'">
+  <section class="flux-card revisao__dobravel" [class.revisao__dobravel--fatura]="naFatura()" [class.revisao__oculto-no-celular]="grupoNoCelular() !== 'fora' && !naFatura()">
     <button type="button" class="revisao__alternar" [attr.aria-expanded]="foraAbertas()" aria-controls="revisao-fora" (click)="foraAbertas.set(!foraAbertas())">Ficam de fora <span class="revisao__qtd">{{ deFora().length }}</span><app-icone class="revisao__seta" nome="baixo" /></button>
     @if (foraAbertas()) {
       <div id="revisao-fora">
         <p class="revisao__explica-grupo">Não entram e não dá para marcar.@if (temAntesDoSaldoInicial()) { A data do saldo inicial muda em Contas, se o extrato estiver certo e o saldo inicial, não.}</p>
         <ul class="revisao__curta">
           @for (linha of deFora(); track linha.linha) {
-            <li><span>{{ dataDaLinha(linha) }}</span><span class="revisao__curta-descricao">{{ linha.descricao ?? '—' }}</span><span class="revisao__pilula revisao__pilula--fora">{{ rotulo(linha) }}</span><app-valor [valor]="linha.valor" /></li>
+            <li><span>{{ dataDaLinha(linha) }}</span><span class="revisao__curta-descricao">{{ linha.descricao ?? '—' }}</span><span class="revisao__pilula revisao__pilula--fora">{{ rotulo(linha) }}</span><app-valor [valor]="linha.valor" [tipo]="linha.motivo === 'PAGAMENTO_DA_FATURA' ? 'neutro' : 'sinal'" /></li>
           }
         </ul>
       </div>
@@ -132,13 +154,19 @@
   <p class="revisao__nenhuma flux-so-celular">Nenhuma linha fica de fora.</p>
 }
 
-@if (contagens().paraImportar > 0) {
+@if (contagens().paraImportar > 0 || correcoes().length > 0) {
   @if (erro(); as mensagem) {
     <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível importar"><p class="flux-alerta__texto">{{ mensagem }}</p></app-alerta>
   }
   <div class="revisao__barra">
-    <span class="revisao__resumo"><b>{{ quantidadeMarcadas() }} de {{ contagens().paraImportar }}</b> marcadas. As desmarcadas, as já importadas e as de fora não entram.</span>
+    @if (contagens().paraImportar === 0) {
+      <span class="revisao__resumo"><b>{{ parcelasParaCorrigir() }}</b> para corrigir. Nenhuma linha nova para importar.</span>
+    } @else if (textoDasParcelas(); as parcelas) {
+      <span class="revisao__resumo"><b>{{ quantidadeMarcadas() }} de {{ contagens().paraImportar }}</b> marcadas · {{ parcelas }}</span>
+    } @else {
+      <span class="revisao__resumo"><b>{{ quantidadeMarcadas() }} de {{ contagens().paraImportar }}</b> marcadas. As desmarcadas, as já importadas e as de fora não entram.</span>
+    }
     <button mat-stroked-button type="button" [disabled]="enviando()" (click)="cancelar.emit()">Cancelar</button>
-    <button mat-flat-button type="button" class="revisao__importar-botao" [disabled]="enviando() || !algumaMarcada()" (click)="confirmar()">{{ textoDoBotao() }}</button>
+    <button mat-flat-button type="button" class="revisao__importar-botao" [disabled]="enviando() || !podeConfirmar()" (click)="confirmar()">{{ textoDoBotao() }}</button>
   </div>
 }

@@ -70,6 +70,13 @@ public class RegrasDosLancamentos {
         categorias.travar(usuarioId);
     }
 
+    /** Regras da 05c: a ordem global é contas, cartões e categorias. */
+    void travarContasCartoesECategorias(Long usuarioId) {
+        contas.travar(usuarioId);
+        cartoes.travar(usuarioId);
+        categorias.travar(usuarioId);
+    }
+
     /**
      * Compra e estorno (decisão 49 da 05a): a trava de cartões e depois a de categorias. Depois delas, ninguém
      * arquiva nem exclui o cartão, muda os dias, ajusta um fechamento ou exclui a categoria até o fim da transação.

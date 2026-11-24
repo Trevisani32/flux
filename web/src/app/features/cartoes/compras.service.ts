@@ -53,6 +53,11 @@ export interface Compra {
    * novembro, que já foi paga: …"); só a descrição, a categoria e a observação mudam. Opcional pelos objetos de teste da 05a.
    */
   readonly travaDaFaturaPaga?: string | null;
+  /**
+   * Fatia 05c (decisão 40): a compra ou o estorno veio de uma fatura importada: só a descrição, a categoria e a observação
+   * mudam. Opcional pelo mesmo motivo.
+   */
+  readonly importada?: boolean;
 }
 
 /** Corpo de POST/PUT /api/compras. O valor total vai positivo. */

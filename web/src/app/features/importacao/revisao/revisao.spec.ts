@@ -244,4 +244,97 @@ describe('Revisao', () => {
     expect(elemento.querySelector('.revisao__importar')?.classList).toContain('revisao__oculto-no-celular');
     expect(elemento.querySelector('.revisao__nenhuma')?.textContent).toBe('Nenhuma linha fica de fora.');
   });
+
+  it('na fatura (Fatia 05c), cada linha diz o que é, a provável e a já importada dizem a parcela, o pagamento fica de fora e a barra '
+    + 'conta as parcelas criadas', () => {
+    const parecido = { descricao: 'Sapatos de corrida', data: '2026-11-05', manual: true, excluido: false, criadoEm: '2026-11-06T13:00:00Z',
+      excluidoEm: null };
+    const daFatura: Previa = {
+      ...previa, nomeArquivo: 'fatura-dezembro.csv', contaId: null, contaNome: null, dataSaldoInicial: null, cartaoId: 5,
+      cartaoNome: 'Cartão Horizonte', fatura: { mes: '2026-12', fechamento: '2026-12-03', vencimento: '2026-12-10', situacao: 'ABERTA' },
+      linhas: [
+        linha({ linha: 6, data: '2026-11-21', descricao: 'Estorno de Loja Ficticia', valor: 15 }),
+        linha({ linha: 5, data: '2026-11-20', descricao: 'IOF compra internacional', valor: -4.37 }),
+        linha({ linha: 4, data: '2026-11-10', descricao: 'Pagamento recebido', valor: 265.2, situacao: 'FORA', motivo: 'PAGAMENTO_DA_FATURA',
+          marcada: false }),
+        linha({ linha: 3, data: '2026-11-05', descricao: 'Sapataria Passo Firme - Parcela 1/3', valor: -150, situacao: 'PROVAVEL', marcada: false,
+          parcela: 1, parcelas: 3, descricaoDaCompra: 'Sapataria Passo Firme', parecido }),
+        linha({ linha: 7, data: '2026-10-03', descricao: 'Fone Ficticio - Parcela 2/3', valor: -80, situacao: 'JA_IMPORTADA', marcada: false,
+          parcela: 2, parcelas: 3, parecido: { ...parecido, descricao: 'Fone Fictício', manual: false } }),
+        linha({ linha: 2, data: '2026-09-20', descricao: 'Curso Online Ficticio - Parcela 3/10', valor: -120, parcela: 3, parcelas: 10,
+          descricaoDaCompra: 'Curso Online Ficticio' }),
+      ],
+    };
+    const { elemento, atualizar, emitidas } = criar(daFatura, { categoriaId: 5, usarNasIguais: false });
+
+    expect(textos(elemento, '.revisao__faixa-fora .revisao__nota')).toEqual(['pagamento da fatura, saldo, zero ou ilegível']);
+    expect(textos(elemento, '.revisao__explica')).toEqual(['Compras positivas no arquivo viram despesas; créditos, estornos.']);
+    // As peças da meta não têm espaço entre si: o desktop mostra o texto longo, e o celular, o curto.
+    expect(textos(elemento, '.revisao__linha .revisao__meta')).toEqual([
+      'NovaEstorno', 'NovaÀ vistaÀ vista', 'Nova3/10Cria a compra com as parcelas 3 a 10 (até julho de 2027)cria as parcelas 3 a 10',
+      'Provável duplicada1/3Parece a parcela 1/3 de Sapatos de corrida, lançada à mão.lançada à mão']);
+    expect(textos(elemento, '.revisao__linha .revisao__meta .flux-so-desktop')).toEqual(['À vista',
+      'Cria a compra com as parcelas 3 a 10 (até julho de 2027)', 'Parece a parcela 1/3 de Sapatos de corrida, lançada à mão.']);
+    expect(textos(elemento, '.revisao__resumo')).toEqual(['3 de 4 marcadas · a compra em 10x cria 8 parcelas']);
+    expect(textos(elemento, '#revisao-fora .revisao__pilula')).toEqual(['Pagamento da fatura: registre pela conta']);
+
+    botao(elemento, 'Já importadas 1').click();
+    botao(elemento, 'Ficam de fora 1').click();
+    atualizar();
+    expect(textos(elemento, '.revisao__curta-nota')).toEqual(['· A parcela 2/3 de Fone Fictício já está no Flux']);
+    expect(textos(elemento, '#revisao-fora .revisao__pilula')).toEqual(['Pagamento da fatura: registre pela conta']);
+    expect(textos(elemento, '#revisao-fora .valor__texto')).toEqual(['R$ 265,20']);
+
+    // A escolha à mão vai para as sugestões de regra com o cartão e a descrição sem "Parcela k/N".
+    (elemento.querySelectorAll<HTMLButtonElement>('.revisao__categoria')[2]).click();
+    atualizar();
+    botao(elemento, 'Importar 3 lançamentos').click();
+    expect(emitidas[0].aMao).toEqual([{ contaId: null, cartaoId: 5, descricaoBanco: 'Curso Online Ficticio', descricao: null, categoriaId: 5 }]);
+  });
+
+  it('o arquivo já importado em outro lugar avisa sem quebrar: na fatura, manda conferir o cartão (Fatia 05c)', () => {
+    const { elemento } = criar({
+      ...previa, nomeArquivo: 'extrato.csv', contaId: null, contaNome: null, dataSaldoInicial: null, cartaoId: 5,
+      cartaoNome: 'Cartão Horizonte', fatura: { mes: '2026-12', fechamento: '2026-12-03', vencimento: '2026-12-10', situacao: 'ABERTA' },
+      arquivoRepetido: { importadoEm: '2026-11-04T23:41:00Z', contaId: 1, cartaoId: null, contaNome: 'Banco Horizonte', mesmaConta: false },
+    });
+    expect(textos(elemento, '.flux-alerta__titulo')).toContain('Este arquivo já foi importado em 04/11/2026 às 20:41, em Banco Horizonte');
+    expect(textos(elemento, '.flux-alerta__texto')).toContain('Confira se o cartão escolhido está certo.');
+  });
+
+  describe('a parcela já importada com outros centavos (Fatia 05c, "Corrigir ao importar")', () => {
+    const fone = linha({ linha: 3, data: '2026-10-03', descricao: 'Fone Ficticio - Parcela 2/3', valor: -33.33, situacao: 'JA_IMPORTADA',
+      marcada: false, parcela: 2, parcelas: 3, descricaoDaCompra: 'Fone Ficticio', valorNoFlux: -33.34,
+      parecido: { descricao: 'Fone Fictício', data: '2026-10-03', manual: false, excluido: false, criadoEm: '2026-11-04T23:41:00Z',
+        excluidoEm: null } });
+    const daFatura: Previa = {
+      ...previa, nomeArquivo: 'fatura-dezembro.csv', contaId: null, contaNome: null, dataSaldoInicial: null, cartaoId: 5,
+      cartaoNome: 'Cartão Horizonte', fatura: { mes: '2026-12', fechamento: '2026-12-03', vencimento: '2026-12-10', situacao: 'ABERTA' },
+      linhas: [fone, linha({ linha: 2, data: '2026-11-03', descricao: 'IOF ADICIONAL', valor: 0, situacao: 'FORA', motivo: 'VALOR_ZERO',
+        marcada: false })],
+    };
+
+    it('sem nada novo, avisa, e o botão só corrige', () => {
+      const { elemento, emitidas } = criar(daFatura);
+
+      expect(textos(elemento, '.flux-alerta__titulo')).toEqual(['1 parcela já importada fica com o valor do banco']);
+      expect(textos(elemento, '.flux-alerta__texto')).toEqual(['A parcela 2/3 de Fone Fictício: R$ 33,34 no Flux, R$ 33,33 no arquivo.',
+        'Com o valor do arquivo, a fatura fica igual à do banco.']);
+      expect(textos(elemento, '.estado-vazio__titulo')).toEqual(['Nada novo neste arquivo']);
+      expect(textos(elemento, '.revisao__resumo')).toEqual(['1 parcela para corrigir. Nenhuma linha nova para importar.']);
+      botao(elemento, 'Corrigir 1 parcela').click();
+      expect(emitidas[0].escolhas).toEqual([{ linha: 3, categoriaId: null, descricao: null }]);
+    });
+
+    it('com linhas para importar, a correção vai junto; sem nenhuma marcada, o botão só corrige', () => {
+      const { elemento, atualizar, emitidas } = criar({ ...daFatura, linhas: [linha({ linha: 4, descricao: 'Padaria Pao Quente', valor: -9.9 }),
+        ...daFatura.linhas] });
+
+      botao(elemento, 'Importar 1 lançamento').click();
+      expect(emitidas[0].escolhas).toEqual([{ linha: 4, categoriaId: null, descricao: null }, { linha: 3, categoriaId: null, descricao: null }]);
+      caixa(elemento, 'Importar Padaria Pao Quente de 05/11').click();
+      atualizar();
+      expect(botao(elemento, 'Corrigir 1 parcela').disabled).toBe(false);
+    });
+  });
 });

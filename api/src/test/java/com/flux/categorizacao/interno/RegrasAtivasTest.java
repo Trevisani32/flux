@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.flux.categorias.CategoriaResumo;
+import com.flux.cartoes.CartaoResumo;
 import com.flux.contas.ContaResumo;
 import org.junit.jupiter.api.Test;
 
@@ -23,6 +24,9 @@ class RegrasAtivasTest {
     private static final Map<Long, ContaResumo> CONTAS = Map.of(
             1L, new ContaResumo(1L, "Banco Horizonte", BigDecimal.ZERO, null, false, "CORRENTE"),
             2L, new ContaResumo(2L, "Poupança antiga", BigDecimal.ZERO, null, true, "POUPANCA"));
+    private static final Map<Long, CartaoResumo> CARTOES = Map.of(
+            8L, new CartaoResumo(8L, "Cartão Horizonte", null, new BigDecimal("1000.00"), 3, 10, 1L, false),
+            9L, new CartaoResumo(9L, "Cartão Lua", null, new BigDecimal("1000.00"), 3, 10, 1L, true));
 
     private static Regra regra(int posicao, Condicao condicao, String texto, Long contaId, long categoriaId) {
         Regra regra = new Regra(7L, posicao, AGORA);
@@ -33,6 +37,21 @@ class RegrasAtivasTest {
     private static Integer posicaoDaPrimeira(RegrasAtivas ativas, long contaId, String valor, String descricao) {
         Regra regra = ativas.primeira(contaId, RegrasAtivas.natureza(new BigDecimal(valor)), Comparacao.chave(descricao));
         return regra == null ? null : regra.getPosicao();
+    }
+
+    @Test
+    void filtroDeCartaoSoPegaOCartaoEARegraSemFiltroPegaContasECartoes() {
+        Regra doCartao = new Regra(7L, 1, AGORA);
+        doCartao.alterar(Condicao.CONTEM, "mercado", null, 8L, "DESPESA", 10L, null, AGORA);
+        Regra geral = regra(2, Condicao.CONTEM, "mercado", null, 10L);
+        Regra doArquivado = new Regra(7L, 3, AGORA);
+        doArquivado.alterar(Condicao.CONTEM, "cinema", null, 9L, "DESPESA", 10L, null, AGORA);
+        RegrasAtivas ativas = new RegrasAtivas(List.of(doCartao, geral, doArquivado), CATEGORIAS, CONTAS, CARTOES);
+
+        assertThat(ativas.primeira(null, 8L, "DESPESA", "mercado central").getPosicao()).isEqualTo(1);
+        assertThat(ativas.primeira(null, 10L, "DESPESA", "mercado central").getPosicao()).isEqualTo(2);
+        assertThat(ativas.primeira(1L, null, "DESPESA", "mercado central").getPosicao()).isEqualTo(2);
+        assertThat(RegrasAtivas.pausada(doArquivado, CATEGORIAS, CONTAS, CARTOES)).isTrue();
     }
 
     @Test

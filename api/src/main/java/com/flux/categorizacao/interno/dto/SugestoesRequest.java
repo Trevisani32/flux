@@ -17,10 +17,15 @@ public record SugestoesRequest(
 
     /** {@code descricao}: a que o usuário vê, quando é diferente da do extrato. */
     public record Item(
-            @NotNull(message = "Informe a conta.") Long contaId,
+            Long contaId,
+            Long cartaoId,
             @NotBlank(message = "Informe a descrição do extrato.") @Size(max = 255, message = "A descrição pode ter até 255 caracteres.")
             String descricaoBanco,
             @Size(max = 255, message = "A descrição pode ter até 255 caracteres.") String descricao,
             @NotNull(message = "Informe a categoria.") Long categoriaId) {
+
+        public Item(Long contaId, String descricaoBanco, String descricao, Long categoriaId) {
+            this(contaId, null, descricaoBanco, descricao, categoriaId);
+        }
     }
 }

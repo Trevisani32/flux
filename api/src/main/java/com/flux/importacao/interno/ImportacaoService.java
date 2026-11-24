@@ -29,6 +29,8 @@ import com.flux.compartilhado.texto.TextoComparavel;
 import com.flux.contas.ContaResumo;
 import com.flux.contas.ContasConsulta;
 import com.flux.contas.MovimentoDasContas;
+import com.flux.cartoes.CartaoResumo;
+import com.flux.cartoes.CartoesConsulta;
 import com.flux.importacao.interno.Classificador.Classificada;
 import com.flux.importacao.interno.Classificador.Situacao;
 import com.flux.importacao.interno.dto.ConfirmarRequest;
@@ -65,19 +67,23 @@ public class ImportacaoService {
     private final ContasConsulta contas;
     private final MovimentoDasContas movimento;
     private final RegrasDeCategorizacao regras;
+    private final CartoesConsulta cartoes;
+    private final ImportacaoDeFatura faturas;
     private final Clock clock;
     /** A chave do HMAC do extrato (decisão 11), derivada do segredo do servidor com um rótulo próprio. */
     private final byte[] chaveDoExtrato;
 
     public ImportacaoService(ImportacaoRepository importacoes, PerfilCsvRepository perfis, LancamentosImportados importados,
                              ContasConsulta contas, MovimentoDasContas movimento, RegrasDeCategorizacao regras, Clock clock,
-                             @Value("${app.jwt.segredo}") String segredo) {
+                             CartoesConsulta cartoes, ImportacaoDeFatura faturas, @Value("${app.jwt.segredo}") String segredo) {
         this.importacoes = importacoes;
         this.perfis = perfis;
         this.importados = importados;
         this.contas = contas;
         this.movimento = movimento;
         this.regras = regras;
+        this.cartoes = cartoes;
+        this.faturas = faturas;
         this.clock = clock;
         this.chaveDoExtrato = Chaves.hmac(segredo.getBytes(StandardCharsets.UTF_8), "flux:importacao:extrato");
     }
@@ -98,8 +104,12 @@ public class ImportacaoService {
         List<LocalDate> datas = extrato.linhas().stream().filter(ExtratoLido.Linha::legivel).map(ExtratoLido.Linha::data).toList();
         return new PreviaResponse(hash, extrato.formato().name(), nomeDoArquivo(arquivo), conta.id(), conta.nome(),
                 conta.dataSaldoInicial(), datas.stream().min(Comparator.naturalOrder()).orElse(null),
-                datas.stream().max(Comparator.naturalOrder()).orElse(null), linhas, arquivoRepetido(usuarioId, conta, hash),
+                datas.stream().max(Comparator.naturalOrder()).orElse(null), linhas, arquivoRepetido(usuarioId, hash, conta.id(), null),
                 outraConta(usuarioId, conta, extrato), perfilUsado(usuarioId, conta, extrato), origens(usuarioId, classificadas));
+    }
+
+    public PreviaResponse previaDaFatura(Long usuarioId, Long cartaoId, String fatura, MultipartFile arquivo) {
+        return faturas.previa(usuarioId, cartaoId, fatura, arquivo);
     }
 
     /**
@@ -110,6 +120,15 @@ public class ImportacaoService {
      */
     @Transactional
     public ResultadoResponse confirmar(Long usuarioId, MultipartFile arquivo, ConfirmarRequest pedido) {
+        if (pedido.cartaoId() != null) {
+            if (pedido.contaId() != null) {
+                throw new com.flux.compartilhado.erro.CampoInvalidoException("contaId", "Escolha uma conta ou um cartão.");
+            }
+            return faturas.confirmar(usuarioId, arquivo, pedido);
+        }
+        if (pedido.contaId() == null) {
+            throw new com.flux.compartilhado.erro.CampoInvalidoException("contaId", "Escolha uma conta ou um cartão.");
+        }
         byte[] bytes = bytes(arquivo);
         String hash = Chaves.sha256(bytes);
         if (!hash.equals(pedido.hash())) {
@@ -165,6 +184,10 @@ public class ImportacaoService {
     public List<ImportacaoResponse> listar(Long usuarioId) {
         Map<Long, ContaResumo> doUsuario = contas.listar(usuarioId).stream()
                 .collect(Collectors.toMap(ContaResumo::id, Function.identity()));
+        Map<Long, CartaoResumo> cartoesDoUsuario = cartoes.listar(usuarioId).stream()
+                .collect(Collectors.toMap(CartaoResumo::id, Function.identity()));
+        Map<Long, YearMonth> mesesDasFaturas = importados.mesesDasFaturas(usuarioId, importacoes.findAllByUsuarioIdOrderByCriadaEmDescIdDesc(usuarioId)
+                .stream().map(Importacao::getFaturaId).filter(Objects::nonNull).toList());
         Map<Long, LancamentosImportados.Contagem> contagens = importados.contagens(usuarioId).stream()
                 .collect(Collectors.toMap(LancamentosImportados.Contagem::importacaoId, Function.identity()));
         Map<Long, List<ImportacaoResponse.Transferencia>> transferencias = importados.convertidos(usuarioId).stream()
@@ -176,7 +199,8 @@ public class ImportacaoService {
                         convertido -> new ImportacaoResponse.Pagamento(convertido.data(), convertido.cartaoId(), convertido.cartaoNome(),
                                 convertido.cartaoArquivado(), convertido.faturaMes()), Collectors.toList())));
         return importacoes.findAllByUsuarioIdOrderByCriadaEmDescIdDesc(usuarioId).stream()
-                .map(importacao -> resposta(importacao, doUsuario.get(importacao.getContaId()), contagens.get(importacao.getId()),
+                .map(importacao -> resposta(importacao, doUsuario.get(importacao.getContaId()), cartoesDoUsuario.get(importacao.getCartaoId()),
+                        contagens.get(importacao.getId()), importacao.getFaturaId() == null ? null : mesesDasFaturas.get(importacao.getFaturaId()),
                         transferencias.getOrDefault(importacao.getId(), List.of()), pagamentos.getOrDefault(importacao.getId(), List.of())))
                 .toList();
     }
@@ -191,9 +215,17 @@ public class ImportacaoService {
     @Transactional
     public ImportacaoResponse desfazer(Long usuarioId, Long id) {
         contas.travar(usuarioId);
+        cartoes.travar(usuarioId);
         Importacao importacao = encontrar(usuarioId, id);
         if (importacao.desfeita()) {
             throw new RegraDeNegocioException("Esta importação já foi desfeita.", "IMPORTACAO_DESFEITA");
+        }
+        if (importacao.daFatura()) {
+            faturas.desfazer(usuarioId, importacao);
+            importacao.desfazer(agora());
+            CartaoResumo cartao = cartoes.buscar(usuarioId, importacao.getCartaoId()).orElse(null);
+            YearMonth fatura = importados.mesesDasFaturas(usuarioId, List.of(importacao.getFaturaId())).get(importacao.getFaturaId());
+            return resposta(importacao, null, cartao, null, fatura, List.of(), List.of());
         }
         ContaResumo conta = contas.buscar(usuarioId, importacao.getContaId()).orElseThrow();
         if (conta.arquivada()) {
@@ -202,7 +234,7 @@ public class ImportacaoService {
         }
         importados.desfazer(usuarioId, id);
         importacao.desfazer(agora());
-        return resposta(importacao, conta, null, List.of(), List.of());
+        return resposta(importacao, conta, null, null, null, List.of(), List.of());
     }
 
     @Transactional(readOnly = true)
@@ -249,8 +281,8 @@ public class ImportacaoService {
             extrato = new LeitorOfx().ler(texto);
             int extratos = extrato.contas() + (extrato.cartao() ? 1 : 0);
             if (extrato.cartao() && extrato.contas() == 0) {
-                throw new RegraDeNegocioException("Este arquivo é a fatura de um cartão de crédito. A importação de faturas chega junto "
-                        + "com os cartões; por enquanto, importe o extrato da conta.", "EXTRATO_DE_CARTAO");
+                throw new RegraDeNegocioException("Este arquivo é a fatura de um cartão: escolha um cartão no lugar da conta.",
+                        "EXTRATO_DE_CARTAO");
             }
             if (extratos > 1) {
                 throw new RegraDeNegocioException("Este arquivo tem extratos de " + extratos + " contas. Exporte uma conta por arquivo.",
@@ -258,8 +290,8 @@ public class ImportacaoService {
             }
         } else {
             if (TextoDoArquivo.faturaDoNubank(texto)) {
-                throw new RegraDeNegocioException("Este CSV parece ser a fatura do cartão Nubank. A importação de faturas chega junto "
-                        + "com os cartões.", "EXTRATO_DE_CARTAO");
+                throw new RegraDeNegocioException("Este arquivo é a fatura de um cartão: escolha um cartão no lugar da conta.",
+                        "EXTRATO_DE_CARTAO");
             }
             PerfilCsv perfil = perfis.findByContaIdAndUsuarioId(contaId, usuarioId)
                     .orElseThrow(() -> new RegraDeNegocioException("Esta conta ainda não tem perfil de CSV.", "PERFIL_NECESSARIO"));
@@ -339,10 +371,12 @@ public class ImportacaoService {
                 .toList();
     }
 
-    private PreviaResponse.ArquivoRepetido arquivoRepetido(Long usuarioId, ContaResumo conta, String hash) {
+    private PreviaResponse.ArquivoRepetido arquivoRepetido(Long usuarioId, String hash, Long contaId, Long cartaoId) {
         return importacoes.findFirstByUsuarioIdAndHashArquivoAndDesfeitaEmIsNullOrderByCriadaEmDesc(usuarioId, hash)
-                .map(anterior -> new PreviaResponse.ArquivoRepetido(anterior.getCriadaEm(), anterior.getContaId(),
-                        nomeDaConta(usuarioId, anterior.getContaId()), anterior.getContaId().equals(conta.id())))
+                .map(anterior -> new PreviaResponse.ArquivoRepetido(anterior.getCriadaEm(), anterior.getContaId(), anterior.getCartaoId(),
+                        anterior.daFatura() ? cartoes.buscar(usuarioId, anterior.getCartaoId()).map(CartaoResumo::nome).orElse("")
+                                : nomeDaConta(usuarioId, anterior.getContaId()),
+                        Objects.equals(anterior.getContaId(), contaId) && Objects.equals(anterior.getCartaoId(), cartaoId)))
                 .orElse(null);
     }
 
@@ -357,7 +391,7 @@ public class ImportacaoService {
         }
         for (Importacao anterior : importacoes.findAllByUsuarioIdAndExtratoHashAndDesfeitaEmIsNullOrderByCriadaEmDescIdDesc(usuarioId,
                 extratoHash)) {
-            Optional<ContaResumo> outra = anterior.getContaId().equals(conta.id()) ? Optional.empty()
+            Optional<ContaResumo> outra = anterior.getContaId() == null || Objects.equals(anterior.getContaId(), conta.id()) ? Optional.empty()
                     : contas.buscar(usuarioId, anterior.getContaId()).filter(resumo -> !resumo.arquivada());
             if (outra.isPresent()) {
                 return new PreviaResponse.OutraConta(anterior.getContaId(), outra.get().nome(), anterior.getExtratoFinal());
@@ -401,15 +435,21 @@ public class ImportacaoService {
         return conta.saldoInicial().add(soma).setScale(2);
     }
 
-    private static ImportacaoResponse resposta(Importacao importacao, ContaResumo conta, LancamentosImportados.Contagem contagem,
+    private static ImportacaoResponse resposta(Importacao importacao, ContaResumo conta, CartaoResumo cartao,
+                                              LancamentosImportados.Contagem contagem, YearMonth fatura,
                                               List<ImportacaoResponse.Transferencia> transferencias,
                                               List<ImportacaoResponse.Pagamento> pagamentos) {
+        long excluidos = contagem == null ? 0 : contagem.excluidos();
+        if (importacao.daFatura() && !importacao.desfeita()) {
+            excluidos = importacao.getImportadas() - (contagem == null ? 0 : contagem.compras());
+        }
         return new ImportacaoResponse(importacao.getId(), importacao.getNomeArquivo(), importacao.getContaId(),
-                conta == null ? "" : conta.nome(), conta != null && conta.arquivada(), importacao.getCriadaEm(),
+                conta == null ? null : conta.nome(), conta != null && conta.arquivada(), importacao.getCriadaEm(),
                 importacao.getDataInicio(), importacao.getDataFim(), importacao.getImportadas(), importacao.getDuplicadas(),
                 importacao.getDesmarcadas(), importacao.getAnteriores() + importacao.getFora(),
-                contagem == null ? 0 : contagem.editados(), contagem == null ? 0 : contagem.excluidos(), importacao.getDesfeitaEm(),
-                transferencias, pagamentos);
+                contagem == null ? 0 : contagem.editados(), excluidos, importacao.getDesfeitaEm(),
+                transferencias, pagamentos, importacao.getCartaoId(), cartao == null ? null : cartao.nome(),
+                cartao != null && cartao.arquivado(), fatura == null ? null : fatura.toString());
     }
 
     /** Decisão 34 da 04c: o que o desfazer faz com o outro lado de uma transferência convertida. */

@@ -53,6 +53,9 @@ public class Compra {
     @Column(name = "atualizada_em", nullable = false)
     private Instant atualizadaEm;
 
+    @Column(name = "importacao_id")
+    private Long importacaoId;
+
     protected Compra() {
     }
 
@@ -60,6 +63,21 @@ public class Compra {
         this.usuarioId = usuarioId;
         this.tipo = tipo;
         this.criadaEm = agora;
+    }
+
+    public static Compra importada(Long usuarioId, TipoCompra tipo, Long importacaoId, Instant agora) {
+        Compra compra = new Compra(usuarioId, tipo, agora);
+        compra.importacaoId = importacaoId;
+        return compra;
+    }
+
+    public void corrigirTotal(BigDecimal valorTotal, Instant agora) {
+        this.valorTotal = valorTotal.setScale(2);
+        this.atualizadaEm = agora;
+    }
+
+    public boolean importada() {
+        return importacaoId != null;
     }
 
     /** {@code valorTotal} positivo; o estorno tem uma parcela só. */
@@ -102,5 +120,9 @@ public class Compra {
 
     public int getParcelaInicial() {
         return parcelaInicial;
+    }
+
+    public Long getImportacaoId() {
+        return importacaoId;
     }
 }

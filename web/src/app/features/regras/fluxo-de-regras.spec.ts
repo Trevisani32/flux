@@ -51,7 +51,7 @@ describe('FluxoDeRegras', () => {
   }
 
   it('criada a regra, o aviso diz quantos sem categoria casam; "Aplicar" abre a prévia só dela e, aplicada, avisa e emite (decisão 19)', async () => {
-    const { fluxo, dialogo } = criar([{ tipo: 'criada', regra: regra({}) }, 4]);
+    const { fluxo, dialogo } = criar([{ tipo: 'criada', regra: regra({}) }, { categorizados: 4, compras: 0 }]);
     const aplicadas: number[] = [];
     fluxo.aplicadas$.subscribe((quantos) => aplicadas.push(quantos));
     let criada: Regra | undefined;
@@ -111,6 +111,17 @@ describe('FluxoDeRegras', () => {
     httpTesting.expectOne({ method: 'POST', url: '/api/regras/sugestoes' }).flush(null, { status: 500, statusText: 'Erro' });
     await new Promise((resolver) => setTimeout(resolver, 50));
     expect(document.querySelector('.mat-mdc-snack-bar-container')).toBeNull();
+  });
+
+  it('com compras do cartão (Fatia 05c), o aviso conta as compras à parte, e a compra conta 1, com todas as parcelas', async () => {
+    const { fluxo } = criar([{ categorizados: 5, compras: 2 }, { categorizados: 1, compras: 1 }]);
+    const emitidos: (number | undefined)[] = [];
+    fluxo.aplicar(null).subscribe((quantos) => emitidos.push(quantos));
+    await vi.waitFor(async () => expect((await aviso()).texto).toBe('3 lançamentos e 2 compras do cartão categorizados.'));
+    TestBed.inject(MatSnackBar).dismiss();
+    fluxo.aplicar(null).subscribe((quantos) => emitidos.push(quantos));
+    await vi.waitFor(async () => expect((await aviso()).texto).toBe('1 compra do cartão categorizada, com todas as parcelas.'));
+    expect(emitidos).toEqual([5, 1]);
   });
 });
 

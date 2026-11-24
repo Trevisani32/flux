@@ -2,7 +2,7 @@ import { dataCurta } from '../../shared/datas/data-curta';
 import { formatarMoeda, partesDaMoeda, SEM_VALOR } from '../../shared/moeda/moeda';
 import { nomeDoMes } from '../lancamentos/apresentacao';
 import { Cartao, ItemDaFatura, SituacaoDaFatura } from './cartoes.service';
-import { PreviaDaCompra } from './compras.service';
+import { Compra, PreviaDaCompra } from './compras.service';
 
 const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
@@ -127,6 +127,41 @@ export interface TextoDaPrevia {
   readonly linha: string | null;
   readonly lista: readonly LinhaDaPrevia[];
   readonly nota: string | null;
+}
+
+/**
+ * Fatia 05c: a compra importada não pede prévia (a API calcularia pela data da compra, e ela está presa à fatura
+ * escolhida, decisão 40): o diálogo diz onde as parcelas estão de verdade, pelas `parcelasNoFlux`. Parcelada: "10x de
+ * R$ 120,00" e "3ª na fatura de outubro (vence 20/10/2026) · última em maio de 2027."; à vista: "À vista, na fatura de
+ * outubro" (o estorno: "Na fatura de outubro") e "Vence em 20/10/2026.". Como os valores vieram do banco, a lista de
+ * parcelas diferentes não atribui o resto da divisão a nenhuma parcela.
+ */
+export function textoDasParcelasNoFlux(compra: Compra, hoje: string): TextoDaPrevia {
+  const parcelas = compra.parcelasNoFlux;
+  const primeira = parcelas[0];
+  const ultima = parcelas[parcelas.length - 1];
+  if (compra.parcelas === 1) {
+    const fatura = faixaDeMeses(primeira.mes, primeira.mes, comAno(hoje, primeira.mes));
+    return { titulo: compra.tipo === 'ESTORNO' ? `Na fatura de ${fatura}` : `À vista, na fatura de ${fatura}`,
+      linha: `Vence em ${dataCurta(primeira.vencimento)}.`, lista: [], nota: null };
+  }
+  const valor = formatarMoeda(primeira.valor);
+  const iguais = parcelas.every((parcela) => formatarMoeda(parcela.valor) === valor);
+  if (iguais) {
+    return {
+      titulo: `${compra.parcelas}x de ${valor}`,
+      linha: `${primeira.numero}ª na fatura de ${mesSemAno(primeira.mes)} (vence ${dataCurta(primeira.vencimento)}) · última em `
+        + `${nomeDoMes(ultima.mes)}.`,
+      lista: [],
+      nota: null,
+    };
+  }
+  return {
+    titulo: `${compra.parcelas} parcelas`,
+    linha: null,
+    lista: parcelas.map((parcela) => ({ rotulo: `${parcela.numero}ª · ${mesCurto(parcela.mes)}`, valor: formatarMoeda(parcela.valor), fora: false })),
+    nota: null,
+  };
 }
 
 /**

@@ -54,7 +54,8 @@ public final class LeitorCsv implements LeitorExtrato {
     private BigDecimal valor(List<String> campos) {
         String principal = campo(campos, formato.colunaValor());
         if (formato.colunaSaidas() == null) {
-            return numero(principal);
+            BigDecimal valor = numero(principal);
+            return valor == null || !formato.trocaOSinal() ? valor : valor.negate();
         }
         String saida = campo(campos, formato.colunaSaidas());
         BigDecimal entrada = principal.isBlank() ? BigDecimal.ZERO : numero(principal);

@@ -28,8 +28,14 @@ public class Importacao {
     @Column(name = "usuario_id", nullable = false)
     private Long usuarioId;
 
-    @Column(name = "conta_id", nullable = false)
+    @Column(name = "conta_id")
     private Long contaId;
+
+    @Column(name = "cartao_id")
+    private Long cartaoId;
+
+    @Column(name = "fatura_id")
+    private Long faturaId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 3)
@@ -101,6 +107,15 @@ public class Importacao {
         this.criadaEm = agora;
     }
 
+    public static Importacao daFatura(Long usuarioId, Long cartaoId, Long faturaId, ExtratoLido.Formato formato, String nomeArquivo,
+                                      String hashArquivo, LocalDate dataInicio, LocalDate dataFim, Quantidades quantidades, Instant agora) {
+        Importacao importacao = new Importacao(usuarioId, null, formato, nomeArquivo, hashArquivo, null, null, dataInicio, dataFim,
+                quantidades, agora);
+        importacao.cartaoId = cartaoId;
+        importacao.faturaId = faturaId;
+        return importacao;
+    }
+
     /** As quantidades do registro: {@code lidas} é a soma das outras cinco (CHECK da V5). */
     public record Quantidades(int lidas, int importadas, int duplicadas, int anteriores, int fora, int desmarcadas) {
     }
@@ -119,6 +134,18 @@ public class Importacao {
 
     public Long getContaId() {
         return contaId;
+    }
+
+    public Long getCartaoId() {
+        return cartaoId;
+    }
+
+    public Long getFaturaId() {
+        return faturaId;
+    }
+
+    public boolean daFatura() {
+        return cartaoId != null;
     }
 
     public String getNomeArquivo() {

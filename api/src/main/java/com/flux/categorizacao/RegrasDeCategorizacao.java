@@ -13,7 +13,12 @@ public interface RegrasDeCategorizacao {
     /**
      * Uma sugestão por alvo, na mesma ordem; nula quando nenhuma regra casa. Só lê: não grava nada.
      */
-    List<Sugestao> sugerir(Long usuarioId, Long contaId, List<Alvo> alvos);
+    List<Sugestao> sugerir(Long usuarioId, Long contaId, Long cartaoId, List<Alvo> alvos);
+
+    /** Compatibilidade da importação de conta: não há cartão no extrato. */
+    default List<Sugestao> sugerir(Long usuarioId, Long contaId, List<Alvo> alvos) {
+        return sugerir(usuarioId, contaId, null, alvos);
+    }
 
     /** Uma linha do arquivo: a descrição do extrato e o valor com sinal (receita positiva, despesa negativa). */
     record Alvo(String descricao, BigDecimal valor) {

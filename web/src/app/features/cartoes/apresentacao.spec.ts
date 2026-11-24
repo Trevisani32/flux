@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   comAno, dataMinimaDaCompra, diaEMes, diasDoCartao, diasEntre, dicaDoEstorno, faixaDeMeses, mesCurto, mesSemAno, metaDoItemDaFatura,
-  quandoFecha, quantidadeDeCartoesAtivos, rotuloDaParcela, somarDias, textoDaCategoria, textoDaPrevia, textoDoTotal,
+  quandoFecha, quantidadeDeCartoesAtivos, rotuloDaParcela, somarDias, textoDaCategoria, textoDaPrevia, textoDasParcelasNoFlux, textoDoTotal,
 } from './apresentacao';
 import { Cartao, ItemDaFatura } from './cartoes.service';
-import { ParcelaDaCompra, PreviaDaCompra } from './compras.service';
+import { Compra, ParcelaDaCompra, PreviaDaCompra } from './compras.service';
 
 /** O Intl escreve "R$" com espaço não separável: o texto da tela volta com espaço comum. */
 function normal(texto: string | null): string | null {
@@ -103,6 +103,14 @@ describe('apresentação dos cartões', () => {
     expect(comResto.lista.map((linha) => [linha.rotulo, normal(linha.valor), linha.fora]))
       .toEqual([['1ª · dez/2026', 'R$ 33,34', false], ['2ª · jan/2027', 'R$ 33,33', false], ['3ª · fev/2027', 'R$ 33,33', false]]);
     expect(comResto.nota).toBe('O que sobra da divisão vai para a 1ª.');
+
+    const importadaComResto = textoDasParcelasNoFlux({ parcelas: 3, tipo: 'COMPRA', parcelasNoFlux: [
+      parcela(1, '2026-12', 33.34), parcela(2, '2027-01', 33.33), parcela(3, '2027-02', 33.34),
+    ] } as unknown as Compra, '2026-11-12');
+    expect(importadaComResto.titulo).toBe('3 parcelas');
+    expect(importadaComResto.lista.map((linha) => [linha.rotulo, normal(linha.valor), linha.fora]))
+      .toEqual([['1ª · dez/2026', 'R$ 33,34', false], ['2ª · jan/2027', 'R$ 33,33', false], ['3ª · fev/2027', 'R$ 33,34', false]]);
+    expect(importadaComResto.nota).toBeNull();
 
     const andamento = textoDaPrevia(previa([parcela(1, '2026-07', 249, false), parcela(2, '2026-08', 249, false), parcela(3, '2026-09', 249, false),
       parcela(4, '2026-10', 249, false), parcela(5, '2026-11', 249, false), parcela(6, '2026-12', 249), parcela(7, '2027-01', 249)]), '2026-11-12');

@@ -70,9 +70,12 @@ describe('Regras', () => {
     expect(textos(elemento, '.regras__posicao')).toEqual(['1', '2', '3']);
     expect(textos(elemento, '.regras__condicao')).toEqual(['1ª: Contém uber eats, categoria Alimentação › Delivery',
       '2ª: Contém uber, categoria Transporte › App de transporte', '3ª: Começa com rend pago, categoria Rendimentos']);
-    expect(textos(elemento, '.regras__meta')).toEqual(['Despesas · todas as contas', 'Despesas · todas as contas · descrição vira "Uber"',
+    expect(textos(elemento, '.regras__meta')).toEqual(['Despesas · todas as contas e cartões',
+      'Despesas · todas as contas e cartões · descrição vira "Uber"',
       'Pausada: Poupança antiga está arquivada Receitas · só Poupança antiga']);
     expect(elemento.querySelectorAll('.regras__item--pausada')).toHaveLength(1);
+    expect(elemento.querySelector('.regras__rodape')?.textContent?.trim())
+      .toBe('A comparação ignora maiúsculas, acentos e pontuação. Uma regra pausada volta a valer quando a categoria, a conta ou o cartão for reativado.');
     expect(botao(elemento, 'Subir a regra contém "uber eats"').disabled).toBe(true);
     expect(botao(elemento, 'Descer a regra começa com "rend pago"').disabled).toBe(true);
     expect(botao(elemento, 'Descer a regra contém "uber eats"').disabled).toBe(false);

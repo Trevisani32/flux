@@ -293,7 +293,7 @@ app-importacao .importacao__acoes-pronto {
   gap: 10px;
 }
 
-// Os passos do mockup ("1 Arquivo, 2 Perfil do CSV, 3 Revisar, 4 Pronto"), só no desktop.
+// Os passos da importação ("1 Arquivo, 2 Perfil do CSV, 3 Revisar, 4 Pronto"), só no desktop.
 app-importacao .importacao__cabecalho-card {
   display: flex;
   flex-wrap: wrap;
@@ -1000,6 +1000,10 @@ app-excluidos-dialogo .excluidos__textos b {
     padding-left: 16px;
   }
 
+  app-revisao .revisao__colunas {
+    display: none;
+  }
+
   app-revisao .revisao__linha {
     grid-template-columns: 24px minmax(0, 1fr) auto;
     align-items: start;
@@ -1041,6 +1045,19 @@ app-excluidos-dialogo .excluidos__textos b {
     display: none;
   }
 
+  // Na revisão de fatura, o pagamento que ficou de fora precisa explicar por que não é um estorno.
+  app-revisao .revisao__dobravel--fatura .revisao__curta .revisao__pilula--fora {
+    display: inline-flex;
+    grid-column: 2 / 4;
+    grid-row: 2;
+    justify-self: start;
+  }
+
+  app-revisao .revisao__dobravel--fatura .revisao__curta app-valor {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
   app-revisao .revisao__barra button {
     flex: 1 1 auto;
   }
@@ -1061,5 +1078,66 @@ app-excluidos-dialogo .excluidos__textos b {
   app-seletor-de-categoria .seletor__opcoes {
     flex: 1 1 auto;
     max-height: none;
+  }
+}
+
+app-importacao .importacao__fatura {
+  max-width: 420px;
+}
+
+app-perfil-csv .perfil__compras-positivas {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--flux-texto);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+app-revisao .revisao__pilula--estorno {
+  background: color-mix(in srgb, var(--flux-positivo) 12%, transparent);
+  color: var(--flux-positivo);
+}
+
+app-revisao .revisao__pilula--parcela {
+  border: 1px solid var(--flux-borda);
+  background: var(--flux-card-2);
+  color: var(--flux-texto-2);
+  font-variant-numeric: tabular-nums;
+}
+
+app-revisao .revisao__importar {
+  container: revisao / inline-size;
+}
+
+@media (max-width: 959.98px) {
+  app-importacao .importacao__fatura {
+    max-width: none;
+  }
+}
+
+@media (min-width: 960px) {
+  @container revisao (max-width: 759.98px) {
+    app-revisao .revisao__colunas,
+    app-revisao .revisao__linha {
+      grid-template-columns: 28px 56px minmax(0, 1fr) auto;
+      align-items: start;
+      row-gap: 6px;
+    }
+
+    app-revisao .revisao__colunas > span:nth-child(4) {
+      display: none;
+    }
+
+    app-revisao .revisao__categoria {
+      grid-column: 3;
+      grid-row: 2;
+    }
+
+    app-revisao .revisao__valor {
+      grid-column: 4;
+      grid-row: 1;
+    }
   }
 }

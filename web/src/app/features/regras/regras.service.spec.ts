@@ -41,12 +41,12 @@ describe('RegrasService', () => {
     expect(httpTesting.expectOne({ method: 'GET', url: '/api/regras/aplicacao' }).request.params.has('regra')).toBe(false);
     servico.aplicacao(31).subscribe();
     expect(httpTesting.expectOne((req) => req.url === '/api/regras/aplicacao').request.params.get('regra')).toBe('31');
-    let categorizados = -1;
-    servico.aplicar([31, 32]).subscribe((quantos) => (categorizados = quantos));
+    let aplicados = { categorizados: -1, compras: -1 };
+    servico.aplicar([31, 32]).subscribe((resultado) => (aplicados = resultado));
     const aplicar = httpTesting.expectOne({ method: 'POST', url: '/api/regras/aplicacao' });
     expect(aplicar.request.body).toEqual({ regras: [31, 32] });
     aplicar.flush({ categorizados: 21 });
-    expect(categorizados).toBe(21);
+    expect(aplicados).toEqual({ categorizados: 21, compras: 0 });
     const itens = [{ contaId: 1, descricaoBanco: 'PADARIA', descricao: null, categoriaId: 2 }];
     servico.sugestoes(itens).subscribe();
     expect(httpTesting.expectOne({ method: 'POST', url: '/api/regras/sugestoes' }).request.body).toEqual({ itens });

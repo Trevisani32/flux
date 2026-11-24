@@ -27,7 +27,19 @@ public record PreviaResponse(
         ArquivoRepetido arquivoRepetido,
         OutraConta outraConta,
         FormatoCsv perfil,
-        List<Origem> origens) {
+        List<Origem> origens,
+        Long cartaoId,
+        String cartaoNome,
+        Fatura fatura,
+        List<Fatura> faturas,
+        LocalDate dataDaSugestao) {
+
+    public PreviaResponse(String hash, String formato, String nomeArquivo, Long contaId, String contaNome, LocalDate dataSaldoInicial,
+                          LocalDate dataInicio, LocalDate dataFim, List<Linha> linhas, ArquivoRepetido arquivoRepetido,
+                          OutraConta outraConta, FormatoCsv perfil, List<Origem> origens) {
+        this(hash, formato, nomeArquivo, contaId, contaNome, dataSaldoInicial, dataInicio, dataFim, linhas, arquivoRepetido,
+                outraConta, perfil, origens, null, null, null, List.of(), null);
+    }
 
     /**
      * {@code situacao}: NOVA, PROVAVEL, JA_IMPORTADA, ANTES_DO_SALDO_INICIAL ou FORA; {@code motivo}
@@ -37,7 +49,12 @@ public record PreviaResponse(
      * importar, a primeira regra que casa (Fatia 04b); nula sem regra.
      */
     public record Linha(int linha, LocalDate data, String descricao, BigDecimal valor, String situacao, String motivo,
-                        boolean marcada, boolean futuro, String erro, Parecido parecido, Sugestao sugestao) {
+                        boolean marcada, boolean futuro, String erro, Parecido parecido, Sugestao sugestao, Integer parcela,
+                        Integer parcelas, Integer parcelaQueCobre, String descricaoDaCompra, BigDecimal valorNoFlux) {
+        public Linha(int linha, LocalDate data, String descricao, BigDecimal valor, String situacao, String motivo, boolean marcada,
+                     boolean futuro, String erro, Parecido parecido, Sugestao sugestao) {
+            this(linha, data, descricao, valor, situacao, motivo, marcada, futuro, erro, parecido, sugestao, null, null, null, null, null);
+        }
     }
 
     /**
@@ -60,10 +77,16 @@ public record PreviaResponse(
     }
 
     /** O mesmo arquivo já foi importado (decisão 25). */
-    public record ArquivoRepetido(Instant importadoEm, Long contaId, String contaNome, boolean mesmaConta) {
+    public record ArquivoRepetido(Instant importadoEm, Long contaId, Long cartaoId, String contaNome, boolean mesmaConta) {
+        public ArquivoRepetido(Instant importadoEm, Long contaId, String contaNome, boolean mesmaConta) {
+            this(importadoEm, contaId, null, contaNome, mesmaConta);
+        }
     }
 
     /** O mesmo extrato (BANKID e ACCTID do OFX) já foi importado em outra conta (decisão 11). */
     public record OutraConta(Long contaId, String contaNome, String finalDaConta) {
+    }
+
+    public record Fatura(String mes, LocalDate fechamento, LocalDate vencimento, String situacao) {
     }
 }

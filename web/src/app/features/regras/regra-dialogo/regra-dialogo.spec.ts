@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { Cartao, ListaDeCartoes } from '../../cartoes/cartoes.service';
 import { Categoria, ListaDeCategorias } from '../../categorias/categorias.service';
 import { Conta, ListaDeContas } from '../../contas/contas.service';
 import { Regra } from '../regras.service';
@@ -28,6 +29,9 @@ const contas: ListaDeContas = {
   arquivadas: [conta(3, 'Poupança antiga', '2026-11-03T15:00:00Z')],
   totais: { geral: 0, disponivel: 0, investimentos: 0 },
 };
+
+/** Fatia 05c: os cartões de "Conta ou cartão". */
+const cartoes: ListaDeCartoes = { ativos: [{ id: 6, nome: 'Cartão Horizonte' } as Cartao], arquivados: [{ id: 8, nome: 'Cartão Lua' } as Cartao] };
 
 const categorias: ListaDeCategorias = {
   despesas: { ativas: [categoria(1, 'Alimentação', 'DESPESA', [categoria(2, 'Padaria', 'DESPESA')]),
@@ -55,6 +59,7 @@ describe('RegraDialogo', () => {
     abrirDialogoDeRegra(TestBed.inject(MatDialog), dados).subscribe((valor) => (resultado = valor));
     TestBed.tick();
     httpTesting.expectOne('/api/contas').flush(contas);
+    httpTesting.expectOne('/api/cartoes').flush(cartoes);
     httpTesting.expectOne('/api/categorias').flush(categorias);
     if (dados.regra === null) {
       httpTesting.expectOne({ method: 'GET', url: '/api/regras' }).flush(regras);
@@ -125,14 +130,14 @@ describe('RegraDialogo', () => {
     expect(erro('regra-texto-dica')).toBe('Maiúsculas, acentos e pontuação não contam. No extrato: PIX QRS PADARIA CE03/12');
     expect(textoSelecionado('#regra-categoria')).toBe('Padaria');
     expect(erro('regra-categoria-dica')).toBe('Categoria de despesa: a regra só pega despesas.');
-    expect(opcoes('#regra-conta')).toEqual(['Todas as contas', 'Banco Horizonte', 'Poupança']);
+    expect(opcoes('#regra-conta')).toEqual(['Todas as contas e cartões', 'Banco Horizonte', 'Poupança', 'Cartão Horizonte']);
     expect(campo<HTMLInputElement>('#regra-descricao').value).toBe('Padaria Central');
     expect(painel().querySelector('.regra-dialogo__posicao')?.textContent)
       .toBe('Entra em 1º lugar, antes de "contém uber eats". Dá para mudar a ordem na lista.');
     expect(Array.from(painel().querySelectorAll('input, select')).every((item) => (item as HTMLInputElement).labels?.length === 1)).toBe(true);
 
     const pedidoDaPrevia = await previa();
-    expect(pedidoDaPrevia.request.body).toEqual({ condicao: 'CONTEM', texto: 'PIX QRS PADARIA', contaId: null, categoriaId: 2 });
+    expect(pedidoDaPrevia.request.body).toEqual({ condicao: 'CONTEM', texto: 'PIX QRS PADARIA', contaId: null, cartaoId: null, categoriaId: 2 });
     pedidoDaPrevia.flush({ casam: 6, semCategoria: 4, exemplos: [{ data: '2026-12-03', descricao: 'PIX QRS PADARIA CE03/12', valor: -12.5 }] });
     TestBed.tick();
     expect(tituloDaPrevia()).toBe('Casa com 6 lançamentos seus, 4 sem categoria');
@@ -142,7 +147,8 @@ describe('RegraDialogo', () => {
     botao('Criar regra').click();
     TestBed.tick();
     const pedido = httpTesting.expectOne({ method: 'POST', url: '/api/regras' });
-    expect(pedido.request.body).toEqual({ condicao: 'CONTEM', texto: 'PIX QRS PADARIA', contaId: null, categoriaId: 2, descricao: 'Padaria Central' });
+    expect(pedido.request.body).toEqual({ condicao: 'CONTEM', texto: 'PIX QRS PADARIA', contaId: null, cartaoId: null, categoriaId: 2,
+      descricao: 'Padaria Central' });
     pedido.flush(regra({ id: 40 }));
     TestBed.tick();
     await vi.waitFor(() => expect(resultado).toEqual({ tipo: 'criada', regra: regra({ id: 40 }) }));
@@ -184,7 +190,7 @@ describe('RegraDialogo', () => {
     expect(tituloDaPrevia()).toBe('Conta não encontrada.');
     escolher('#regra-conta', 'Poupança');
     const terceira = await previa();
-    expect(terceira.request.body).toEqual({ condicao: 'CONTEM', texto: 'uber', contaId: 2, categoriaId: 5 });
+    expect(terceira.request.body).toEqual({ condicao: 'CONTEM', texto: 'uber', contaId: 2, cartaoId: null, categoriaId: 5 });
     terceira.flush({ casam: 0, semCategoria: 0, exemplos: [] });
     TestBed.tick();
     expect(tituloDaPrevia()).toBe('Não casa com nenhum lançamento seu ainda');
@@ -232,7 +238,7 @@ describe('RegraDialogo', () => {
     botao('Salvar').click();
     TestBed.tick();
     const pedido = httpTesting.expectOne({ method: 'PUT', url: '/api/regras/31' });
-    expect(pedido.request.body).toEqual({ condicao: 'COMECA_COM', texto: 'rend', contaId: 3, categoriaId: 9, descricao: null });
+    expect(pedido.request.body).toEqual({ condicao: 'COMECA_COM', texto: 'rend', contaId: 3, cartaoId: null, categoriaId: 9, descricao: null });
     pedido.flush(regra({ id: 31, texto: 'rend' }));
     TestBed.tick();
     await vi.waitFor(() => expect(resultado).toEqual({ tipo: 'salva', regra: regra({ id: 31, texto: 'rend' }) }));
@@ -250,5 +256,25 @@ describe('RegraDialogo', () => {
     httpTesting.expectOne({ method: 'DELETE', url: '/api/regras/32' }).flush(null);
     TestBed.tick();
     await vi.waitFor(() => expect(resultado).toEqual({ tipo: 'excluida' }));
+  });
+
+  it('"Conta ou cartão" (Fatia 05c, decisão 44): o cartão manda o cartaoId, nunca a conta; a regra do cartão arquivado o mantém, e o '
+    + '422 do cartão vai para o campo', async () => {
+    abrir({ regra: regra({ id: 32, cartaoId: 8, cartaoNome: 'Cartão Lua', cartaoArquivado: true, pausada: true }), sugestao: null });
+    expect(painel().querySelector('label[for="regra-conta"]')?.textContent).toBe('Conta ou cartão');
+    expect(textoSelecionado('#regra-conta')).toBe('Cartão Lua (arquivado)');
+    expect(Array.from(campo<HTMLSelectElement>('#regra-conta').querySelectorAll('optgroup')).map((grupo) => grupo.label))
+      .toEqual(['Contas', 'Cartões']);
+    expect((await previa()).request.body).toEqual({ condicao: 'CONTEM', texto: 'uber', contaId: null, cartaoId: 8, categoriaId: 5 });
+
+    escolher('#regra-conta', 'Cartão Horizonte');
+    (await previa()).flush({ casam: 1, semCategoria: 1, exemplos: [] });
+    botao('Salvar').click();
+    TestBed.tick();
+    const pedido = httpTesting.expectOne({ method: 'PUT', url: '/api/regras/32' });
+    expect(pedido.request.body).toEqual({ condicao: 'CONTEM', texto: 'uber', contaId: null, cartaoId: 6, categoriaId: 5, descricao: null });
+    pedido.flush({ detail: 'Escolha um cartão ativo.', codigo: 'CARTAO_INVALIDO' }, { status: 422, statusText: 'Erro' });
+    TestBed.tick();
+    expect(erro('regra-conta-erro')).toBe('Escolha um cartão ativo.');
   });
 });

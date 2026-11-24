@@ -5,7 +5,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { of } from 'rxjs';
+import { catchError, forkJoin, of } from 'rxjs';
 
 import { AGORA } from '../../core/tempo/agora';
 import { Alerta } from '../../shared/alerta/alerta';
@@ -18,22 +18,23 @@ import { Icone } from '../../shared/icone/icone';
 import { Valor } from '../../shared/valor/valor';
 import { detalheDoErro, propriedadeDoErro, statusDoErro } from '../auth/erros-http';
 import { nomeDaFatura } from '../cartoes/apresentacao';
+import { CartoesService, ListaDeCartoes } from '../cartoes/cartoes.service';
 import { CategoriasService, ListaDeCategorias } from '../categorias/categorias.service';
 import { ContasService, ListaDeContas } from '../contas/contas.service';
 import { diaEMes } from '../lancamentos/conversao';
 import { abrirConversao } from '../lancamentos/conversao-dialogo/conversao-dialogo';
 import { mesDe, parametrosDaUrl } from '../lancamentos/filtros';
-import { contaPadrao } from '../lancamentos/lancamento-dialogo/lancamento-dialogo';
 import { nomeDaCategoria } from '../regras/apresentacao';
 import { FluxoDeRegras } from '../regras/fluxo-de-regras';
 import { EscolhaAMao, RegrasService, SugestaoDeRegra } from '../regras/regras.service';
 import {
-  erroDeTamanho, frasesDoResultado, mensagemDaCategoria, mensagemDoArquivo, PassoDaImportacao, passosDaImportacao, pedePerfil, perfilNaoLe,
-  resumoDoHistorico, resumoDoPerfil, tamanhoDoArquivo,
+  dicaDaFatura, erroDeTamanho, frasesDoResultado, linhaDoHistoricoDaFatura, mensagemDaCategoria, mensagemDoArquivo, notaDoResultadoDaFatura,
+  PassoDaImportacao, passosDaImportacao, pedePerfil, perfilNaoLe, periodoDoArquivo, resumoDaFatura, resumoDoHistorico, resumoDoPerfil, rotuloDaFatura,
+  subtituloCurtoDaRevisaoDaFatura, subtituloDaRevisaoDaFatura, tamanhoDoArquivo,
 } from './apresentacao';
 import { abrirExcluidos } from './excluidos-dialogo/excluidos-dialogo';
 import {
-  Amostra, Importacao as ItemDoHistorico, ImportacaoService, PagamentoDaImportacao, ParSugerido, Previa, Resultado,
+  Amostra, Destino, Importacao as ItemDoHistorico, ImportacaoService, PagamentoDaImportacao, ParSugerido, Previa, Resultado,
   TransferenciaDaImportacao,
 } from './importacao.service';
 import { PerfilCsv } from './perfil-csv/perfil-csv';
@@ -47,8 +48,9 @@ import { ConfirmacaoDaRevisao, Revisao } from './revisao/revisao';
  * navegador: recarregar volta ao começo. Na Fatia 04b, o resultado oferece criar regras com as
  * categorias escolhidas à mão na revisão (decisão 20). Na Fatia 04c, o resultado sugere os pares de
  * transferência (decisão 35), e desfazer uma importação com lançamento convertido (em transferência ou, desde a Fatia
- * 05b, em pagamento de fatura) diz o que acontece
- * com o outro lado (decisão 34).
+ * 05b, em pagamento de fatura) diz o que acontece com o outro lado (decisão 34). Desde a Fatia 05c, "Importar em" escolhe
+ * uma conta ou um cartão: no cartão, lido o arquivo, o passo do arquivo mostra a fatura sugerida, que pode ser trocada
+ * pela anterior ou pela seguinte (decisão 40), antes de "Revisar"; o resultado leva à fatura.
  */
 @Component({
   selector: 'app-importacao',
@@ -60,18 +62,24 @@ import { ConfirmacaoDaRevisao, Revisao } from './revisao/revisao';
 export class Importacao {
   private readonly servico = inject(ImportacaoService);
   private readonly contasService = inject(ContasService);
+  private readonly cartoesService = inject(CartoesService);
   private readonly categoriasService = inject(CategoriasService);
   private readonly dialogo = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
   private readonly regras = inject(RegrasService);
   private readonly fluxoDeRegras = inject(FluxoDeRegras);
-  private readonly contaDaUrl = Number(inject(ActivatedRoute).snapshot.queryParamMap.get('conta')) || null;
+  private readonly parametros = inject(ActivatedRoute).snapshot.queryParamMap;
+  private readonly contaDaUrl = Number(this.parametros.get('conta')) || null;
+  /** Fatia 05c: o atalho do cartão ("Importar fatura", em Cartões). */
+  private readonly cartaoDaUrl = Number(this.parametros.get('cartao')) || null;
   /** As linhas que ganharam categoria à mão na última confirmação, para "Tentar de novo" nas sugestões. */
   private aMao: readonly EscolhaAMao[] = [];
 
   readonly hoje = dataIsoNoFuso(inject(AGORA)());
   readonly contas = signal<ListaDeContas | null>(null);
+  /** Fatia 05c: os cartões, para "Importar em"; sem eles (a lista falhou), só as contas. */
+  readonly cartoes = signal<ListaDeCartoes | null>(null);
   readonly categorias = signal<ListaDeCategorias | null>(null);
   readonly historico = signal<readonly ItemDoHistorico[] | null>(null);
   readonly falha = signal(false);
@@ -84,7 +92,10 @@ export class Importacao {
    */
   protected readonly revisaoMontada = computed(() => this.passo() === 'revisao'
     || (this.passo() === 'perfil' && this.passoAntesDoPerfil() === 'revisao'));
-  readonly contaId = signal<number | null>(null);
+  /** Onde a importação acontece: uma conta ou, desde a Fatia 05c, um cartão. */
+  readonly destino = signal<Destino | null>(null);
+  /** Fatia 05c (decisão 40): a fatura escolhida no seletor ("2026-12"); nula = a sugerida pela API. */
+  readonly faturaEscolhida = signal<string | null>(null);
   readonly arquivo = signal<File | null>(null);
   readonly erroDoArquivo = signal<string | null>(null);
   readonly lendo = signal(false);
@@ -103,28 +114,60 @@ export class Importacao {
   readonly paresSugeridos = signal<readonly ParSugerido[]>([]);
   readonly diaEMes = diaEMes;
   readonly nomeDaCategoria = nomeDaCategoria;
-  readonly temContaAtiva = computed(() => (this.contas()?.ativas.length ?? 0) > 0);
-  readonly nomeDaConta = computed(() => this.contas()?.ativas.find((conta) => conta.id === this.contaId())?.nome ?? '');
+  readonly temOndeImportar = computed(() => (this.contas()?.ativas.length ?? 0) + (this.cartoes()?.ativos.length ?? 0) > 0);
+  /** O nome da conta ou do cartão escolhido. */
+  readonly nomeDoDestino = computed(() => {
+    const destino = this.destino();
+    if (destino === null) {
+      return '';
+    }
+    return destino.tipo === 'conta' ? this.contas()?.ativas.find((conta) => conta.id === destino.id)?.nome ?? ''
+      : this.cartoes()?.ativos.find((cartao) => cartao.id === destino.id)?.nome ?? '';
+  });
+  /** O valor do seletor "Importar em": "conta:4" ou "cartao:2". */
+  readonly valorDoDestino = computed(() => {
+    const destino = this.destino();
+    return destino === null ? '' : `${destino.tipo}:${destino.id}`;
+  });
   readonly passos = computed(() => passosDaImportacao(this.passo(), this.previa()?.formato ?? null));
   /** Enquanto a API lê um OFX, a página explica que ele não pede perfil. */
   readonly lendoOfx = computed(() => this.lendo() && (this.arquivo()?.name.toLowerCase().endsWith('.ofx') ?? false));
-  /** O subtítulo do cabeçalho: o arquivo e a conta na revisão e no perfil. */
+  /** O subtítulo do cabeçalho: o arquivo e a conta (ou o cartão e a fatura) na revisão, e o arquivo e o lugar no perfil. */
   readonly subtitulo = computed(() => {
     const previa = this.previa();
     if (this.passo() === 'revisao' && previa !== null) {
+      if (previa.cartaoNome != null) {
+        return subtituloDaRevisaoDaFatura(previa, this.hoje);
+      }
       const periodo = previa.dataInicio !== null && previa.dataFim !== null
-        ? ` · de ${dataCurta(previa.dataInicio).slice(0, 5)} a ${dataCurta(previa.dataFim)}` : '';
+        ? ` · ${periodoDoArquivo(previa.dataInicio, previa.dataFim)}` : '';
       return `${previa.nomeArquivo} · ${previa.contaNome}${periodo}`;
     }
     if (this.passo() === 'perfil') {
-      return `${this.arquivo()?.name ?? ''} · ${this.nomeDaConta()}`;
+      return `${this.arquivo()?.name ?? ''} · ${this.nomeDoDestino()}`;
     }
     return 'Traga o extrato do banco em OFX ou CSV. Nada é gravado antes da sua revisão.';
+  });
+  /** Fatia 05c: na revisão da fatura, o subtítulo curto do celular; nulo nos outros passos e na conta. */
+  readonly subtituloCurto = computed(() => {
+    const previa = this.previa();
+    return this.passo() === 'revisao' && previa !== null && previa.cartaoNome != null
+      ? subtituloCurtoDaRevisaoDaFatura(previa, this.hoje) : null;
   });
   readonly frases = computed(() => {
     const resultado = this.resultado();
     return resultado === null ? null : frasesDoResultado(resultado, this.porRegras());
   });
+  /** Fatia 05c: a nota do resultado da fatura ("em Cartão Horizonte, fatura de dezembro · a compra em 10x criou…"). */
+  readonly notaDaFatura = computed(() => {
+    const resultado = this.resultado();
+    return resultado === null ? null : notaDoResultadoDaFatura(resultado, this.hoje);
+  });
+  readonly rotuloDaFatura = rotuloDaFatura;
+  readonly dicaDaFatura = dicaDaFatura;
+  readonly resumoDaFatura = resumoDaFatura;
+  readonly periodoDoArquivo = periodoDoArquivo;
+  readonly linhaDoHistoricoDaFatura = linhaDoHistoricoDaFatura;
   readonly tamanhoDoArquivo = tamanhoDoArquivo;
   readonly resumoDoPerfil = resumoDoPerfil;
   readonly resumoDoHistorico = resumoDoHistorico;
@@ -132,10 +175,12 @@ export class Importacao {
   readonly dataHoraCurta = dataHoraCurta;
 
   constructor() {
-    this.contasService.listar().subscribe({
-      next: (lista) => {
-        this.contas.set(lista);
-        this.contaId.set(contaPadrao(lista.ativas, this.contaDaUrl, this.servico.ultimaConta));
+    // Fatia 05c: os cartões entram em "Importar em"; se a lista deles falhar, a página continua com as contas.
+    forkJoin({ contas: this.contasService.listar(), cartoes: this.cartoesService.listar().pipe(catchError(() => of(null))) }).subscribe({
+      next: ({ contas, cartoes }) => {
+        this.contas.set(contas);
+        this.cartoes.set(cartoes);
+        this.destino.set(destinoPadrao(contas, cartoes, this.contaDaUrl, this.cartaoDaUrl, this.servico.ultimoDestino));
       },
       error: () => this.falha.set(true),
     });
@@ -143,15 +188,26 @@ export class Importacao {
     this.carregarHistorico();
   }
 
-  /** Com um arquivo já escolhido, a troca de conta lê de novo (o perfil do CSV é da conta). */
-  escolherConta(valor: string): void {
-    this.contaId.set(valor === '' ? null : Number(valor));
+  /**
+   * "Importar em" ("conta:4" ou "cartao:2"). Com um arquivo já escolhido, a troca lê de novo (o perfil do CSV é da conta
+   * ou do cartão, e a fatura é do cartão).
+   */
+  escolherDestino(valor: string): void {
+    const [tipo, id] = valor.split(':');
+    this.destino.set(valor === '' ? null : { tipo: tipo === 'cartao' ? 'cartao' : 'conta', id: Number(id) });
+    this.faturaEscolhida.set(null);
     this.erroDoArquivo.set(null);
     this.previa.set(null);
     const arquivo = this.arquivo();
     if (arquivo !== null && erroDeTamanho(arquivo.size) === null) {
       this.lerArquivo();
     }
+  }
+
+  /** Fatia 05c (decisão 40): outra fatura no seletor lê de novo, com ela (a classificação depende da fatura). */
+  escolherFatura(mes: string): void {
+    this.faturaEscolhida.set(mes);
+    this.lerArquivo();
   }
 
   /** O tamanho é conferido aqui, antes de enviar (decisão 35); o resto, na API. */
@@ -162,6 +218,7 @@ export class Importacao {
     }
     this.arquivo.set(arquivo);
     this.previa.set(null);
+    this.faturaEscolhida.set(null);
     this.erroDoArquivo.set(erroDeTamanho(arquivo.size));
     if (this.erroDoArquivo() === null) {
       this.lerArquivo();
@@ -179,16 +236,17 @@ export class Importacao {
    * aparecem no passo em que a leitura começou: no arquivo, embaixo da área; no perfil e na
    * revisão, no alerta da página. O perfil salvo que não lê o arquivo abre o passo do perfil, com o
    * alerta: sem isso, a conta não teria outro caminho até o perfil. Com
-   * `contaDeVolta`, um erro devolve a conta anterior (o "Importar em X" que não deu certo).
+   * `contaDeVolta`, um erro devolve a conta anterior (o "Importar em X" que não deu certo). No cartão (Fatia 05c), a
+   * leitura sempre volta ao passo do arquivo, com a fatura sugerida (ou a escolhida) no seletor, antes de "Revisar".
    */
   lerArquivo(contaDeVolta: number | null = null): void {
     const arquivo = this.arquivo();
-    const contaId = this.contaId();
+    const destino = this.destino();
     if (arquivo === null) {
       return;
     }
-    if (contaId === null) {
-      this.erroDoArquivo.set('Escolha a conta.');
+    if (destino === null) {
+      this.erroDoArquivo.set('Escolha a conta ou o cartão.');
       return;
     }
     const doArquivo = this.passo() === 'arquivo';
@@ -196,12 +254,12 @@ export class Importacao {
     this.lendo.set(true);
     this.erroDoArquivo.set(null);
     this.erroDaConfirmacao.set(null);
-    this.servico.previa(arquivo, contaId).subscribe({
+    this.servico.previa(arquivo, destino, destino.tipo === 'cartao' ? this.faturaEscolhida() : null).subscribe({
       next: (previa) => {
-        this.servico.ultimaConta = contaId;
+        this.servico.ultimoDestino = destino;
         this.lendo.set(false);
         this.previa.set(previa);
-        this.passo.set(doArquivo && previa.formato === 'CSV' ? 'arquivo' : 'revisao');
+        this.passo.set(destino.tipo === 'cartao' || (doArquivo && previa.formato === 'CSV') ? 'arquivo' : 'revisao');
       },
       error: (erro: unknown) => {
         if (pedePerfil(erro)) {
@@ -210,12 +268,12 @@ export class Importacao {
         } else if (perfilNaoLe(erro) && !doPerfil) {
           this.passoAntesDoPerfil.set(null);
           this.erroDoArquivo.set(mensagemDoArquivo(erro));
-          this.servico.perfil(contaId).subscribe({ next: (formato) => this.abrirPerfil(formato), error: () => this.abrirPerfil(null) });
+          this.servico.perfil(destino).subscribe({ next: (formato) => this.abrirPerfil(formato), error: () => this.abrirPerfil(null) });
         } else {
           this.lendo.set(false);
           this.erroDoArquivo.set(mensagemDoArquivo(erro));
           if (contaDeVolta !== null) {
-            this.contaId.set(contaDeVolta);
+            this.destino.set({ tipo: 'conta', id: contaDeVolta });
           }
         }
       },
@@ -224,12 +282,12 @@ export class Importacao {
 
   /** "Editar perfil" (resumo) ou "Editar perfil do CSV" (revisão): a amostra com o perfil salvo. */
   editarPerfil(): void {
-    const contaId = this.contaId();
-    if (contaId !== null) {
+    const destino = this.destino();
+    if (destino !== null) {
       this.passoAntesDoPerfil.set(this.passo() === 'revisao' ? 'revisao' : 'arquivo');
       this.lendo.set(true);
       this.erroDoArquivo.set(null);
-      this.servico.perfil(contaId).subscribe({ next: (formato) => this.abrirPerfil(formato), error: () => this.abrirPerfil(null) });
+      this.servico.perfil(destino).subscribe({ next: (formato) => this.abrirPerfil(formato), error: () => this.abrirPerfil(null) });
     }
   }
 
@@ -264,9 +322,9 @@ export class Importacao {
 
   /** "Importar em X" (decisão 11): se a leitura falhar, a conta volta a ser a anterior. */
   trocarConta(contaId: number): void {
-    const anterior = this.contaId();
-    this.contaId.set(contaId);
-    this.lerArquivo(anterior);
+    const anterior = this.destino();
+    this.destino.set({ tipo: 'conta', id: contaId });
+    this.lerArquivo(anterior !== null && anterior.tipo === 'conta' ? anterior.id : null);
   }
 
   importar(confirmacao: ConfirmacaoDaRevisao): void {
@@ -275,9 +333,10 @@ export class Importacao {
     if (arquivo === null || previa === null || this.enviando()) {
       return;
     }
+    const destino: Destino = previa.cartaoId != null ? { tipo: 'cartao', id: previa.cartaoId } : { tipo: 'conta', id: previa.contaId ?? 0 };
     this.enviando.set(true);
     this.erroDaConfirmacao.set(null);
-    this.servico.confirmar(arquivo, previa.contaId, previa.hash, confirmacao.escolhas).subscribe({
+    this.servico.confirmar(arquivo, destino, previa.hash, confirmacao.escolhas, previa.fatura?.mes ?? null).subscribe({
       next: (resultado) => {
         this.enviando.set(false);
         this.porRegras.set(confirmacao.porRegras);
@@ -307,9 +366,17 @@ export class Importacao {
     });
   }
 
+  /** Fatia 05c: "Ver fatura", a fatura escolhida na importação (no resultado e no histórico da fatura). */
+  verFatura(cartaoId: number | null | undefined, mes: string | null | undefined): void {
+    if (cartaoId != null && mes != null) {
+      void this.router.navigate(['/cartoes', cartaoId, 'faturas', mes]);
+    }
+  }
+
   recomecar(): void {
     this.passo.set('arquivo');
     this.arquivo.set(null);
+    this.faturaEscolhida.set(null);
     this.previa.set(null);
     this.amostra.set(null);
     this.resultado.set(null);
@@ -382,9 +449,14 @@ export class Importacao {
    * Fatia 04c (decisão 34), a confirmação diz quantos lançamentos estão em transferências e o que acontece
    * com o outro lado; com o outro lado numa conta arquivada, também só o aviso. Na Fatia 05b, o mesmo com os
    * pagamentos de fatura convertidos: a confirmação diz que eles saem e que a fatura volta a ter o pendente; com o
-   * cartão de um deles arquivado, só o aviso e o caminho para Cartões.
+   * cartão de um deles arquivado, só o aviso e o caminho para Cartões. Na Fatia 05c, a importação de fatura tem a
+   * confirmação dela e, com o cartão arquivado, só o aviso e o caminho para Cartões.
    */
   desfazer(item: ItemDoHistorico): void {
+    if (item.cartaoId != null) {
+      this.desfazerDaFatura(item);
+      return;
+    }
     const transferencias = item.transferencias ?? [];
     const pagamentos = item.pagamentos ?? [];
     const presa = transferencias.find((transferencia) => transferencia.contaArquivada);
@@ -393,7 +465,7 @@ export class Importacao {
       const doCartao = presa === undefined && !item.contaArquivada;
       const paragrafo: TrechoDeTexto[] = presa !== undefined ? [`A transferência de ${diaEMes(presa.data)} liga esta importação a `,
         { forte: presa.contaNome }, ', que está arquivada. Reative a conta para desfazer esta importação.']
-        : item.contaArquivada || pagamentoPreso === undefined ? [{ forte: item.contaNome }, ' está arquivada. Reative a conta para desfazer esta importação.']
+        : item.contaArquivada || pagamentoPreso === undefined ? [{ forte: item.contaNome ?? '' }, ' está arquivada. Reative a conta para desfazer esta importação.']
           : [`O pagamento de ${diaEMes(pagamentoPreso.data)} liga esta importação a `, { forte: pagamentoPreso.cartaoNome },
             ', que está arquivado. Reative o cartão para desfazer esta importação.'];
       abrirConfirmacao(this.dialogo, {
@@ -419,8 +491,9 @@ export class Importacao {
     if (item.excluidos > 0) {
       extras.push(item.excluidos === 1 ? '1 que você excluiu' : `${item.excluidos} que você excluiu`);
     }
-    const paragrafo: TrechoDeTexto[] = ['Os ', { forte: item.importadas === 1 ? '1 lançamento' : `${item.importadas} lançamentos` },
-      ` que ela trouxe saem de ${item.contaNome}${extras.length > 0 ? `, inclusive ${extras.join(' e ')}` : ''}. O saldo muda na hora.`];
+    const singular = item.importadas === 1;
+    const paragrafo: TrechoDeTexto[] = [singular ? 'O ' : 'Os ', { forte: singular ? '1 lançamento' : `${item.importadas} lançamentos` },
+      ` que ela trouxe ${singular ? 'sai' : 'saem'} de ${item.contaNome ?? ''}${extras.length > 0 ? `, inclusive ${extras.join(' e ')}` : ''}. O saldo muda na hora.`];
     abrirConfirmacao(this.dialogo, {
       titulo: `Desfazer a importação de ${item.nomeArquivo}?`,
       icone: 'reativar',
@@ -442,12 +515,57 @@ export class Importacao {
     this.servico.listar().subscribe({ next: (lista) => this.historico.set(lista), error: () => this.historico.set(null) });
   }
 
+  /**
+   * Fatia 05c: desfazer a importação de fatura. Com o cartão arquivado, só o aviso e o caminho para Cartões; senão, a
+   * confirmação diz o que sai (as compras parceladas levam as parcelas seguintes). Com uma parcela numa fatura paga, a
+   * API recusa, e a confirmação mostra a frase dela.
+   */
+  private desfazerDaFatura(item: ItemDoHistorico): void {
+    const cartao = item.cartaoNome ?? '';
+    if (item.cartaoArquivado === true) {
+      abrirConfirmacao(this.dialogo, {
+        titulo: 'Esta importação não pode ser desfeita agora',
+        icone: 'arquivar',
+        perigo: false,
+        paragrafos: [[{ forte: cartao }, ' está arquivado. Reative o cartão para desfazer esta importação.']],
+        confirmar: 'Ir para Cartões',
+        cancelar: 'Fechar',
+        falha: 'Não foi possível abrir Cartões.',
+        acao: () => of(true),
+      }).subscribe((resultado) => {
+        if (resultado === true) {
+          void this.router.navigate(['/cartoes']);
+        }
+      });
+      return;
+    }
+    const editados = item.editados > 0 ? `, inclusive ${item.editados === 1 ? '1 que você editou' : `${item.editados} que você editou`}` : '';
+    const quantos = item.importadas - item.excluidos;
+    const singular = quantos === 1;
+    const paragrafo: TrechoDeTexto[] = [singular ? 'O ' : 'Os ', { forte: singular ? '1 lançamento' : `${quantos} lançamentos` },
+      ` que ela trouxe ${singular ? 'sai' : 'saem'} de ${cartao}${editados}, com as parcelas seguintes das compras parceladas. O total das faturas muda na hora.`];
+    abrirConfirmacao(this.dialogo, {
+      titulo: `Desfazer a importação de ${item.nomeArquivo}?`,
+      icone: 'reativar',
+      perigo: true,
+      paragrafos: [paragrafo, ['O registro fica no histórico. Para trazer as linhas de volta, importe o arquivo de novo.']],
+      confirmar: 'Desfazer importação',
+      falha: 'Não foi possível desfazer. Tente novamente.',
+      acao: () => this.servico.desfazer(item.id),
+    }).subscribe((resultado) => {
+      if (resultado === true) {
+        this.snackBar.open('Importação desfeita.', 'Fechar', { duration: 4000 });
+        this.carregarHistorico();
+      }
+    });
+  }
+
   private abrirPerfil(formato: Parameters<ImportacaoService['amostra']>[1]): void {
     const arquivo = this.arquivo();
     if (arquivo === null) {
       return;
     }
-    this.servico.amostra(arquivo, formato).subscribe({
+    this.servico.amostra(arquivo, formato, this.destino()?.tipo === 'cartao').subscribe({
       next: (amostra) => {
         this.lendo.set(false);
         this.amostra.set(amostra);
@@ -459,6 +577,26 @@ export class Importacao {
       },
     });
   }
+}
+
+/**
+ * Fatia 05c: o lugar que "Importar em" começa escolhendo: o do atalho (`?conta=` ou `?cartao=`), o último usado na sessão,
+ * a única conta ativa (sem cartão ativo) ou nenhum. Só valem a conta e o cartão ativos.
+ */
+export function destinoPadrao(contas: ListaDeContas, cartoes: ListaDeCartoes | null, contaDaUrl: number | null, cartaoDaUrl: number | null,
+  ultimo: Destino | null): Destino | null {
+  const contaAtiva = (id: number | null) => id !== null && contas.ativas.some((conta) => conta.id === id);
+  const cartaoAtivo = (id: number | null) => id !== null && (cartoes?.ativos ?? []).some((cartao) => cartao.id === id);
+  if (contaAtiva(contaDaUrl)) {
+    return { tipo: 'conta', id: contaDaUrl as number };
+  }
+  if (cartaoAtivo(cartaoDaUrl)) {
+    return { tipo: 'cartao', id: cartaoDaUrl as number };
+  }
+  if (ultimo !== null && (ultimo.tipo === 'conta' ? contaAtiva(ultimo.id) : cartaoAtivo(ultimo.id))) {
+    return ultimo;
+  }
+  return contas.ativas.length === 1 && (cartoes?.ativos.length ?? 0) === 0 ? { tipo: 'conta', id: contas.ativas[0].id } : null;
 }
 
 /**

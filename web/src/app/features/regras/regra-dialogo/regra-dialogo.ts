@@ -11,6 +11,7 @@ import { dataCurta } from '../../../shared/datas/data-curta';
 import { Icone } from '../../../shared/icone/icone';
 import { Valor } from '../../../shared/valor/valor';
 import { camposDoErro, codigoDoErro, detalheDoErro, statusDoErro } from '../../auth/erros-http';
+import { CartoesService, ListaDeCartoes } from '../../cartoes/cartoes.service';
 import { CategoriasService, ListaDeCategorias } from '../../categorias/categorias.service';
 import { ContasService, ListaDeContas } from '../../contas/contas.service';
 import { opcoesDeCategoria } from '../../lancamentos/apresentacao';
@@ -34,14 +35,35 @@ interface OpcaoDoSelect {
   readonly rotulo: string;
 }
 
-/** Campo do 400 da API → campo do formulário. */
+/** Fatia 05c: uma opção de "Conta ou cartão": o valor é "conta:4" ou "cartao:2". */
+interface OpcaoDoLugar {
+  readonly valor: string;
+  readonly rotulo: string;
+}
+
+/** Campo do 400 da API → campo do formulário; o cartão (Fatia 05c) é o mesmo campo da conta. */
 const CAMPOS_DA_API: Readonly<Record<string, CampoDaRegra>> = {
   condicao: 'condicao',
   texto: 'texto',
   categoriaId: 'categoria',
   contaId: 'conta',
+  cartaoId: 'conta',
   descricao: 'descricao',
 };
+
+/** Fatia 05c: o valor do campo "Conta ou cartão" da regra ("conta:4", "cartao:2" ou nulo, todas as contas e cartões). */
+function lugarDaRegra(regra: Regra | null): string | null {
+  if (regra?.contaId != null) {
+    return `conta:${regra.contaId}`;
+  }
+  return regra?.cartaoId != null ? `cartao:${regra.cartaoId}` : null;
+}
+
+/** A conta e o cartão do valor do campo: "conta:4" → { contaId: 4, cartaoId: null }. */
+function idsDoLugar(lugar: string | null): { readonly contaId: number | null; readonly cartaoId: number | null } {
+  const [tipo, id] = (lugar ?? '').split(':');
+  return { contaId: tipo === 'conta' ? Number(id) : null, cartaoId: tipo === 'cartao' ? Number(id) : null };
+}
 
 const FALHA = 'Não foi possível salvar a regra. Tente novamente.';
 const FALHA_DA_PREVIA = 'Não foi possível calcular a prévia.';
@@ -61,10 +83,10 @@ export function letrasOuNumeros(texto: string): number {
 }
 
 /**
- * "Nova regra" e "Editar regra" (decisões 5 a 12). Carrega as contas e as categorias; a natureza vem
- * da categoria escolhida. A prévia (decisão 12) é pedida 300 ms depois de cada mudança; um erro nela
- * aparece no lugar dela (a mensagem do 422 ou uma neutra) e não impede salvar. Na Nova regra, a 1ª
- * regra atual entra no aviso da posição; se a lista não vier, o aviso fica sem ela.
+ * "Nova regra" e "Editar regra" (decisões 5 a 12). Carrega as contas, os cartões (Fatia 05c) e as categorias; a natureza
+ * vem da categoria escolhida. O filtro é "Conta ou cartão" (decisão 44 da 05c). A prévia (decisão 12) é pedida 300 ms
+ * depois de cada mudança; um erro nela aparece no lugar dela (a mensagem do 422 ou uma neutra) e não impede salvar. Na
+ * Nova regra, a 1ª regra atual entra no aviso da posição; se a lista não vier, o aviso fica sem ela.
  */
 @Component({
   selector: 'app-regra-dialogo',
@@ -86,10 +108,11 @@ export class RegraDialogo {
     condicao: new FormControl<CondicaoDaRegra>(this.regra?.condicao ?? this.dados.sugestao?.condicao ?? 'CONTEM', { nonNullable: true }),
     texto: new FormControl(this.regra?.texto ?? this.dados.sugestao?.texto ?? '', { nonNullable: true }),
     categoria: new FormControl<number | null>(this.regra?.categoriaId ?? this.dados.sugestao?.categoriaId ?? null),
-    conta: new FormControl<number | null>(this.regra?.contaId ?? null),
+    conta: new FormControl<string | null>(lugarDaRegra(this.regra)),
     descricao: new FormControl(this.regra?.descricao ?? this.dados.sugestao?.descricao ?? '', { nonNullable: true }),
   });
   readonly contas = signal<ListaDeContas | null>(null);
+  readonly cartoes = signal<ListaDeCartoes | null>(null);
   readonly categorias = signal<ListaDeCategorias | null>(null);
   readonly falhaAoCarregar = signal(false);
   readonly enviando = signal(false);
@@ -109,14 +132,23 @@ export class RegraDialogo {
   readonly opcoesDeDespesa = computed(() => this.opcoes('DESPESA'));
   readonly opcoesDeReceita = computed(() => this.opcoes('RECEITA'));
   /** As contas ativas; na edição, a arquivada que a regra já tem. */
-  readonly opcoesDeConta = computed<OpcaoDoSelect[]>(() => {
+  readonly opcoesDeConta = computed<OpcaoDoLugar[]>(() => {
     const lista = this.contas();
-    const ativas = (lista?.ativas ?? []).map((conta) => ({ id: conta.id, rotulo: conta.nome }));
+    const ativas = (lista?.ativas ?? []).map((conta) => ({ valor: `conta:${conta.id}`, rotulo: conta.nome }));
     const regra = this.regra;
     if (regra !== null && regra.contaArquivada && regra.contaId !== null) {
-      return [{ id: regra.contaId, rotulo: `${regra.contaNome} (arquivada)` }, ...ativas];
+      return [{ valor: `conta:${regra.contaId}`, rotulo: `${regra.contaNome} (arquivada)` }, ...ativas];
     }
     return ativas;
+  });
+  /** Fatia 05c: os cartões ativos; na edição, o arquivado que a regra já tem. */
+  readonly opcoesDeCartao = computed<OpcaoDoLugar[]>(() => {
+    const ativos = (this.cartoes()?.ativos ?? []).map((cartao) => ({ valor: `cartao:${cartao.id}`, rotulo: cartao.nome }));
+    const regra = this.regra;
+    if (regra !== null && regra.cartaoArquivado === true && regra.cartaoId != null) {
+      return [{ valor: `cartao:${regra.cartaoId}`, rotulo: `${regra.cartaoNome} (arquivado)` }, ...ativos];
+    }
+    return ativos;
   });
   /** "Categoria de despesa: a regra só pega despesas." (decisão 6). */
   readonly dicaDaCategoria = computed(() => {
@@ -129,9 +161,10 @@ export class RegraDialogo {
   });
 
   constructor() {
-    forkJoin([inject(ContasService).listar(), inject(CategoriasService).listar()]).subscribe({
-      next: ([contas, categorias]) => {
+    forkJoin([inject(ContasService).listar(), inject(CartoesService).listar(), inject(CategoriasService).listar()]).subscribe({
+      next: ([contas, cartoes, categorias]) => {
         this.contas.set(contas);
+        this.cartoes.set(cartoes);
         this.categorias.set(categorias);
       },
       error: () => this.falhaAoCarregar.set(true),
@@ -193,7 +226,7 @@ export class RegraDialogo {
     const dados: DadosDaRegra = {
       condicao: valores.condicao,
       texto: valores.texto.trim(),
-      contaId: valores.conta,
+      ...idsDoLugar(valores.conta),
       categoriaId: valores.categoria as number,
       descricao: valores.descricao.trim() === '' ? null : valores.descricao.trim(),
     };
@@ -233,13 +266,15 @@ export class RegraDialogo {
   }
 
   /** O pedido da prévia, ou nulo enquanto o texto não serve. */
-  private pedidoDePrevia(): { condicao: CondicaoDaRegra; texto: string; contaId: number | null; categoriaId: number | null } | null {
+  private pedidoDePrevia(): {
+    condicao: CondicaoDaRegra; texto: string; contaId: number | null; cartaoId: number | null; categoriaId: number | null;
+  } | null {
     const valores = this.formulario.getRawValue();
     const texto = valores.texto.trim();
     if (letrasOuNumeros(texto) < 2 || texto.length > 255) {
       return null;
     }
-    return { condicao: valores.condicao, texto, contaId: valores.conta, categoriaId: valores.categoria };
+    return { condicao: valores.condicao, texto, ...idsDoLugar(valores.conta), categoriaId: valores.categoria };
   }
 
   /** As ativas da natureza, como no diálogo de lançamento (subcategoria recuada); na edição, a arquivada que a regra já tem. */
@@ -295,6 +330,8 @@ export class RegraDialogo {
       this.errosDaApi.set({ categoria: detalheDoErro(erro, 'Escolha outra categoria.') });
     } else if (status === 422 && codigo === 'CONTA_INVALIDA') {
       this.errosDaApi.set({ conta: detalheDoErro(erro, 'Escolha outra conta.') });
+    } else if (status === 422 && codigo === 'CARTAO_INVALIDO') {
+      this.errosDaApi.set({ conta: detalheDoErro(erro, 'Escolha outro cartão.') });
     } else if (status === 422 || status === 404) {
       this.erroGeral.set(detalheDoErro(erro, FALHA));
     } else {

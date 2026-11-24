@@ -11,7 +11,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * A V4 como o ADR 0012 e o ADR 0013 pedem: o uso de conta e de categoria é RESTRICT, nunca CASCADE. As
  * listas já contam o que a V5 acrescentou a lançamentos (a FK e os dois índices da importação), o que a V8 acrescentou
  * (Fatia 05a: as FKs do cartão, da fatura e da compra, RESTRICT, e os três índices das parcelas) e o que a V9 acrescentou
- * (Fatia 05b: a FK da fatura paga, RESTRICT, e o índice dos pagamentos).
+ * (Fatia 05b: a FK da fatura paga, RESTRICT, e o índice dos pagamentos) e o que a V10 acrescentou
+ * (a FK da importação em cartão, RESTRICT).
  */
 class MigracaoDeLancamentosIT extends IntegracaoBase {
 
@@ -26,7 +27,8 @@ class MigracaoDeLancamentosIT extends IntegracaoBase {
         assertThat(jdbc.queryForList("select conname || ':' || confdeltype::text from pg_constraint where contype = 'f' "
                 + "and conrelid in ('lancamentos'::regclass, 'transferencias'::regclass) order by conname", String.class))
                 .containsExactly("fk_lancamentos_cartao:r", "fk_lancamentos_categoria:r", "fk_lancamentos_compra:r", "fk_lancamentos_conta:r",
-                        "fk_lancamentos_fatura:r", "fk_lancamentos_fatura_paga:r", "fk_lancamentos_importacao:r", "fk_lancamentos_transferencia:c",
+                        "fk_lancamentos_fatura:r", "fk_lancamentos_fatura_paga:r", "fk_lancamentos_importacao:r",
+                        "fk_lancamentos_importacao_do_cartao:r", "fk_lancamentos_transferencia:c",
                         "lancamentos_usuario_id_fkey:c", "transferencias_usuario_id_fkey:c");
         assertThat(jdbc.queryForList("select indexname from pg_indexes where tablename = 'lancamentos' order by indexname",
                 String.class)).containsExactly("ix_lancamentos_cartao", "ix_lancamentos_categoria", "ix_lancamentos_fatura",

@@ -2,8 +2,11 @@ package com.flux.lancamentos.interno;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -28,14 +31,16 @@ public class ImportadosNosLancamentos implements LancamentosImportados {
     private final CategoriasConsulta categorias;
     private final ConversaoService conversoes;
     private final PagamentoService pagamentos;
+    private final ImportacaoNaFatura faturas;
 
     public ImportadosNosLancamentos(LancamentoRepository repositorio, RegrasDosLancamentos regras, CategoriasConsulta categorias,
-                                    ConversaoService conversoes, PagamentoService pagamentos) {
+                                    ConversaoService conversoes, PagamentoService pagamentos, ImportacaoNaFatura faturas) {
         this.repositorio = repositorio;
         this.regras = regras;
         this.categorias = categorias;
         this.conversoes = conversoes;
         this.pagamentos = pagamentos;
+        this.faturas = faturas;
     }
 
     @Override
@@ -81,9 +86,14 @@ public class ImportadosNosLancamentos implements LancamentosImportados {
     @Override
     @Transactional(readOnly = true)
     public List<Contagem> contagens(Long usuarioId) {
-        return repositorio.quantidadesDasImportacoes(usuarioId).stream()
-                .map(quantidades -> new Contagem(quantidades.importacaoId(), quantidades.editados(), quantidades.excluidos()))
-                .toList();
+        List<Contagem> contagens = new ArrayList<>(repositorio.quantidadesDasImportacoes(usuarioId).stream()
+                .map(quantidades -> new Contagem(quantidades.importacaoId(), quantidades.editados(), quantidades.excluidos(), 0))
+                .toList());
+        Map<Long, List<CompraDaImportacao>> porImportacao = repositorio.comprasDasImportacoes(usuarioId).stream()
+                .collect(Collectors.groupingBy(CompraDaImportacao::importacaoId, LinkedHashMap::new, Collectors.toList()));
+        porImportacao.forEach((importacaoId, compras) -> contagens.add(new Contagem(importacaoId,
+                compras.stream().mapToLong(CompraDaImportacao::editada).sum(), 0, compras.size())));
+        return contagens;
     }
 
     @Override
@@ -109,6 +119,46 @@ public class ImportadosNosLancamentos implements LancamentosImportados {
     @Override
     public List<PagamentoConvertido> pagamentosConvertidos(Long usuarioId) {
         return pagamentos.convertidosDasImportacoes(usuarioId);
+    }
+
+    @Override
+    public List<FaturaParaImportar> faturasParaImportar(Long usuarioId, Long cartaoId, LocalDate data) {
+        return faturas.faturasParaImportar(usuarioId, cartaoId, data);
+    }
+
+    @Override
+    public List<ExistenteNoCartao> existentesNoCartao(Long usuarioId, Long cartaoId, YearMonth fatura, LocalDate inicio, LocalDate fim,
+                                                       Collection<String> chaves) {
+        return faturas.existentes(usuarioId, cartaoId, fatura, inicio, fim, chaves);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Long faturaParaImportar(Long usuarioId, Long cartaoId, YearMonth mes) {
+        return faturas.faturaParaImportar(usuarioId, cartaoId, mes);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public int gravarNaFatura(Long usuarioId, Long cartaoId, YearMonth fatura, Long importacaoId, List<NovaNaFatura> novas) {
+        return faturas.gravar(usuarioId, cartaoId, fatura, importacaoId, novas);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public int corrigirParcelas(Long usuarioId, List<ValorDoBanco> valores) {
+        return faturas.corrigir(usuarioId, valores);
+    }
+
+    @Override
+    public Map<Long, YearMonth> mesesDasFaturas(Long usuarioId, Collection<Long> faturaIds) {
+        return faturas.meses(usuarioId, faturaIds);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public int desfazerDaFatura(Long usuarioId, Long importacaoId) {
+        return faturas.apagarCompras(usuarioId, importacaoId);
     }
 
     /**

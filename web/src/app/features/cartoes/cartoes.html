@@ -85,6 +85,7 @@
 <mat-menu #menuDoCartao="matMenu" class="flux-menu" xPosition="before">
   <ng-template matMenuContent let-cartao="cartao">
     <button mat-menu-item type="button" (click)="verFatura(cartao)"><app-icone matMenuItemIcon nome="cartao" />Ver fatura</button>
+    <button mat-menu-item type="button" (click)="importarFatura(cartao)"><app-icone matMenuItemIcon nome="importar" />Importar fatura</button>
     <button mat-menu-item type="button" (click)="editar(cartao)"><app-icone matMenuItemIcon nome="editar" />Editar</button>
     <button mat-menu-item type="button" (click)="arquivar(cartao)"><app-icone matMenuItemIcon nome="arquivar" />Arquivar</button>
     <mat-divider />
