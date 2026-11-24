@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 import com.flux.cartoes.CalendarioDoCartao;
 import com.flux.cartoes.CartaoResumo;
 import com.flux.cartoes.MovimentoDosCartoes;
+import com.flux.cartoes.LimpezaDoCartao;
 import com.flux.cartoes.TrocaDeDias;
 import com.flux.cartoes.UsoDoCartao;
 import com.flux.cartoes.interno.dto.CartaoResponse;
@@ -48,15 +49,18 @@ public class CartaoService {
     private final ObjectProvider<MovimentoDosCartoes> movimento;
     private final ObjectProvider<UsoDoCartao> usos;
     private final ObjectProvider<TrocaDeDias> trocaDeDias;
+    private final ObjectProvider<LimpezaDoCartao> limpezas;
     private final Clock clock;
 
     public CartaoService(CartaoRepository repositorio, ContasConsulta contas, ObjectProvider<MovimentoDosCartoes> movimento,
-                         ObjectProvider<UsoDoCartao> usos, ObjectProvider<TrocaDeDias> trocaDeDias, Clock clock) {
+                         ObjectProvider<UsoDoCartao> usos, ObjectProvider<TrocaDeDias> trocaDeDias,
+                         ObjectProvider<LimpezaDoCartao> limpezas, Clock clock) {
         this.repositorio = repositorio;
         this.contas = contas;
         this.movimento = movimento;
         this.usos = usos;
         this.trocaDeDias = trocaDeDias;
+        this.limpezas = limpezas;
         this.clock = clock;
     }
 
@@ -175,6 +179,7 @@ public class CartaoService {
             throw new RegraDeNegocioException("Este cartão não pode ser excluído porque tem " + uso
                     + ". Arquive o cartão para tirá-lo dos seletores.", "CARTAO_EM_USO").com("uso", uso);
         }
+        limpezas.orderedStream().forEach(limpeza -> limpeza.antesDeExcluir(usuarioId, id));
         repositorio.delete(cartao);
     }
 

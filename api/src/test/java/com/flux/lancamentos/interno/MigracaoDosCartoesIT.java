@@ -34,7 +34,7 @@ class MigracaoDosCartoesIT extends CartoesBase {
                 .isInstanceOf(DataIntegrityViolationException.class).hasMessageContaining("ux_lancamentos_parcela");
         assertThatThrownBy(() -> jdbc.update("update lancamentos set importacao_id = 1, chave_importacao = 'x', descricao_banco = 'x', "
                 + "origem = 'IMPORTADO' where id = ?", parcela))
-                .isInstanceOf(DataIntegrityViolationException.class).hasMessageContaining("ck_lancamentos_importado_em_conta");
+                .isInstanceOf(DataIntegrityViolationException.class).hasMessageContaining("fk_lancamentos_importacao_do_cartao");
         assertThatThrownBy(() -> jdbc.update("update compras set valor_total = 0.02 where id = ?", compra))
                 .isInstanceOf(DataIntegrityViolationException.class).hasMessageContaining("ck_compras_valor");
         assertThatThrownBy(() -> jdbc.update("update cartoes set dia_fechamento = 28, dia_vencimento = 30 where id = ?", horizonte))

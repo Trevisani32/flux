@@ -184,11 +184,11 @@ class ImportacaoIT extends ImportacaoBase {
                 .collect(Collectors.joining("", "<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><BANKTRANLIST>",
                         "</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>"));
 
+        // Fatia 05c (decisão 39): a fatura de cartão numa conta manda escolher um cartão.
         assertRecusa(previa(usuario, horizonte, "fatura.ofx", fixture("cartao.ofx")), "EXTRATO_DE_CARTAO",
-                "Este arquivo é a fatura de um cartão de crédito. A importação de faturas chega junto com os cartões; por enquanto, "
-                        + "importe o extrato da conta.");
+                "Este arquivo é a fatura de um cartão: escolha um cartão no lugar da conta.");
         assertRecusa(previa(usuario, horizonte, "fatura.csv", "date,title,amount\n2026-11-03,Streaming,39.90\n".getBytes(StandardCharsets.UTF_8)),
-                "EXTRATO_DE_CARTAO", "Este CSV parece ser a fatura do cartão Nubank. A importação de faturas chega junto com os cartões.");
+                "EXTRATO_DE_CARTAO", "Este arquivo é a fatura de um cartão: escolha um cartão no lugar da conta.");
         assertRecusa(previa(usuario, horizonte, "duas.ofx", duasContas.getBytes(StandardCharsets.UTF_8)), "VARIAS_CONTAS",
                 "Este arquivo tem extratos de 2 contas. Exporte uma conta por arquivo.");
         assertRecusa(previa(usuario, horizonte, "extrato.pdf", "%PDF-1.7 fictício".getBytes(StandardCharsets.UTF_8)), "ARQUIVO_INVALIDO",

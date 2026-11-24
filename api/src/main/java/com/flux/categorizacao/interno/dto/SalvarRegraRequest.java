@@ -13,6 +13,11 @@ public record SalvarRegraRequest(
         @NotNull(message = "Escolha a condição.") Condicao condicao,
         @NotBlank(message = "Escreva o texto da regra.") @Size(max = 255, message = "O texto pode ter até 255 caracteres.") String texto,
         Long contaId,
+        Long cartaoId,
         @NotNull(message = "Escolha a categoria.") Long categoriaId,
         @Size(max = 255, message = "A descrição pode ter até 255 caracteres.") String descricao) {
+
+    public SalvarRegraRequest(Condicao condicao, String texto, Long contaId, Long categoriaId, String descricao) {
+        this(condicao, texto, contaId, null, categoriaId, descricao);
+    }
 }

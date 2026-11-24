@@ -28,7 +28,19 @@ public record ImportacaoResponse(
         long excluidos,
         Instant desfeitaEm,
         List<Transferencia> transferencias,
-        List<Pagamento> pagamentos) {
+        List<Pagamento> pagamentos,
+        Long cartaoId,
+        String cartaoNome,
+        boolean cartaoArquivado,
+        String faturaMes) {
+
+    public ImportacaoResponse(Long id, String nomeArquivo, Long contaId, String contaNome, boolean contaArquivada, Instant criadaEm,
+                              LocalDate dataInicio, LocalDate dataFim, int importadas, int jaImportadas, int desmarcadas, int deFora,
+                              long editados, long excluidos, Instant desfeitaEm, List<Transferencia> transferencias,
+                              List<Pagamento> pagamentos) {
+        this(id, nomeArquivo, contaId, contaNome, contaArquivada, criadaEm, dataInicio, dataFim, importadas, jaImportadas,
+                desmarcadas, deFora, editados, excluidos, desfeitaEm, transferencias, pagamentos, null, null, false, null);
+    }
 
     /**
      * Um lançamento da importação numa transferência: a data dele, a conta do outro lado e o tipo que o

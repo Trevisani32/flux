@@ -28,5 +28,14 @@ public record CompraResponse(
         boolean categoriaArquivada,
         String observacao,
         List<ParcelaDaCompra> parcelasNoFlux,
-        String travaDaFaturaPaga) {
+        String travaDaFaturaPaga,
+        boolean importada) {
+
+    public CompraResponse(Long id, String tipo, Long cartaoId, String cartaoNome, boolean somenteLeitura, LocalDate data, String descricao,
+                          BigDecimal valorTotal, int parcelas, int parcelaInicial, Long categoriaId, String categoriaNome,
+                          String categoriaMaeNome, boolean categoriaArquivada, String observacao, List<ParcelaDaCompra> parcelasNoFlux,
+                          String travaDaFaturaPaga) {
+        this(id, tipo, cartaoId, cartaoNome, somenteLeitura, data, descricao, valorTotal, parcelas, parcelaInicial, categoriaId,
+                categoriaNome, categoriaMaeNome, categoriaArquivada, observacao, parcelasNoFlux, travaDaFaturaPaga, false);
+    }
 }

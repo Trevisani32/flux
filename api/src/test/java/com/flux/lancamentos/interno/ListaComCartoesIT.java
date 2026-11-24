@@ -69,16 +69,21 @@ class ListaComCartoesIT extends CartoesBase {
 
     /** Decisão 27: as regras não olham lançamentos de fatura, e a conversão só vê contas. */
     @Test
-    void regrasEConversaoIgnoramOsLancamentosDeFatura() {
+    void asRegrasOlhamACompraUmaVezEAConversaoSoVeContas() {
         UsuarioDeTeste usuario = usuariosDeTeste.criar();
         long conta = novaConta(usuario, "Banco Horizonte");
         long outra = novaConta(usuario, "Conta conjunta");
         long horizonte = novoCartao(usuario, "Cartão Horizonte", 3, 10, conta);
         long compras = idDaCategoria(usuario, "Compras");
         api.idCriado(api.post(usuario, "/api/compras", compra(horizonte, "2025-11-05", "Mercado do cartao", "33.34", 1, 1, null)));
-        assertThat(paraRegras.receitasEDespesas(usuario.id())).isEmpty();
+        assertThat(paraRegras.receitasEDespesas(usuario.id())).singleElement().satisfies(candidato -> {
+            assertThat(candidato.cartaoId()).isEqualTo(horizonte);
+            assertThat(candidato.compraId()).isNotNull();
+            assertThat(candidato.data()).isEqualTo(java.time.LocalDate.parse("2025-11-05"));
+            assertThat(candidato.valor()).isEqualByComparingTo("-33.34");
+        });
         assertThat(api.post(usuario, "/api/regras/previa", "{\"condicao\":\"CONTEM\",\"texto\":\"mercado do cartao\",\"contaId\":null,"
-                + "\"categoriaId\":" + compras + "}")).hasStatus(200).bodyJson().extractingPath("casam").isEqualTo(0);
+                + "\"categoriaId\":" + compras + "}")).hasStatus(200).bodyJson().extractingPath("casam").isEqualTo(1);
 
         Long importacao = jdbc.queryForObject("insert into importacoes (usuario_id, conta_id, formato, nome_arquivo, hash_arquivo, "
                 + "data_inicio, data_fim, lidas, importadas, duplicadas, anteriores, fora, desmarcadas) values (?, ?, 'OFX', 'teste.ofx', "

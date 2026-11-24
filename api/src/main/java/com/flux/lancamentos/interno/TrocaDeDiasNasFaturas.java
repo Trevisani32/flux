@@ -13,6 +13,8 @@ import java.util.stream.Collectors;
 import com.flux.cartoes.CalendarioDoCartao;
 import com.flux.cartoes.CartaoResumo;
 import com.flux.cartoes.TrocaDeDias;
+import com.flux.cartoes.ImportacoesDoCartao;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,21 +37,23 @@ public class TrocaDeDiasNasFaturas implements TrocaDeDias {
     private final CompraRepository compras;
     private final Recolocacao recolocacao;
     private final RegrasDosLancamentos regras;
+    private final ObjectProvider<ImportacoesDoCartao> importacoes;
 
     public TrocaDeDiasNasFaturas(FaturaRepository faturas, LancamentoRepository lancamentos, CompraRepository compras, Recolocacao recolocacao,
-                                 RegrasDosLancamentos regras) {
+                                 RegrasDosLancamentos regras, ObjectProvider<ImportacoesDoCartao> importacoes) {
         this.faturas = faturas;
         this.lancamentos = lancamentos;
         this.compras = compras;
         this.recolocacao = recolocacao;
         this.regras = regras;
+        this.importacoes = importacoes;
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<Previa> previa(Long usuarioId, CartaoResumo cartao, int diaFechamento, int diaVencimento, LocalDate hoje) {
         FaturasDoCartao antes = FaturasDoCartao.carregar(faturas, usuarioId, cartao);
-        if (vazio(antes, lancamentos.totaisDoCartao(usuarioId, cartao.id()), lancamentos.pagosDoCartao(usuarioId, cartao.id()))) {
+        if (vazio(usuarioId, cartao.id(), antes, lancamentos.totaisDoCartao(usuarioId, cartao.id()), lancamentos.pagosDoCartao(usuarioId, cartao.id()))) {
             return Optional.empty();
         }
         YearMonth aberta = antes.faturaDe(hoje);
@@ -72,7 +76,7 @@ public class TrocaDeDiasNasFaturas implements TrocaDeDias {
     public void aplicar(Long usuarioId, CartaoResumo cartao, int diaFechamento, int diaVencimento, LocalDate hoje) {
         FaturasDoCartao antes = FaturasDoCartao.carregar(faturas, usuarioId, cartao);
         List<TotalDaFatura> totais = lancamentos.totaisDoCartao(usuarioId, cartao.id());
-        if (vazio(antes, totais, lancamentos.pagosDoCartao(usuarioId, cartao.id()))) {
+        if (vazio(usuarioId, cartao.id(), antes, totais, lancamentos.pagosDoCartao(usuarioId, cartao.id()))) {
             // As faturas que restaram (de compras excluídas, de um ajuste desfeito ou de uma troca anterior) não têm nada
             // dentro: saem, dentro da trava de cartões, e a próxima compra grava as dela com os dias novos. Nenhum
             // lançamento aponta para elas; se apontasse, a FK recusaria.
@@ -114,8 +118,9 @@ public class TrocaDeDiasNasFaturas implements TrocaDeDias {
      * (ADR 0017). A fatura gravada só por uma compra que foi excluída, por uma troca, por um ajuste desfeito ("Voltar ao
      * fechamento normal"), por um pagamento excluído ou por uma marca desfeita ("Desmarcar") não conta.
      */
-    private static boolean vazio(FaturasDoCartao doCartao, List<TotalDaFatura> totais, List<PagoDaFatura> pagos) {
-        return totais.isEmpty() && pagos.isEmpty()
+    private boolean vazio(Long usuarioId, Long cartaoId, FaturasDoCartao doCartao, List<TotalDaFatura> totais, List<PagoDaFatura> pagos) {
+        ImportacoesDoCartao consulta = importacoes.getIfAvailable();
+        return totais.isEmpty() && pagos.isEmpty() && (consulta == null || !consulta.existe(usuarioId, cartaoId))
                 && doCartao.porMes().values().stream().noneMatch(fatura -> fatura.isFechamentoAjustado() || fatura.pagaFora());
     }
 }

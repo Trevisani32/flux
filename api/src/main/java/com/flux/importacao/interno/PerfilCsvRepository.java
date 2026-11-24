@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface PerfilCsvRepository extends JpaRepository<PerfilCsv, Long> {
 
     Optional<PerfilCsv> findByContaIdAndUsuarioId(Long contaId, Long usuarioId);
+
+    Optional<PerfilCsv> findByCartaoIdAndUsuarioId(Long cartaoId, Long usuarioId);
 }

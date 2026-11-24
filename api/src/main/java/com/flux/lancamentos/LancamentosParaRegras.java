@@ -27,8 +27,13 @@ public interface LancamentosParaRegras {
      * Um lançamento para as regras. {@code descricaoBanco} só no importado; {@code categoriaId} nulo =
      * sem categoria.
      */
-    record Candidato(Long id, Long contaId, LocalDate data, BigDecimal valor, String descricao, String descricaoBanco,
-                     Long categoriaId) {
+    record Candidato(Long id, Long contaId, Long cartaoId, Long compraId, LocalDate data, BigDecimal valor, String descricao,
+                     String descricaoBanco, Long categoriaId) {
+
+        public Candidato(Long id, Long contaId, LocalDate data, BigDecimal valor, String descricao, String descricaoBanco,
+                         Long categoriaId) {
+            this(id, contaId, null, null, data, valor, descricao, descricaoBanco, categoriaId);
+        }
 
         public boolean importado() {
             return descricaoBanco != null;
@@ -37,6 +42,10 @@ public interface LancamentosParaRegras {
         /** O texto que as regras olham (decisão 3): o do extrato no importado, a descrição no manual. */
         public String textoParaRegras() {
             return importado() ? descricaoBanco : descricao;
+        }
+
+        public boolean compraDoCartao() {
+            return compraId != null;
         }
     }
 

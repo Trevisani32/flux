@@ -115,9 +115,18 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, Long> {
                                             @Param("inicio") LocalDate inicio, @Param("fim") LocalDate fim,
                                             @Param("chaves") Collection<String> chaves);
 
+    @Query("select distinct l from Lancamento l join Compra c on c.id = l.compraId where l.usuarioId = :usuarioId "
+            + "and l.cartaoId = :cartaoId and (l.faturaId = :faturaId or c.dataCompra between :inicio and :fim "
+            + "or l.chaveImportacao in :chaves) order by l.data, l.id")
+    List<Lancamento> existentesNoCartao(@Param("usuarioId") Long usuarioId, @Param("cartaoId") Long cartaoId,
+                                        @Param("faturaId") Long faturaId, @Param("inicio") LocalDate inicio,
+                                        @Param("fim") LocalDate fim, @Param("chaves") Collection<String> chaves);
+
     @Modifying
     @Query("delete from Lancamento l where l.usuarioId = :usuarioId and l.importacaoId = :importacaoId")
     int apagarDaImportacao(@Param("usuarioId") Long usuarioId, @Param("importacaoId") Long importacaoId);
+
+    List<Lancamento> findAllByUsuarioIdAndImportacaoIdAndFaturaIdIsNotNull(Long usuarioId, Long importacaoId);
 
     @Modifying
     @Query("delete from Lancamento l where l.usuarioId = :usuarioId and l.contaId = :contaId and l.ignoradoEm is not null")
@@ -127,20 +136,30 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, Long> {
     @Query("select new com.flux.lancamentos.interno.QuantidadesDaImportacao(l.importacaoId, "
             + "sum(case when l.ignoradoEm is null and l.atualizadoEm > l.criadoEm then 1L else 0L end), "
             + "sum(case when l.ignoradoEm is not null then 1L else 0L end)) "
-            + "from Lancamento l where l.usuarioId = :usuarioId and l.importacaoId is not null group by l.importacaoId")
+            + "from Lancamento l where l.usuarioId = :usuarioId and l.importacaoId is not null and l.compraId is null "
+            + "group by l.importacaoId")
     List<QuantidadesDaImportacao> quantidadesDasImportacoes(@Param("usuarioId") Long usuarioId);
+
+    @Query("select new com.flux.lancamentos.interno.CompraDaImportacao(l.importacaoId, l.compraId, "
+            + "max(case when l.atualizadoEm > l.criadoEm then 1L else 0L end)) "
+            + "from Lancamento l where l.usuarioId = :usuarioId and l.importacaoId is not null and l.compraId is not null "
+            + "group by l.importacaoId, l.compraId")
+    List<CompraDaImportacao> comprasDasImportacoes(@Param("usuarioId") Long usuarioId);
 
     List<Lancamento> findAllByUsuarioIdAndImportacaoIdAndIgnoradoEmIsNotNullOrderByIgnoradoEmDescIdDesc(Long usuarioId,
                                                                                                     Long importacaoId);
 
     /**
-     * Regras (Fatia 04b): as receitas e despesas de conta não ignoradas, só com as colunas que as regras usam. As de
-     * fatura ficam de fora até a 05c (Fatia 05a, decisão 27), e o pagamento de fatura (Fatia 05b) nunca entra: não é
-     * receita nem despesa.
+     * Regras: as receitas e despesas não ignoradas. Desde a 05c, traz uma compra de cartão só uma vez, pela primeira
+     * parcela, com a data e o total da compra; pagamento de fatura nunca entra.
      */
-    @Query("select new com.flux.lancamentos.interno.ParaAsRegras(l.id, l.contaId, l.data, l.valor, l.descricao, l.descricaoBanco, "
-            + "l.categoriaId) from Lancamento l where l.usuarioId = :usuarioId and l.tipo <> :transferencia and l.faturaId is null "
-            + "and l.faturaPagaId is null and l.ignoradoEm is null "
+    @Query("select new com.flux.lancamentos.interno.ParaAsRegras(l.id, l.contaId, l.cartaoId, l.compraId, "
+            + "case when c.id is null then l.data else c.dataCompra end, "
+            + "case when c.id is null then l.valor when l.valor < 0 then -c.valorTotal else c.valorTotal end, "
+            + "l.descricao, l.descricaoBanco, l.categoriaId) from Lancamento l left join Compra c on c.id = l.compraId "
+            + "where l.usuarioId = :usuarioId and l.tipo <> :transferencia and l.faturaPagaId is null and l.ignoradoEm is null "
+            + "and (l.faturaId is null or not exists (select outra.id from Lancamento outra where outra.compraId = l.compraId "
+            + "and outra.numeroParcela < l.numeroParcela)) "
             + "order by l.data desc, l.id desc")
     List<ParaAsRegras> paraAsRegras(@Param("usuarioId") Long usuarioId, @Param("transferencia") TipoLancamento transferencia);
 

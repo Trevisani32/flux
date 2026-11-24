@@ -20,7 +20,8 @@ class MigracaoDasRegrasIT extends IntegracaoBase {
         // confdeltype: r = RESTRICT, c = CASCADE.
         assertThat(jdbc.queryForList("select conname || ':' || confdeltype::text from pg_constraint where contype = 'f' "
                 + "and conrelid = 'regras_categorizacao'::regclass order by conname", String.class))
-                .containsExactly("fk_regras_categoria:r", "fk_regras_conta:c", "regras_categorizacao_usuario_id_fkey:c");
+                .containsExactly("fk_regras_cartao:c", "fk_regras_categoria:r", "fk_regras_conta:c",
+                        "regras_categorizacao_usuario_id_fkey:c");
         assertThat(jdbc.queryForObject("select pg_get_constraintdef(oid) from pg_constraint where conname = 'fk_regras_categoria'",
                 String.class)).isEqualTo("FOREIGN KEY (categoria_id, usuario_id, natureza) REFERENCES categorias(id, usuario_id, natureza) "
                 + "ON DELETE RESTRICT");
@@ -28,12 +29,13 @@ class MigracaoDasRegrasIT extends IntegracaoBase {
                 + "where conname = 'uq_regras_posicao'", String.class)).isEqualTo("true:true");
         assertThat(jdbc.queryForList("select conname from pg_constraint where contype = 'c' and conrelid = 'regras_categorizacao'::regclass "
                 + "order by conname", String.class))
-                .containsExactly("ck_regras_condicao", "ck_regras_natureza", "ck_regras_posicao", "ck_regras_texto");
+                .containsExactly("ck_regras_condicao", "ck_regras_conta_ou_cartao", "ck_regras_natureza", "ck_regras_posicao",
+                        "ck_regras_texto");
         assertThat(jdbc.queryForObject("select indexdef from pg_indexes where indexname = 'ux_regras_condicao'", String.class))
                 .isEqualTo("CREATE UNIQUE INDEX ux_regras_condicao ON public.regras_categorizacao USING btree (usuario_id, natureza, "
-                        + "condicao, texto_chave, conta_id) NULLS NOT DISTINCT");
+                        + "condicao, texto_chave, conta_id, cartao_id) NULLS NOT DISTINCT");
         assertThat(jdbc.queryForList("select indexname from pg_indexes where tablename = 'regras_categorizacao' order by indexname",
-                String.class)).containsExactly("ix_regras_categoria", "ix_regras_conta", "regras_categorizacao_pkey", "uq_regras_posicao",
-                "ux_regras_condicao");
+                String.class)).containsExactly("ix_regras_cartao", "ix_regras_categoria", "ix_regras_conta", "regras_categorizacao_pkey",
+                "uq_regras_posicao", "ux_regras_condicao");
     }
 }

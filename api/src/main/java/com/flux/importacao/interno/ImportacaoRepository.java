@@ -21,4 +21,6 @@ public interface ImportacaoRepository extends JpaRepository<Importacao, Long> {
 
     /** Aviso de extrato de outra conta (decisão 11): o mesmo BANKID e ACCTID, não desfeito, o mais recente primeiro. */
     List<Importacao> findAllByUsuarioIdAndExtratoHashAndDesfeitaEmIsNullOrderByCriadaEmDescIdDesc(Long usuarioId, String extratoHash);
+
+    boolean existsByUsuarioIdAndCartaoId(Long usuarioId, Long cartaoId);
 }

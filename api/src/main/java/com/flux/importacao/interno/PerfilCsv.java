@@ -24,8 +24,11 @@ public class PerfilCsv {
     @Column(name = "usuario_id", nullable = false)
     private Long usuarioId;
 
-    @Column(name = "conta_id", nullable = false)
+    @Column(name = "conta_id")
     private Long contaId;
+
+    @Column(name = "cartao_id")
+    private Long cartaoId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -60,12 +63,21 @@ public class PerfilCsv {
     @Column(name = "atualizado_em", nullable = false)
     private Instant atualizadoEm;
 
+    @Column(name = "compras_positivas", nullable = false)
+    private boolean comprasPositivas;
+
     protected PerfilCsv() {
     }
 
     public PerfilCsv(Long usuarioId, Long contaId) {
         this.usuarioId = usuarioId;
         this.contaId = contaId;
+    }
+
+    public static PerfilCsv doCartao(Long usuarioId, Long cartaoId) {
+        PerfilCsv perfil = new PerfilCsv(usuarioId, null);
+        perfil.cartaoId = cartaoId;
+        return perfil;
     }
 
     public void alterar(FormatoCsv formato, Instant agora) {
@@ -78,11 +90,12 @@ public class PerfilCsv {
         this.colunaSaidas = formato.colunaSaidas();
         this.colunaIdentificador = formato.colunaIdentificador();
         this.separadorDecimal = formato.separadorDecimal();
+        this.comprasPositivas = Boolean.TRUE.equals(formato.comprasPositivas());
         this.atualizadoEm = agora;
     }
 
     public FormatoCsv formato() {
         return new FormatoCsv(separador, linhasDeCabecalho, colunaData, formatoData, colunaDescricao, colunaValor, colunaSaidas,
-                colunaIdentificador, separadorDecimal);
+                colunaIdentificador, separadorDecimal, cartaoId == null ? null : comprasPositivas);
     }
 }

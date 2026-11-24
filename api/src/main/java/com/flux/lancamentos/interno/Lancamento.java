@@ -161,6 +161,22 @@ public class Lancamento {
         return lancamento;
     }
 
+    public static Lancamento importadoNaFatura(Long usuarioId, Long cartaoId, Long faturaId, LocalDate vencimento, Long compraId,
+                                                int numeroParcela, BigDecimal valor, String descricao, String descricaoBanco,
+                                                String chave, Long importacaoId, Long categoriaId, Instant agora) {
+        Lancamento lancamento = daFatura(usuarioId, cartaoId, faturaId, vencimento, compraId, numeroParcela, valor, descricao,
+                categoriaId, null, agora);
+        lancamento.origem = OrigemLancamento.IMPORTADO;
+        lancamento.importacaoId = importacaoId;
+        lancamento.chaveImportacao = chave;
+        lancamento.descricaoBanco = descricaoBanco;
+        return lancamento;
+    }
+
+    public void corrigirValorDoBanco(BigDecimal valor) {
+        this.valor = valor.setScale(2);
+    }
+
     /** Fatia 05a (decisões 7 e 12): a parcela muda de fatura e passa à data do vencimento da nova. */
     public void moverParaFatura(Long faturaId, LocalDate vencimento, Instant agora) {
         this.faturaId = faturaId;

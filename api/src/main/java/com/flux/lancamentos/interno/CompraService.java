@@ -183,6 +183,11 @@ public class CompraService {
             atuais.forEach(parcela -> parcela.alterarTextosDaFatura(dados.descricao(), dados.categoriaId(), dados.observacao(), agora));
             return resposta(usuarioId, compra);
         }
+        if (compra.importada()) {
+            String quem = compra.estorno() ? "Este estorno" : "Esta compra";
+            throw new RegraDeNegocioException(quem + " veio de uma fatura importada: só a descrição, a categoria e a observação mudam.",
+                    "IMPORTADA");
+        }
         // Decisão 35: com uma parcela em fatura paga, só os textos mudam.
         Optional<String> trava = travaDaFaturaPaga(usuarioId, compra, atuais);
         if (trava.isPresent()) {
@@ -334,7 +339,7 @@ public class CompraService {
                 compra.getDataCompra(), primeira.getDescricao(), compra.getValorTotal(), compra.getParcelas(), compra.getParcelaInicial(),
                 categoria == null ? null : categoria.id(), categoria == null ? null : categoria.nome(),
                 categoria == null ? null : categoria.nomeDaMae(), categoria != null && categoria.arquivada(), primeira.getObservacao(),
-                noFlux, travaDaFaturaPaga(usuarioId, compra, parcelas).orElse(null));
+                noFlux, travaDaFaturaPaga(usuarioId, compra, parcelas).orElse(null), compra.importada());
     }
 
     private static TipoLancamento natureza(TipoCompra tipo) {

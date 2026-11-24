@@ -46,7 +46,17 @@ public class ImportacaoController {
 
     /** A revisão: lê e classifica, sem gravar nada. Partes "arquivo" e "contaId". */
     @PostMapping("/previa")
-    public PreviaResponse previa(@RequestPart MultipartFile arquivo, @RequestParam Long contaId) {
+    public PreviaResponse previa(@RequestPart MultipartFile arquivo, @RequestParam(required = false) Long contaId,
+                                 @RequestParam(required = false) Long cartaoId, @RequestParam(required = false) String fatura) {
+        if (cartaoId != null) {
+            if (contaId != null) {
+                throw new com.flux.compartilhado.erro.CampoInvalidoException("contaId", "Escolha uma conta ou um cartão.");
+            }
+            return importacaoService.previaDaFatura(usuarioAtual.id(), cartaoId, fatura, arquivo);
+        }
+        if (contaId == null) {
+            throw new com.flux.compartilhado.erro.CampoInvalidoException("contaId", "Escolha uma conta ou um cartão.");
+        }
         return importacaoService.previa(usuarioAtual.id(), contaId, arquivo);
     }
 
@@ -76,9 +86,10 @@ public class ImportacaoController {
     /** As primeiras linhas do CSV; a parte JSON "formato" é opcional (sem ela, o sugerido). */
     @PostMapping("/amostra")
     public AmostraResponse amostra(@RequestPart MultipartFile arquivo,
-                                   @Valid @RequestPart(required = false) FormatoCsv formato) {
+                                   @Valid @RequestPart(required = false) FormatoCsv formato,
+                                   @RequestParam(defaultValue = "false") boolean cartao) {
         try {
-            return perfilCsvService.amostra(arquivo.getBytes(), formato);
+            return perfilCsvService.amostra(arquivo.getBytes(), formato, cartao);
         } catch (IOException ex) {
             throw new UncheckedIOException(ex);
         }
@@ -92,5 +103,15 @@ public class ImportacaoController {
     @PutMapping("/perfis/{contaId}")
     public FormatoCsv salvarPerfil(@PathVariable Long contaId, @Valid @RequestBody FormatoCsv formato) {
         return perfilCsvService.salvar(usuarioAtual.id(), contaId, formato);
+    }
+
+    @GetMapping("/perfis/cartao/{cartaoId}")
+    public FormatoCsv perfilDoCartao(@PathVariable Long cartaoId) {
+        return perfilCsvService.buscarDoCartao(usuarioAtual.id(), cartaoId);
+    }
+
+    @PutMapping("/perfis/cartao/{cartaoId}")
+    public FormatoCsv salvarPerfilDoCartao(@PathVariable Long cartaoId, @Valid @RequestBody FormatoCsv formato) {
+        return perfilCsvService.salvarDoCartao(usuarioAtual.id(), cartaoId, formato);
     }
 }

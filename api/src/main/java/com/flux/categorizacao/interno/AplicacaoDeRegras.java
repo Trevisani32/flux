@@ -11,6 +11,8 @@ import java.util.stream.Collectors;
 
 import com.flux.categorias.CategoriaResumo;
 import com.flux.categorias.CategoriasConsulta;
+import com.flux.cartoes.CartaoResumo;
+import com.flux.cartoes.CartoesConsulta;
 import com.flux.categorizacao.interno.dto.AplicacaoResponse;
 import com.flux.categorizacao.interno.dto.AplicadosResponse;
 import com.flux.categorizacao.interno.dto.AplicarRequest;
@@ -36,13 +38,15 @@ public class AplicacaoDeRegras {
 
     private final RegraRepository repositorio;
     private final ContasConsulta contas;
+    private final CartoesConsulta cartoes;
     private final CategoriasConsulta categorias;
     private final LancamentosParaRegras lancamentos;
 
-    public AplicacaoDeRegras(RegraRepository repositorio, ContasConsulta contas, CategoriasConsulta categorias,
+    public AplicacaoDeRegras(RegraRepository repositorio, ContasConsulta contas, CartoesConsulta cartoes, CategoriasConsulta categorias,
                              LancamentosParaRegras lancamentos) {
         this.repositorio = repositorio;
         this.contas = contas;
+        this.cartoes = cartoes;
         this.categorias = categorias;
         this.lancamentos = lancamentos;
     }
@@ -69,16 +73,20 @@ public class AplicacaoDeRegras {
     @Transactional
     public AplicadosResponse aplicar(Long usuarioId, AplicarRequest pedido) {
         contas.travar(usuarioId);
+        cartoes.travar(usuarioId);
         categorias.travar(usuarioId);
         List<Regra> regras = repositorio.findAllByUsuarioIdOrderByPosicao(usuarioId);
         conferir(regras, pedido.regras());
         Set<Long> escolhidas = new HashSet<>(pedido.regras());
-        List<LancamentosParaRegras.Categorizacao> categorizacoes = calcular(usuarioId, regras).casados().stream()
+        List<Casado> casados = calcular(usuarioId, regras).casados().stream()
                 .filter(casado -> escolhidas.contains(casado.regra().getId()))
-                .map(casado -> new LancamentosParaRegras.Categorizacao(casado.candidato().id(), casado.regra().getCategoriaId(),
-                        casado.regra().getDescricao()))
                 .toList();
-        return new AplicadosResponse(categorizacoes.isEmpty() ? 0 : lancamentos.categorizar(usuarioId, categorizacoes));
+        List<LancamentosParaRegras.Categorizacao> categorizacoes = casados.stream().map(casado ->
+                new LancamentosParaRegras.Categorizacao(casado.candidato().id(), casado.regra().getCategoriaId(),
+                        casado.regra().getDescricao())).toList();
+        int categorizados = categorizacoes.isEmpty() ? 0 : lancamentos.categorizar(usuarioId, categorizacoes);
+        int compras = (int) casados.stream().filter(casado -> casado.candidato().compraDoCartao()).count();
+        return new AplicadosResponse(categorizados, compras);
     }
 
     /** Toda regra pedida precisa ser do usuário (a pausada é dele e só não casa). */
@@ -95,22 +103,26 @@ public class AplicacaoDeRegras {
                 .collect(Collectors.toMap(CategoriaResumo::id, Function.identity()));
         Map<Long, ContaResumo> contasDoUsuario = contas.listar(usuarioId).stream()
                 .collect(Collectors.toMap(ContaResumo::id, Function.identity()));
-        RegrasAtivas ativas = new RegrasAtivas(regras, doUsuario, contasDoUsuario);
+        Map<Long, CartaoResumo> cartoesDoUsuario = cartoes.listar(usuarioId).stream()
+                .collect(Collectors.toMap(CartaoResumo::id, Function.identity()));
+        RegrasAtivas ativas = new RegrasAtivas(regras, doUsuario, contasDoUsuario, cartoesDoUsuario);
         List<Casado> casados = new ArrayList<>();
         if (!ativas.vazia()) {
             for (Candidato candidato : lancamentos.receitasEDespesas(usuarioId)) {
-                ContaResumo conta = contasDoUsuario.get(candidato.contaId());
-                if (candidato.categoriaId() != null || conta == null || conta.arquivada()) {
+                boolean lugarAtivo = candidato.cartaoId() == null
+                        ? contasDoUsuario.containsKey(candidato.contaId()) && !contasDoUsuario.get(candidato.contaId()).arquivada()
+                        : cartoesDoUsuario.containsKey(candidato.cartaoId()) && !cartoesDoUsuario.get(candidato.cartaoId()).arquivado();
+                if (candidato.categoriaId() != null || !lugarAtivo) {
                     continue;
                 }
-                Regra regra = ativas.primeira(candidato.contaId(), RegrasAtivas.natureza(candidato.valor()),
+                Regra regra = ativas.primeira(candidato.contaId(), candidato.cartaoId(), RegrasAtivas.natureza(candidato.valor()),
                         Comparacao.chave(candidato.textoParaRegras()));
                 if (regra != null) {
                     casados.add(new Casado(candidato, regra));
                 }
             }
         }
-        return new Calculo(casados, doUsuario, contasDoUsuario);
+        return new Calculo(casados, doUsuario, contasDoUsuario, cartoesDoUsuario);
     }
 
     /** Os candidatos já vêm do mais recente para o mais antigo: os exemplos são os primeiros. */
@@ -122,7 +134,8 @@ public class AplicacaoDeRegras {
                 .count();
         List<AplicacaoResponse.Exemplo> exemplos = candidatos.stream().limit(EXEMPLOS)
                 .map(candidato -> new AplicacaoResponse.Exemplo(candidato.data(), candidato.descricao(),
-                        calculo.contas().get(candidato.contaId()).nome(), candidato.valor()))
+                        candidato.cartaoId() == null ? calculo.contas().get(candidato.contaId()).nome()
+                                : calculo.cartoes().get(candidato.cartaoId()).nome(), candidato.valor()))
                 .toList();
         return new AplicacaoResponse.Grupo(regra.getId(), regra.getPosicao(), regra.getCondicao().name(), regra.getTexto(),
                 categoria.id(), categoria.nome(), categoria.nomeDaMae(), regra.getDescricao(), candidatos.size(), manuais, renomeados,
@@ -132,6 +145,7 @@ public class AplicacaoDeRegras {
     private record Casado(Candidato candidato, Regra regra) {
     }
 
-    private record Calculo(List<Casado> casados, Map<Long, CategoriaResumo> categorias, Map<Long, ContaResumo> contas) {
+    private record Calculo(List<Casado> casados, Map<Long, CategoriaResumo> categorias, Map<Long, ContaResumo> contas,
+                           Map<Long, CartaoResumo> cartoes) {
     }
 }

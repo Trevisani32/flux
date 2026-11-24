@@ -3,6 +3,8 @@ package com.flux.lancamentos;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.Map;
 import java.util.Collection;
 import java.util.List;
 
@@ -58,6 +60,21 @@ public interface LancamentosImportados {
      */
     List<PagamentoConvertido> pagamentosConvertidos(Long usuarioId);
 
+    List<FaturaParaImportar> faturasParaImportar(Long usuarioId, Long cartaoId, LocalDate data);
+
+    List<ExistenteNoCartao> existentesNoCartao(Long usuarioId, Long cartaoId, YearMonth fatura, LocalDate inicio, LocalDate fim,
+                                                Collection<String> chaves);
+
+    Long faturaParaImportar(Long usuarioId, Long cartaoId, YearMonth mes);
+
+    int gravarNaFatura(Long usuarioId, Long cartaoId, YearMonth fatura, Long importacaoId, List<NovaNaFatura> novas);
+
+    int corrigirParcelas(Long usuarioId, List<ValorDoBanco> valores);
+
+    Map<Long, YearMonth> mesesDasFaturas(Long usuarioId, Collection<Long> faturaIds);
+
+    int desfazerDaFatura(Long usuarioId, Long importacaoId);
+
     /**
      * Um lançamento que já existe. {@code importacaoId} e {@code chaveImportacao} só no importado;
      * {@code criadoEm} é quando ele foi lançado à mão ou importado, e {@code ignoradoEm}, quando foi
@@ -85,7 +102,7 @@ public interface LancamentosImportados {
                 Long categoriaId) {
     }
 
-    record Contagem(Long importacaoId, long editados, long excluidos) {
+    record Contagem(Long importacaoId, long editados, long excluidos, long compras) {
     }
 
     record Excluido(Long id, LocalDate data, String descricao, BigDecimal valor, Instant ignoradoEm) {
@@ -112,5 +129,21 @@ public interface LancamentosImportados {
      */
     record PagamentoConvertido(Long importacaoId, LocalDate data, Long cartaoId, String cartaoNome, boolean cartaoArquivado,
                                String faturaMes) {
+    }
+
+    record FaturaParaImportar(YearMonth mes, LocalDate fechamento, LocalDate vencimento, String situacao) {
+    }
+
+    record ExistenteNoCartao(Long id, LocalDate dataCompra, YearMonth mes, BigDecimal valor, String descricao, String descricaoBanco,
+                             int numeroParcela, int parcelas, String chaveImportacao, Long importacaoId, Instant criadoEm,
+                             boolean faturaPaga) {
+        public boolean manual() { return importacaoId == null; }
+    }
+
+    record NovaNaFatura(int linha, LocalDate data, BigDecimal valor, String descricao, String descricaoBanco, String chave,
+                        Integer parcela, Integer parcelas, Long categoriaId) {
+    }
+
+    record ValorDoBanco(Long lancamentoId, BigDecimal valor) {
     }
 }

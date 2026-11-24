@@ -13,5 +13,10 @@ public record PreviaDaRegraRequest(
         @NotNull(message = "Escolha a condição.") Condicao condicao,
         @NotBlank(message = "Escreva o texto da regra.") @Size(max = 255, message = "O texto pode ter até 255 caracteres.") String texto,
         Long contaId,
+        Long cartaoId,
         Long categoriaId) {
+
+    public PreviaDaRegraRequest(Condicao condicao, String texto, Long contaId, Long categoriaId) {
+        this(condicao, texto, contaId, null, categoriaId);
+    }
 }

@@ -42,6 +42,10 @@ public class Regra {
     @Column(name = "conta_id")
     private Long contaId;
 
+    /** Fatia 05c: nulo = todas as contas e cartões; nunca vem junto com {@code contaId}. */
+    @Column(name = "cartao_id")
+    private Long cartaoId;
+
     @Column(nullable = false, length = 10)
     private String natureza;
 
@@ -67,16 +71,22 @@ public class Regra {
     }
 
     /** {@code texto} e {@code descricao} já sem espaços sobrando; a chave é calculada aqui. */
-    public void alterar(Condicao condicao, String texto, Long contaId, String natureza, Long categoriaId, String descricao,
-                        Instant agora) {
+    public void alterar(Condicao condicao, String texto, Long contaId, Long cartaoId, String natureza, Long categoriaId,
+                        String descricao, Instant agora) {
         this.condicao = condicao;
         this.texto = texto;
         this.textoChave = Comparacao.chave(texto);
         this.contaId = contaId;
+        this.cartaoId = cartaoId;
         this.natureza = natureza;
         this.categoriaId = categoriaId;
         this.descricao = descricao;
         this.atualizadaEm = agora;
+    }
+
+    public void alterar(Condicao condicao, String texto, Long contaId, String natureza, Long categoriaId, String descricao,
+                        Instant agora) {
+        alterar(condicao, texto, contaId, null, natureza, categoriaId, descricao, agora);
     }
 
     public void mudarPosicao(int posicao) {
@@ -109,6 +119,10 @@ public class Regra {
 
     public Long getContaId() {
         return contaId;
+    }
+
+    public Long getCartaoId() {
+        return cartaoId;
     }
 
     public String getNatureza() {

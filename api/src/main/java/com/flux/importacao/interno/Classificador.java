@@ -21,7 +21,8 @@ final class Classificador {
 
     enum Situacao { NOVA, PROVAVEL, JA_IMPORTADA, ANTES_DO_SALDO_INICIAL, FORA }
 
-    enum Motivo { ILEGIVEL, VALOR_ZERO, LINHA_DE_SALDO, DATA_ALEM_DO_LIMITE }
+    enum Motivo { ILEGIVEL, VALOR_ZERO, LINHA_DE_SALDO, DATA_ALEM_DO_LIMITE, DATA_ANTES_DO_LIMITE, PAGAMENTO_DA_FATURA,
+        COMPRA_JA_NO_FLUX, PARCELA_DO_ARQUIVO }
 
     /**
      * {@code chave}: a que a linha grava, se for importada. {@code marcada}: como vem na revisão

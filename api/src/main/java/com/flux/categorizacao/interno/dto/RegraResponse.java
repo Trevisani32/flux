@@ -12,6 +12,9 @@ public record RegraResponse(
         Long contaId,
         String contaNome,
         boolean contaArquivada,
+        Long cartaoId,
+        String cartaoNome,
+        boolean cartaoArquivado,
         String natureza,
         Long categoriaId,
         String categoriaNome,
@@ -19,4 +22,11 @@ public record RegraResponse(
         boolean categoriaArquivada,
         String descricao,
         boolean pausada) {
+
+    public RegraResponse(Long id, int posicao, String condicao, String texto, Long contaId, String contaNome, boolean contaArquivada,
+                         String natureza, Long categoriaId, String categoriaNome, String categoriaMaeNome, boolean categoriaArquivada,
+                         String descricao, boolean pausada) {
+        this(id, posicao, condicao, texto, contaId, contaNome, contaArquivada, null, null, false, natureza, categoriaId,
+                categoriaNome, categoriaMaeNome, categoriaArquivada, descricao, pausada);
+    }
 }
