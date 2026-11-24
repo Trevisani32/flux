@@ -5,12 +5,15 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Collection;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.flux.cartoes.CalendarioDoCartao;
+import com.flux.cartoes.MovimentoDosCartoes;
 
 /**
  * O total, o pago, o pendente e a situação de cada fatura de um cartão (Fatia 05b, decisões 31, 34, 36 e 38, ADR 0018),
@@ -70,6 +73,23 @@ final class PagamentosDasFaturas {
                     return pendente(total == null ? ZERO : total.total(), pago == null ? ZERO : pago.pago(), fatura.pagaFora());
                 })
                 .reduce(ZERO, BigDecimal::add).setScale(2, RoundingMode.UNNECESSARY);
+    }
+
+    /**
+     * Fatia 06a (Próximas faturas do Início): as faturas gravadas que estão fechadas em {@code hoje} e têm pendente maior que
+     * zero, da mais antiga para a mais nova. A paga (pelo pagamento ou fora do Flux), a fechada sem nada a pagar (vazia, só
+     * com crédito ou com o pago cobrindo o total), a aberta e as futuras ficam de fora.
+     */
+    List<MovimentoDosCartoes.FaturaAPagar> fechadasComPendente(LocalDate hoje) {
+        List<MovimentoDosCartoes.FaturaAPagar> fechadas = new ArrayList<>();
+        for (YearMonth mes : doCartao.porMes().keySet()) {
+            Resumo resumo = resumo(mes, hoje);
+            if (resumo.situacao() == CalendarioDoCartao.Situacao.FECHADA && resumo.pendente().signum() > 0) {
+                CalendarioDoCartao.Datas datas = doCartao.datas(mes);
+                fechadas.add(new MovimentoDosCartoes.FaturaAPagar(mes, datas.fechamento(), datas.vencimento(), resumo.pendente()));
+            }
+        }
+        return List.copyOf(fechadas);
     }
 
     /**

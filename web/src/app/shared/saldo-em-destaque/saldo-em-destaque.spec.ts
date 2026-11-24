@@ -10,11 +10,11 @@ import { SaldoEmDestaque } from './saldo-em-destaque';
   template: '<app-saldo-em-destaque rotulo="Saldo total" [valor]="valor()"><span>5 contas ativas</span></app-saldo-em-destaque>',
 })
 class TesteSaldoEmDestaque {
-  readonly valor = signal(23180.45);
+  readonly valor = signal<number | null>(23180.45);
 }
 
 describe('SaldoEmDestaque', () => {
-  function criar(valor: number): HTMLElement {
+  function criar(valor: number | null): HTMLElement {
     const fixture = TestBed.createComponent(TesteSaldoEmDestaque);
     fixture.componentInstance.valor.set(valor);
     fixture.detectChanges();
@@ -26,7 +26,7 @@ describe('SaldoEmDestaque', () => {
     expect(cartao.classList).toContain('flux-cartao-destaque');
     expect(cartao.querySelector('.flux-cartao-destaque__rotulo')?.textContent).toBe('Saldo total');
     const valor = cartao.querySelector('.flux-cartao-destaque__valor app-valor');
-    expect(valor?.querySelector('.valor__texto')?.textContent).toBe('R$ 23.180,45');
+    expect(valor?.querySelector('.valor__texto')?.textContent).toBe('R$\u00a023.180,45');
     expect(valor?.querySelector('.valor__texto small')?.textContent).toBe(',45');
     expect(valor?.querySelector('.valor__texto')?.getAttribute('aria-hidden')).toBeNull();
     expect(valor?.classList).not.toContain('flux-valor--negativo');
@@ -36,9 +36,14 @@ describe('SaldoEmDestaque', () => {
   it('o total negativo fica vermelho, com "−", e o leitor de tela ouve "menos"', () => {
     const valor = criar(-120).querySelector('.flux-cartao-destaque__valor app-valor');
     expect(valor?.classList).toContain('flux-valor--negativo');
-    expect(valor?.querySelector('.valor__texto')?.textContent).toBe('−R$ 120,00');
+    expect(valor?.querySelector('.valor__texto')?.textContent).toBe('−R$\u00a0120,00');
     expect(valor?.querySelector('.valor__texto small')?.textContent).toBe(',00');
     expect(valor?.querySelector('.valor__texto')?.getAttribute('aria-hidden')).toBe('true');
-    expect(valor?.querySelector('.flux-visualmente-oculto')?.textContent).toBe('menos R$ 120,00');
+    expect(valor?.querySelector('.flux-visualmente-oculto')?.textContent).toBe('menos R$\u00a0120,00');
+  });
+
+  it('sem valor, mostra "—"', () => {
+    const valor = criar(null).querySelector('.flux-cartao-destaque__valor .valor__texto');
+    expect(valor?.textContent?.trim()).toBe('—');
   });
 });

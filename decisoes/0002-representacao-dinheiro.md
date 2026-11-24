@@ -1,6 +1,6 @@
 # ADR 0002 — Representação de dinheiro
 
-- **Status:** Aceito
+- **Status:** Aceito, com o ajuste do [ADR 0020](0020-graficos-sem-biblioteca-e-modulo-de-relatorios.md): o percentual de comparação dos relatórios é inteiro
 - **Data:** 2026-11-06
 
 ## Contexto

@@ -74,6 +74,10 @@
   --flux-cor-conta-azul: #60A5FA;
   --flux-cor-conta-ciano: #22D3EE;
   --flux-cor-conta-cinza: #A1A1AA;
+  // Fatia 06a: as marcas dos gráficos. Receita e despesa num tom próprio para áreas (o verde e o vermelho de texto ficam fora da faixa para marcas); a barra neutra é a de "Sem categoria".
+  --flux-receita: #0CA30C;
+  --flux-despesa: #E66767;
+  --flux-barra-neutra: #71717A;
   // Negativo sobre o dourado do cartão de destaque: o --flux-negativo, claro, some no ouro
   // (contraste de 1,2:1 a 2,2:1); este dá de 4,7:1 a 13:1 em todo o degradê.
   --flux-negativo-sobre-ouro: #450A0A;

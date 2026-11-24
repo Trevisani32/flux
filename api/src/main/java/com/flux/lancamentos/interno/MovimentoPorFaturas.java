@@ -55,9 +55,10 @@ public class MovimentoPorFaturas implements MovimentoDosCartoes {
                     lancamentosEmAberto += total.lancamentos();
                 }
             }
-            BigDecimal pendente = new PagamentosDasFaturas(doCartao, todosOsTotais, pagos).pendenteDeTodas();
+            PagamentosDasFaturas pagamentos = new PagamentosDasFaturas(doCartao, todosOsTotais, pagos);
+            BigDecimal pendente = pagamentos.pendenteDeTodas();
             movimentos.put(cartao.id(), new Movimento(fatura(doCartao, aberta, totais), fatura(doCartao, aberta.plusMonths(1), totais),
-                    emAberto.setScale(2, RoundingMode.UNNECESSARY), lancamentosEmAberto, pendente));
+                    emAberto.setScale(2, RoundingMode.UNNECESSARY), lancamentosEmAberto, pendente, pagamentos.fechadasComPendente(hoje)));
         }
         return movimentos;
     }

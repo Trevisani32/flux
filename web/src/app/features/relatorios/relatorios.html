@@ -1,0 +1,240 @@
+<app-cabecalho-pagina titulo="Relatórios">
+  <p complemento class="relatorios__subtitulo">
+    <span class="flux-so-desktop"
+      >Receitas, despesas e saldo do mês. Transferências e pagamentos de fatura ficam fora.</span
+    >
+    <span class="flux-so-celular">Transferências e pagamentos de fatura ficam fora.</span>
+  </p>
+  @if ((relatorio() !== null && relatorio()?.primeiroMes !== null) || falha()) {
+    <div class="relatorios__mes" role="group" aria-label="Mês">
+      <button
+        type="button"
+        class="relatorios__seta"
+        aria-label="Mês anterior"
+        [disabled]="relatorio() !== null && mesDoSeletor() === relatorio()!.primeiroMes"
+        (click)="mudarMes(-1)"
+      >
+        <app-icone nome="anterior" />
+      </button>
+      <span class="relatorios__nome-do-mes" aria-live="polite"
+        ><app-icone nome="calendario" [tamanho]="16" />{{ nomeDoMes(mesDoSeletor()) }}</span
+      >
+      <button
+        type="button"
+        class="relatorios__seta"
+        aria-label="Próximo mês"
+        [disabled]="relatorio() !== null && mesDoSeletor() === relatorio()!.mesAtual"
+        (click)="mudarMes(1)"
+      >
+        <app-icone nome="proximo" />
+      </button>
+    </div>
+  }
+</app-cabecalho-pagina>
+
+<div class="flux-conteudo">
+  @if (falha()) {
+    <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível carregar o relatório.">
+      <span class="flux-alerta__acoes">
+        <button mat-stroked-button type="button" (click)="tentarDeNovo()">Tentar de novo</button>
+      </span>
+    </app-alerta>
+  } @else if (relatorio(); as r) {
+    @if (r.primeiroMes === null) {
+      <app-estado-vazio
+        icone="contas"
+        titulo="Comece pelas suas contas"
+        texto="Cadastre a conta corrente, a poupança, a carteira ou os investimentos. Os relatórios aparecem com os primeiros lançamentos."
+      >
+        <a mat-flat-button routerLink="/contas" [queryParams]="{ nova: 'conta' }"
+          >Cadastrar conta</a
+        >
+      </app-estado-vazio>
+    } @else {
+      <div
+        class="relatorios__conteudo"
+        [class.relatorios__conteudo--carregando]="carregando()"
+        [attr.aria-busy]="carregando()"
+      >
+        <section class="relatorios__kpis">
+          <a class="relatorios__saldo" routerLink="/contas">
+            <app-saldo-em-destaque [rotulo]="rotuloDoSaldo(r.saldo)" [valor]="r.saldo.total">
+              <span>{{ quantidadeDeContas(r.saldo.contas) }}</span>
+              @if (r.saldo.contasDeInvestimento > 0 && r.saldo.investimentos !== null) {
+                <span class="flux-cartao-destaque__pilula"
+                  >Investimentos: <app-valor [valor]="r.saldo.investimentos" tipo="saldo"
+                /></span>
+              }
+            </app-saldo-em-destaque>
+          </a>
+          <a
+            class="flux-card relatorios__kpi relatorios__kpi--receitas"
+            routerLink="/lancamentos"
+            [queryParams]="{ mes: r.mes, tipo: 'receita' }"
+          >
+            <span class="relatorios__rotulo"><i class="relatorios__cor"></i>Receitas</span>
+            <b class="relatorios__numero">{{ formatarMoeda(r.receitas.valor) }}</b>
+            @if (r.receitas.comparacao; as comparacao) {
+              <span
+                class="relatorios__delta relatorios__delta--{{
+                  corDaComparacao(comparacao, 'receita')
+                }}"
+              >
+                <span aria-hidden="true">{{ textoDaComparacao(comparacao) }}</span>
+                <span class="flux-visualmente-oculto">{{
+                  leituraDaComparacao(comparacao, 'receita')
+                }}</span>
+              </span>
+            }
+            <span class="relatorios__nota">{{ textoDasReceitas(r.receitas) }}</span>
+          </a>
+          <a
+            class="flux-card relatorios__kpi relatorios__kpi--despesas"
+            routerLink="/lancamentos"
+            [queryParams]="{ mes: r.mes, tipo: 'despesa' }"
+          >
+            <span class="relatorios__rotulo"><i class="relatorios__cor"></i>Despesas</span>
+            <b class="relatorios__numero">{{ formatarMoeda(r.despesas.valor) }}</b>
+            @if (r.despesas.comparacao; as comparacao) {
+              <span
+                class="relatorios__delta relatorios__delta--{{
+                  corDaComparacao(comparacao, 'despesa')
+                }}"
+              >
+                <span aria-hidden="true">{{ textoDaComparacao(comparacao) }}</span>
+                <span class="flux-visualmente-oculto">{{
+                  leituraDaComparacao(comparacao, 'despesa')
+                }}</span>
+              </span>
+            }
+            <span class="relatorios__nota">{{ textoDasDespesas(r.despesas) }}</span>
+          </a>
+          <a
+            class="flux-card relatorios__kpi relatorios__kpi--resultado"
+            routerLink="/lancamentos"
+            [queryParams]="{ mes: r.mes }"
+          >
+            <span class="relatorios__rotulo">Resultado</span>
+            <app-valor class="relatorios__numero" [valor]="r.resultado" />
+            <span class="relatorios__nota">receitas − despesas</span>
+          </a>
+        </section>
+
+        <app-card titulo="Gastos por categoria">
+          <app-gastos-por-categoria [relatorio]="r" />
+        </app-card>
+
+        <section class="relatorios__graficos">
+          <app-card titulo="Receitas e despesas">
+            <p class="relatorios__faixa">{{ subtituloDosGraficos() }}</p>
+            <button
+              class="relatorios__alternar"
+              mat-stroked-button
+              type="button"
+              [attr.aria-pressed]="tabelaDeColunas()"
+              (click)="alternarColunas()"
+            >
+              <app-icone [nome]="tabelaDeColunas() ? 'grafico' : 'tabela'" />
+              <span class="flux-so-desktop">{{ tabelaDeColunas() ? 'Ver gráfico' : 'Ver tabela' }}</span>
+              <span class="flux-so-celular">{{ tabelaDeColunas() ? 'Gráfico' : 'Tabela' }}</span>
+            </button>
+            @if (tabelaDeColunas()) {
+              <table class="relatorios__tabela">
+                <thead>
+                  <tr>
+                    <th>Mês</th>
+                    <th>Receitas</th>
+                    <th>Despesas</th>
+                    <th>Resultado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (mes of r.meses.slice().reverse(); track mes.mes) {
+                    <tr [class.relatorios__tabela-sel]="mes.mes === r.mes">
+                      <td>
+                        <a [routerLink]="[]" [queryParams]="parametros(mes.mes)">{{
+                          nomeDoMes(mes.mes)
+                        }}</a>
+                      </td>
+                      <td>{{ formatarMoeda(mes.receitas) }}</td>
+                      <td>{{ formatarMoeda(mes.despesas) }}</td>
+                      <td><app-valor [valor]="mes.resultado" /></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            } @else {
+              <ul class="relatorios__legenda">
+                <li>
+                  <span class="legenda__sw relatorios__legenda-sw--receita"></span>
+                  Receitas
+                </li>
+                <li>
+                  <span class="legenda__sw relatorios__legenda-sw--despesa"></span>
+                  Despesas
+                </li>
+              </ul>
+              <app-grafico-colunas
+                [itens]="colunas()"
+                [selecionado]="r.mes"
+                [altura]="desktop() ? 236 : 190"
+                (escolher)="irPara($event)"
+              />
+            }
+          </app-card>
+
+          <app-card titulo="Saldo total no fim do mês">
+            <p class="relatorios__faixa">{{ faixaDosMeses(mesesComSaldo(), !desktop()) }}</p>
+            @if (pontos().length === 0) {
+              <p class="relatorios__sem-saldo">Nenhuma conta até este mês.</p>
+            } @else {
+              <button
+                class="relatorios__alternar"
+                mat-stroked-button
+                type="button"
+                [attr.aria-pressed]="tabelaDeSaldo()"
+                (click)="alternarSaldo()"
+              >
+                <app-icone [nome]="tabelaDeSaldo() ? 'grafico' : 'tabela'" />
+                <span class="flux-so-desktop">{{ tabelaDeSaldo() ? 'Ver gráfico' : 'Ver tabela' }}</span>
+                <span class="flux-so-celular">{{ tabelaDeSaldo() ? 'Gráfico' : 'Tabela' }}</span>
+              </button>
+              @if (tabelaDeSaldo()) {
+                <table class="relatorios__tabela">
+                  <thead>
+                    <tr>
+                      <th>Mês</th>
+                      <th>Saldo total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (mes of mesesComSaldo().slice().reverse(); track mes.mes) {
+                      <tr [class.relatorios__tabela-sel]="mes.mes === r.mes">
+                        <td>
+                          <a [routerLink]="[]" [queryParams]="parametros(mes.mes)"
+                            >{{ nomeDoMes(mes.mes) }}
+                            @if (mes.dataDoSaldo === r.hoje) {
+                              (hoje)
+                            }
+                          </a>
+                        </td>
+                        <td><app-valor [valor]="mes.saldo" tipo="saldo" /></td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              } @else {
+                <app-grafico-linha
+                  [itens]="pontos()"
+                  [selecionado]="r.mes"
+                  [altura]="desktop() ? 236 : 190"
+                  (escolher)="irPara($event)"
+                />
+              }
+            }
+          </app-card>
+        </section>
+      </div>
+    }
+  }
+</div>

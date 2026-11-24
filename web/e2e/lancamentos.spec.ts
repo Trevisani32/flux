@@ -736,7 +736,7 @@ test('ajusta o fechamento e volta ao normal, lança um estorno e exclui a compra
   expect(await semRolagemHorizontal(page)).toBe(true);
 
   await irPeloMenu(page, 'Início');
-  await expect(page.locator('.inicio-cartao__nome')).toHaveText(['Cartão Horizonte']);
+  await expect(page.locator('app-card.inicio-faturas').getByRole('heading', { name: 'Próximas faturas' })).toBeVisible();
 });
 
 /** O mês da fatura como o pagamento escreve: "setembro" no ano de hoje; "dezembro de 2025" em outro ano. */
@@ -779,6 +779,16 @@ test('paga a fatura fechada, que fica paga, trava a compra dela e devolve o limi
   // Decisão 38: o disponível também na trilha.
   await expect(page.locator('.fatura__trilha')).toHaveText(/^Cartões › Cartão Horizonte · disponível R\$\s4\.734,80 de R\$\s5\.000,00$/);
   expect(await semRolagemHorizontal(page)).toBe(true);
+
+  await irPeloMenu(page, 'Início');
+  const faturaDoInicio = page.locator('li.inicio-fatura').first();
+  await expect(faturaDoInicio.locator('.inicio-fatura__nome')).toHaveText(`Cartão Horizonte · ${nomeDaFatura(fechada)}`);
+  await expect(faturaDoInicio.locator('.inicio-fatura__meta')).toContainText(`venceu em ${diaDoMes(20, fechada)} · pendente`);
+  await expect(faturaDoInicio.locator('.inicio-fatura__venceu')).toHaveText(`venceu em ${diaDoMes(20, fechada)}`);
+  await expect(faturaDoInicio.locator('.inicio-fatura__valor .flux-num')).toHaveText(/^R\$\s265,20$/);
+  await expect(faturaDoInicio.locator('.inicio-fatura__pilula')).toHaveText('Venceu');
+  await faturaDoInicio.locator('.inicio-fatura__nome').click();
+  await expect(page).toHaveURL(new RegExp(`/cartoes/\\d+/faturas/${fechada}$`));
 
   // Decisão 30: "Pagar fatura", no topo enquanto há pendente, vem com a conta de pagamento do cartão, hoje e o pendente.
   await page.getByRole('button', { name: 'Pagar fatura' }).click();
@@ -832,6 +842,9 @@ test('paga a fatura fechada, que fica paga, trava a compra dela e devolve o limi
   await expect(page.locator('.cartoes__disponivel .valor__texto')).toHaveText(/^R\$\s5\.000,00$/);
   await expect(page.locator('.cartoes__rodape > span').nth(1)).toHaveText(/^de\sR\$\s5\.000,00\s·\sR\$\s0,00\sem faturas a pagar$/);
   expect(await semRolagemHorizontal(page)).toBe(true);
+
+  await irPeloMenu(page, 'Início');
+  await expect(page.locator('.inicio-fatura__nome', { hasText: `· ${nomeDaFatura(fechada)}` })).toHaveCount(0);
 });
 
 test('importa a fatura do cartão pelo CSV do Nubank: perfil, fatura sugerida, parcela 3/10, compra importada e desfazer (Fatia 05c)', async ({ page }) => {
@@ -859,5 +872,68 @@ test('importa a fatura do cartão pelo CSV do Nubank: perfil, fatura sugerida, p
   await page.getByRole('button', { name: 'Ver fatura' }).click();
   await expect(page).toHaveURL(new RegExp(`/cartoes/\\d+/faturas/${mes}$`));
   await expect(page.locator('.fatura__pilula').filter({ visible: true })).toHaveText(['Estorno', '3/10']);
+  expect(await semRolagemHorizontal(page)).toBe(true);
+});
+
+test('o relatório do mês bate com a lista, leva às categorias e mostra o mês antes das contas (Fatia 06a)', async ({ page }) => {
+  const mes = mesDeHoje();
+  const primeiroMes = mesDeHoje(-2);
+  await entrar(page);
+  await page.locator('app-card.inicio-mes').getByRole('link', { name: 'Ver relatório' }).click();
+  await expect(page).toHaveURL(/\/relatorios$/);
+  await expect(page.getByRole('heading', { name: 'Relatórios', level: 1 })).toBeVisible();
+  await expect(page.locator('.relatorios__nome-do-mes')).toContainText(mesComAno(mes));
+  await expect(page.getByRole('button', { name: 'Próximo mês' })).toBeDisabled();
+
+  const receitas = (await page.locator('a.relatorios__kpi--receitas .relatorios__numero').textContent())?.trim() ?? '';
+  await page.locator('a.relatorios__kpi--receitas').click();
+  await expect(page).toHaveURL(new RegExp(`/lancamentos\\?mes=${mes}&tipo=receita$`));
+  await expect(page.locator('.lancamentos__totais')).toContainText(receitas === 'R$\u00a00,00' ? receitas : `+${receitas}`);
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'Relatórios', level: 1 })).toBeVisible();
+
+  const despesas = (await page.locator('a.relatorios__kpi--despesas .relatorios__numero').textContent())?.trim() ?? '';
+  await page.locator('a.relatorios__kpi--despesas').click();
+  await expect(page).toHaveURL(new RegExp(`/lancamentos\\?mes=${mes}&tipo=despesa$`));
+  await expect(page.locator('.lancamentos__totais')).toContainText(despesas === 'R$\u00a00,00' ? despesas : `−${despesas}`);
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'Relatórios', level: 1 })).toBeVisible();
+
+  const primeiraCategoria = page.locator('.categorias__linha').first();
+  await primeiraCategoria.locator('a.categorias__valor').click();
+  await expect(page).toHaveURL(/\/lancamentos\?mes=\d{4}-\d{2}&categoria=(?:sem|\d+)&tipo=despesa$/);
+  await expect(page.locator('.lancamentos__totais')).toContainText('Saídas');
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'Relatórios', level: 1 })).toBeVisible();
+
+  const cardDasColunas = page.locator('app-card').filter({ has: page.getByRole('heading', { name: 'Receitas e despesas', level: 2 }) });
+  await cardDasColunas.getByRole('button', { name: ehDesktop(page) ? 'Ver tabela' : 'Tabela', exact: true }).click();
+  await expect(cardDasColunas.locator('tbody tr')).toHaveCount(3);
+  await expect(cardDasColunas.locator('tbody tr').first()).toContainText(mesComAno(mes));
+  await cardDasColunas.getByRole('button', { name: ehDesktop(page) ? 'Ver gráfico' : 'Gráfico', exact: true }).click();
+
+  const colunaDoPrimeiroMes = page.locator('app-grafico-colunas g[role="button"]').first();
+  await expect(colunaDoPrimeiroMes).toHaveAttribute('aria-label', new RegExp(
+    `^${mesComAno(primeiroMes).replace(/^./, (letra) => letra.toUpperCase())}: receitas R\\$\\s0,00, despesas R\\$\\s265,20, resultado −R\\$\\s265,20$`,
+  ));
+  await colunaDoPrimeiroMes.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(new RegExp(`/relatorios\\?mes=${primeiroMes}$`));
+  await expect(page.getByRole('button', { name: 'Mês anterior' })).toBeDisabled();
+  await expect(page.locator('.relatorios__saldo')).toContainText('—');
+  await expect(page.locator('.relatorios__saldo')).toContainText('Nenhuma conta nesta data');
+  await expect(page.locator('a.relatorios__kpi--despesas')).toContainText('R$\u00a0265,20');
+  await expect(page.locator('a.relatorios__kpi--despesas')).toContainText('1 despesa, 1 no cartão');
+  await expect(page.getByText('Ainda não há meses anteriores para comparar.')).toBeVisible();
+  const semCategoria = page.locator('.categorias__linha').filter({ hasText: 'Sem categoria' });
+  await expect(semCategoria).toContainText('R$\u00a0265,20');
+  await expect(page.getByText('Nenhuma conta até este mês.')).toBeVisible();
+  await semCategoria.locator('a.categorias__nome').click();
+  await expect(page).toHaveURL(new RegExp(`/lancamentos\\?mes=${primeiroMes}&categoria=sem&tipo=despesa$`));
+  await expect(page.locator('.lancamentos__totais')).toContainText('−R$\u00a0265,20');
+  expect(await semRolagemHorizontal(page)).toBe(true);
+
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'Relatórios', level: 1 })).toBeVisible();
   expect(await semRolagemHorizontal(page)).toBe(true);
 });

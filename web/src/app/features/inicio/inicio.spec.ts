@@ -83,18 +83,23 @@ describe('Inicio', () => {
     return [...elemento.querySelectorAll(seletor)].map((no) => no.textContent?.trim().replace(/\s+/g, ' ') ?? '');
   }
 
-  it('mostra a saudação, a data e o card Cartões com a fatura aberta e o disponível de cada cartão (decisões 26 e 38)', () => {
-    const { elemento } = criar(() => of(comContas));
+  it("mostra a saudação, a data e o card 'Próximas faturas' com a aberta de cada cartão (Fatia 06a)", () => {
+    const cartoes = {
+      ativos: [{ ...horizonte, faturasAPagar: [{ mes: '2026-11', fechamento: '2026-11-03', vencimento: '2026-11-05', pendente: 265.2 }] }],
+      arquivados: [],
+    };
+    const { elemento } = criar(() => of(comContas), novembro, [padaria], () => of(cartoes));
     expect(elemento.querySelector('h1')?.textContent).toBe('Olá, Dev');
     expect(elemento.querySelector('p.cabecalho__subtitulo')?.textContent).toBe('Sexta-feira, 6 de novembro de 2026');
     expect(elemento.querySelector('.em-breve')).toBeNull();
-    expect(textos(elemento, '.inicio-cartoes .card__titulo')).toEqual(['Cartões']);
-    expect(textos(elemento, '.inicio-cartoes__nota')).toEqual(['Faturas abertas']);
-    expect(textos(elemento, '.inicio-cartao__nome')).toEqual(['Cartão Horizonte']);
-    expect(elemento.querySelector('a.inicio-cartao__nome')?.getAttribute('href')).toBe('/cartoes/7/faturas/2026-12');
-    expect(textos(elemento, '.inicio-cartao__meta')).toEqual(['Dezembro · fecha 03/12 · vence 10/12', 'Disponível R$ 732,65']);
-    expect(elemento.querySelector('.inicio-cartao > .flux-num')?.textContent?.replace(/\s/g, ' ')).toBe('R$ 1.113,69');
-    expect(elemento.querySelector('.inicio-cartoes a.flux-link')?.getAttribute('href')).toBe('/cartoes');
+    expect(textos(elemento, '.inicio-faturas .card__titulo')).toEqual(['Próximas faturas']);
+    expect(textos(elemento, '.inicio-fatura__nome')).toEqual(['Cartão Horizonte · novembro', 'Cartão Horizonte · dezembro']);
+    expect(elemento.querySelector('a.inicio-fatura__nome')?.getAttribute('href')).toBe('/cartoes/7/faturas/2026-11');
+    expect(textos(elemento, '.inicio-fatura__meta')).toEqual(['venceu em 05/11 · pendente', 'aberta · fecha 03/12 · vence 10/12', 'disponível R$ 732,65']);
+    expect(textos(elemento, '.inicio-fatura__venceu')).toEqual(['venceu em 05/11']);
+    expect(textos(elemento, '.inicio-fatura__valor .flux-num').map((texto) => texto.replace(/\s/g, ' '))).toEqual(['R$ 265,20', 'R$ 1.113,69']);
+    expect(textos(elemento, '.inicio-fatura__pilula')).toEqual(['Venceu']);
+    expect(elemento.querySelector('.inicio-faturas a.flux-link')?.getAttribute('href')).toBe('/cartoes');
     expect(elemento.querySelector('.cabecalho__acoes a[href="/importacao"]')?.textContent?.trim()).toBe('Importar extrato');
   });
 
@@ -111,13 +116,13 @@ describe('Inicio', () => {
     expect(lancamentos.ultimos).toHaveBeenCalledTimes(2);
   });
 
-  it('sem cartão, o card Cartões convida a cadastrar; sem a lista de cartões, ele some', () => {
+  it("sem cartão, 'Próximas faturas' convida a cadastrar; sem a lista de cartões, ele some", () => {
     const semCartao = criar(() => of(comContas), novembro, [padaria], () => of({ ativos: [], arquivados: [] }));
-    expect(textos(semCartao.elemento, '.inicio-cartoes__vazio')).toEqual(['Cadastre um cartão para ver as faturas aqui.']);
-    expect(semCartao.elemento.querySelector('.inicio-cartoes a[href="/cartoes?novo=cartao"]')?.textContent?.trim()).toBe('Novo cartão');
+    expect(textos(semCartao.elemento, '.inicio-faturas__vazio')).toEqual(['Cadastre um cartão para ver as faturas aqui.']);
+    expect(semCartao.elemento.querySelector('.inicio-faturas a[href="/cartoes?novo=cartao"]')?.textContent?.trim()).toBe('Novo cartão');
     TestBed.resetTestingModule();
     const comErro = criar(() => of(comContas), novembro, [padaria], () => throwError(() => new HttpErrorResponse({ status: 500 })));
-    expect(comErro.elemento.querySelector('.inicio-cartoes')).toBeNull();
+    expect(comErro.elemento.querySelector('.inicio-faturas')).toBeNull();
   });
 
   it('com contas, mostra o saldo total, os investimentos e a lista, com cada conta levando aos lançamentos dela', () => {
@@ -159,6 +164,8 @@ describe('Inicio', () => {
     expect(textos(elemento, '.linha__titulo')).toEqual(['Padaria Central']);
     expect(textos(elemento, '.linha__meta-texto.flux-so-desktop')).toEqual(['Banco Horizonte · hoje']);
     expect(elemento.querySelector('.inicio-ultimos a.flux-link')?.textContent).toBe('Ver todos');
+    expect([...elemento.querySelectorAll('.inicio-mes__acoes a')].map((link) => [link.textContent, link.getAttribute('href')]))
+      .toEqual([['Ver relatório', '/relatorios'], ['Ver lançamentos', '/lancamentos']]);
   });
 
   it('com contas e nenhum lançamento, some o mês e "Últimos lançamentos" convida a lançar', () => {
@@ -191,6 +198,6 @@ describe('Inicio', () => {
   it('se a lista de contas falhar, avisa e continua mostrando o resto', () => {
     const { elemento } = criar(() => throwError(() => new HttpErrorResponse({ status: 500 })));
     expect(elemento.querySelector('[role="alert"]')?.textContent).toContain('Não foi possível carregar o saldo das contas.');
-    expect(elemento.querySelectorAll('.inicio-cartoes')).toHaveLength(1);
+    expect(elemento.querySelectorAll('.inicio-faturas')).toHaveLength(1);
   });
 });

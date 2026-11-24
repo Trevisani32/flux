@@ -15,7 +15,7 @@ import { EstadoVazio } from '../../shared/estado-vazio/estado-vazio';
 import { Icone } from '../../shared/icone/icone';
 import { SaldoEmDestaque } from '../../shared/saldo-em-destaque/saldo-em-destaque';
 import { Valor } from '../../shared/valor/valor';
-import { diaEMes, textoDoTotal } from '../cartoes/apresentacao';
+import { textoDoTotal } from '../cartoes/apresentacao';
 import { CartoesService, ListaDeCartoes } from '../cartoes/cartoes.service';
 import { abrirCompra } from '../cartoes/compra-dialogo/compra-dialogo';
 import { abrirPagamento } from '../cartoes/pagamento-dialogo/pagamento-dialogo';
@@ -27,6 +27,7 @@ import { mesDe } from '../lancamentos/filtros';
 import { abrirDialogoDeLancamento, contaPadrao } from '../lancamentos/lancamento-dialogo/lancamento-dialogo';
 import { ItemDaLista, LancamentosService, ListaDoMes } from '../lancamentos/lancamentos.service';
 import { LinhaDoLancamento } from '../lancamentos/linha-do-lancamento/linha-do-lancamento';
+import { metaDaProximaFatura, proximasFaturas, tituloDaProximaFatura } from './proximas-faturas';
 
 /**
  * Saldo total, contas, o mês e os últimos lançamentos (decisão 32 da 03b); "Importar extrato" no topo (04a). Fatia 05a
@@ -50,8 +51,9 @@ export class Inicio {
   readonly corDaConta = corDaConta;
   readonly quantidadeDeContasAtivas = quantidadeDeContasAtivas;
   readonly nomeDoMesSemAno = nomeDoMesSemAno;
-  readonly diaEMes = diaEMes;
   readonly textoDoTotal = textoDoTotal;
+  readonly tituloDaProximaFatura = tituloDaProximaFatura;
+  readonly metaDaProximaFatura = metaDaProximaFatura;
   readonly titulo = computed(() => `Olá, ${this.auth.usuario()?.nome ?? ''}`);
   readonly hoje = dataPorExtenso(this.agora);
   readonly hojeIso = dataIsoNoFuso(this.agora);
@@ -69,6 +71,7 @@ export class Inicio {
     const mes = this.mes();
     return mes !== null && mes.quantidadeLancamentos + mes.quantidadeTransferencias > 0 ? mes : null;
   });
+  readonly faturas = computed(() => proximasFaturas(this.cartoes()?.ativos ?? []));
   constructor() {
     this.carregar();
     // O "Desfazer" de um importado excluído volta depois que o diálogo fechou (Fatia 04a).

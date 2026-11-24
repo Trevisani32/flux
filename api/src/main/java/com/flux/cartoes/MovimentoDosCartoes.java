@@ -27,7 +27,11 @@ public interface MovimentoDosCartoes {
      * soma o que falta pagar em todas as faturas, inclusive as futuras, cada uma nunca negativa: o limite disponível
      * é o limite menos ele. Escala 2.
      */
-    record Movimento(FaturaResumida aberta, FaturaResumida proxima, BigDecimal emAberto, long lancamentosEmAberto, BigDecimal pendente) {
+    record FaturaAPagar(YearMonth mes, LocalDate fechamento, LocalDate vencimento, BigDecimal pendente) {
+    }
+
+    record Movimento(FaturaResumida aberta, FaturaResumida proxima, BigDecimal emAberto, long lancamentosEmAberto, BigDecimal pendente,
+                     List<FaturaAPagar> aPagar) {
     }
 
     /**

@@ -3,6 +3,7 @@ package com.flux.cartoes.interno.dto;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 import com.flux.cartoes.interno.CorCartao;
 
@@ -32,10 +33,15 @@ public record CartaoResponse(
         long lancamentosEmAberto,
         BigDecimal pendente,
         BigDecimal disponivel,
-        int usoDoLimite) {
+        int usoDoLimite,
+        List<FaturaAPagar> faturasAPagar) {
 
     /** {@code mes} é "2026-12". */
     public record Fatura(String mes, LocalDate inicio, LocalDate fechamento, LocalDate vencimento, BigDecimal total,
                          long lancamentos) {
+    }
+
+    /** Fatia 06a: uma fatura fechada com pendente, da mais antiga para a mais nova. */
+    public record FaturaAPagar(String mes, LocalDate fechamento, LocalDate vencimento, BigDecimal pendente) {
     }
 }

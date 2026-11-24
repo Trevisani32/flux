@@ -33,7 +33,10 @@
       <div class="inicio-movimento">
         @if (mesComLancamentos(); as mes) {
           <app-card class="inicio-mes" [titulo]="nomeDoMesSemAno(mes.mes)">
-            <a acao class="flux-link" routerLink="/lancamentos">Ver lançamentos</a>
+            <span acao class="inicio-mes__acoes">
+              <a class="flux-link" routerLink="/relatorios">Ver relatório</a>
+              <a class="flux-link" routerLink="/lancamentos">Ver lançamentos</a>
+            </span>
             <p class="inicio-mes__nota">Resultado, sem transferências</p>
             <app-valor class="inicio-mes__resultado" [valor]="mes.totais.resultado" />
             <div class="inicio-mes__par">
@@ -67,26 +70,53 @@
     }
   }
   @if (cartoes(); as lista) {
-    <app-card class="inicio-cartoes" titulo="Cartões">
+    <app-card class="inicio-faturas" titulo="Próximas faturas">
       <a acao class="flux-link" routerLink="/cartoes">Ver cartões</a>
       @if (lista.ativos.length > 0) {
-        <p class="inicio-cartoes__nota">Faturas abertas</p>
-        <ul class="flux-lista">
-          @for (cartao of lista.ativos; track cartao.id) {
-            <li class="inicio-cartao">
-              <span class="inicio-cartao__selo" [style.--flux-cor]="corDaConta(cartao.cor)" aria-hidden="true"><app-icone nome="cartao" [tamanho]="14" [traco]="2" /></span>
-              <span class="inicio-cartao__textos">
-                <a class="inicio-cartao__nome" [routerLink]="['/cartoes', cartao.id, 'faturas', cartao.faturaAberta.mes]">{{ cartao.nome }}</a>
-                <span class="inicio-cartao__meta">{{ nomeDoMesSemAno(cartao.faturaAberta.mes) }} · fecha {{ diaEMes(cartao.faturaAberta.fechamento) }} · vence {{ diaEMes(cartao.faturaAberta.vencimento) }}</span>
-                <span class="inicio-cartao__meta">Disponível <app-valor class="inicio-cartao__disponivel" [valor]="cartao.disponivel" tipo="saldo" /></span>
-              </span>
-              <span class="flux-num">{{ textoDoTotal(cartao.faturaAberta.total) }}</span>
-            </li>
-          }
-        </ul>
+        @if (faturas().length === 0) {
+          <p class="inicio-faturas__vazio">Nenhuma fatura a pagar.</p>
+        } @else {
+          <ul class="flux-lista">
+            @for (fatura of faturas(); track fatura.cartaoId + fatura.mes) {
+              <li class="inicio-fatura">
+                <span
+                  class="inicio-fatura__selo"
+                  [style.--flux-cor]="corDaConta(fatura.cor)"
+                  aria-hidden="true"
+                ><app-icone nome="cartao" [tamanho]="14" [traco]="2" /></span>
+                <span class="inicio-fatura__textos">
+                  <a
+                    class="inicio-fatura__nome"
+                    [routerLink]="['/cartoes', fatura.cartaoId, 'faturas', fatura.mes]"
+                  >{{ tituloDaProximaFatura(fatura, hojeIso) }}</a>
+                  <span class="inicio-fatura__meta">
+                    @if (metaDaProximaFatura(fatura, hojeIso).venceu; as venceu) {
+                      <span class="inicio-fatura__venceu">{{ venceu }}</span>
+                    }
+                    {{ metaDaProximaFatura(fatura, hojeIso).resto }}</span>
+                  @if (fatura.aberta) {
+                    <span class="inicio-fatura__meta inicio-fatura__disponivel"
+                      >disponível <app-valor [valor]="fatura.disponivel" tipo="saldo" /></span>
+                  }
+                </span>
+                <span class="inicio-fatura__valor">
+                  <span class="flux-num">{{ textoDoTotal(fatura.valor) }}</span>
+                  @if (metaDaProximaFatura(fatura, hojeIso).venceu) {
+                    <span class="flux-pilula inicio-fatura__pilula">Venceu</span>
+                  }
+                </span>
+              </li>
+            }
+          </ul>
+        }
       } @else {
-        <p class="inicio-cartoes__vazio">Cadastre um cartão para ver as faturas aqui.</p>
-        <a mat-stroked-button class="inicio-ultimos__novo" routerLink="/cartoes" [queryParams]="{ novo: 'cartao' }">Novo cartão</a>
+        <p class="inicio-faturas__vazio">Cadastre um cartão para ver as faturas aqui.</p>
+        <a
+          mat-stroked-button
+          class="inicio-ultimos__novo"
+          routerLink="/cartoes"
+          [queryParams]="{ novo: 'cartao' }"
+        >Novo cartão</a>
       }
     </app-card>
   }

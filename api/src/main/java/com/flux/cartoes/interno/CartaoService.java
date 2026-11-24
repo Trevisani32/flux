@@ -247,7 +247,7 @@ public class CartaoService {
             CalendarioDoCartao calendario = cartao.calendario();
             YearMonth aberta = calendario.faturaDe(hoje(), Map.of());
             return new MovimentoDosCartoes.Movimento(semLancamento(calendario, aberta), semLancamento(calendario, aberta.plusMonths(1)),
-                    BigDecimal.ZERO.setScale(2), 0, BigDecimal.ZERO.setScale(2));
+                    BigDecimal.ZERO.setScale(2), 0, BigDecimal.ZERO.setScale(2), List.of());
         }));
     }
 
@@ -264,7 +264,9 @@ public class CartaoService {
                 cartao.getDiaVencimento(), cartao.getContaPagamentoId(), conta.nome(), conta.arquivada(), cartao.getCor(),
                 cartao.getArquivadoEm(), fatura(movimento.aberta()), fatura(movimento.proxima()), movimento.emAberto(),
                 movimento.lancamentosEmAberto(), movimento.pendente(), cartao.getLimite().subtract(movimento.pendente()),
-                MovimentoDosCartoes.usoDoLimite(cartao.getLimite(), movimento.pendente()));
+                MovimentoDosCartoes.usoDoLimite(cartao.getLimite(), movimento.pendente()),
+                movimento.aPagar().stream().map(fatura -> new CartaoResponse.FaturaAPagar(fatura.mes().toString(), fatura.fechamento(),
+                        fatura.vencimento(), fatura.pendente())).toList());
     }
 
     private static CartaoResponse.Fatura fatura(MovimentoDosCartoes.FaturaResumida fatura) {

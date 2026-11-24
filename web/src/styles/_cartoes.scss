@@ -762,30 +762,30 @@ app-lancamentos .lancamentos__fatura .flux-link {
   margin-left: auto;
 }
 
-// Início (decisão 26): o card "Cartões"
-app-inicio .inicio-cartoes {
+// Início (Fatia 06a): o card "Próximas faturas".
+app-inicio .inicio-faturas {
   gap: 10px;
 }
 
-app-inicio .inicio-cartoes__nota {
+app-inicio .inicio-faturas__nota {
   margin-top: -10px;
   color: var(--flux-texto-3);
   font-size: 12px;
   line-height: 16px;
 }
 
-app-inicio .inicio-cartao {
+app-inicio .inicio-fatura {
   display: flex;
   align-items: center;
   gap: var(--flux-espaco-3);
 }
 
-app-inicio .inicio-cartao + .inicio-cartao {
+app-inicio .inicio-fatura + .inicio-fatura {
   padding-top: 10px;
   border-top: 1px solid var(--flux-borda);
 }
 
-app-inicio .inicio-cartao__selo {
+app-inicio .inicio-fatura__selo {
   width: 36px;
   height: 25px;
   display: grid;
@@ -796,14 +796,14 @@ app-inicio .inicio-cartao__selo {
   color: var(--flux-cor, var(--flux-ouro));
 }
 
-app-inicio .inicio-cartao__textos {
+app-inicio .inicio-fatura__textos {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-app-inicio .inicio-cartao__nome {
+app-inicio .inicio-fatura__nome {
   overflow: hidden;
   color: inherit;
   font-weight: 700;
@@ -812,17 +812,17 @@ app-inicio .inicio-cartao__nome {
   white-space: nowrap;
 }
 
-app-inicio .inicio-cartao__nome:hover {
+app-inicio .inicio-fatura__nome:hover {
   color: var(--flux-ouro-texto);
   text-decoration: underline;
 }
 
-app-inicio .inicio-cartao__meta {
+app-inicio .inicio-fatura__meta {
   color: var(--flux-texto-3);
   font-size: 12px;
 }
 
-app-inicio .inicio-cartoes__vazio {
+app-inicio .inicio-faturas__vazio {
   color: var(--flux-texto-2);
   font-size: 14px;
 }
@@ -860,6 +860,15 @@ app-inicio .inicio-cartoes__vazio {
 
 // Os diálogos da compra e do ajuste ocupam a tela no celular (.flux-dialogo--cheio-no-celular), com o botão embaixo.
 @media (max-width: 599.98px) {
+  app-inicio .inicio-fatura {
+    align-items: flex-start;
+  }
+
+  app-inicio .inicio-fatura__nome,
+  app-inicio .inicio-fatura__meta {
+    white-space: normal;
+  }
+
   app-compra-dialogo .compra,
   app-ajuste-dialogo .ajuste {
     min-height: 100%;
@@ -1073,8 +1082,27 @@ app-cartoes .cartoes__acima {
   font-weight: 700;
 }
 
-app-inicio .inicio-cartao__disponivel {
+app-inicio .inicio-fatura__disponivel {
   font-size: 12px;
+}
+
+app-inicio .inicio-fatura__venceu {
+  color: var(--flux-cor-conta-laranja);
+  font-weight: 700;
+}
+
+app-inicio .inicio-fatura__valor {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+app-inicio .inicio-fatura__pilula {
+  border: 0;
+  background: color-mix(in srgb, var(--flux-cor-conta-laranja) 15%, transparent);
+  color: var(--flux-cor-conta-laranja);
 }
 
 app-compra-dialogo .compra__disponivel {

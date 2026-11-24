@@ -1,0 +1,93 @@
+<svg [attr.width]="largura()" [attr.height]="altura()" role="group" [attr.aria-label]="rotuloSvg()">
+  @for (marca of marcas(); track marca) {
+    <line
+      class="grafico__marca"
+      [class.grafico__marca--zero]="marca === 0"
+      [attr.x1]="40"
+      [attr.x2]="largura() - 12"
+      [attr.y1]="y()(marca)"
+      [attr.y2]="y()(marca)"
+    />
+    <text class="grafico__eixo" [attr.x]="32" [attr.y]="y()(marca) + 4" text-anchor="end">
+      {{ textoDoEixo(marca) }}
+    </text>
+  }
+  @if (pontos().length > 1) {
+    <path class="grafico__area" [attr.d]="area()" />
+    <path class="grafico__linha" [attr.d]="linha()" />
+  }
+  @for (item of pontos(); track item.mes) {
+    <g
+      class="grafico__grupo"
+      [class.grafico__grupo--sel]="item.mes === selecionado()"
+      [class.grafico__grupo--ativo]="ativo() === item.mes"
+      tabindex="0"
+      role="button"
+      [attr.aria-label]="item.leitura"
+      (pointerdown)="aoPointerDown($event)"
+      (pointerenter)="entrar(item.mes, $event)"
+      (pointerleave)="sair(item.mes, $event)"
+      (focus)="focar(item.mes)"
+      (blur)="desfocar(item.mes)"
+      (click)="clicar(item.mes)"
+      (keydown.enter)="escolher.emit(item.mes)"
+      (keydown.space)="teclaEspaco($event, item.mes)"
+    >
+      <rect
+        class="grafico__faixa"
+        [attr.x]="item.x - faixa() / 2"
+        y="8"
+        [attr.width]="faixa()"
+        [attr.height]="altura() - 56"
+        rx="6"
+      />
+      <circle
+        class="grafico__ponto"
+        [attr.cx]="item.x"
+        [attr.cy]="item.y"
+        [attr.r]="ativo() === item.mes || $last ? 4.5 : 3"
+      />
+      @if (ativo() === item.mes) {
+        <path
+          class="grafico__cruz"
+          [attr.d]="
+            'M ' + (item.x - 6) + ' ' + item.y + 'h12M ' + item.x + ' ' + (item.y - 6) + 'v12'
+          "
+        />
+      }
+      <text class="grafico__mes" [attr.x]="item.x" [attr.y]="altura() - 18" text-anchor="middle">
+        {{ item.rotulo }}
+      </text>
+      @if (item.ano !== null) {
+        <text class="grafico__ano" [attr.x]="item.x" [attr.y]="altura() - 5" text-anchor="middle">
+          {{ item.ano }}
+        </text>
+      }
+    </g>
+  }
+  @if (ultimo(); as item) {
+    <text
+      class="grafico__rotulo-fim"
+      [attr.x]="item.x"
+      [attr.y]="item.y - 12"
+      [attr.text-anchor]="item.x > largura() - 100 ? 'end' : 'start'"
+    >
+      {{ formatarMoeda(item.saldo) }}
+    </text>
+  }
+</svg>
+@if (ativoItem(); as item) {
+  <div
+    class="grafico__balao"
+    aria-hidden="true"
+    [style.top.px]="8"
+    [style.left.px]="esquerdaBalao(item.x)"
+    [style.right.px]="direitaBalao(item.x)"
+  >
+    <b class="grafico__balao-titulo">{{ item.titulo }}</b>
+    <span>Saldo total {{ formatarMoeda(item.saldo) }}</span>
+    <small class="grafico__dica">{{
+      porToque() ? 'Toque de novo para ver este mês' : 'Clique para ver este mês'
+    }}</small>
+  </div>
+}

@@ -26,7 +26,8 @@ class ModularidadeTest {
      * UsoDaConta (a conta de pagamento, Fatia 05a); as regras (categorizacao) dependem de contas, categorias e lançamentos e
      * implementam UsoDaCategoria e LimpezaDaConta; a importação depende de lançamentos, de contas, de cartões e
      * das regras; ninguém depende da importação; contas, categorias e lançamentos não dependem das
-     * regras, e contas e categorias não dependem dos cartões.
+     * regras, e contas e categorias não dependem dos cartões. Relatórios depende só de compartilhado, e ninguém depende de
+     * relatórios (ADR 0020).
      */
     @Test
     void dependenciasSeguemADirecaoCombinada() {
@@ -37,7 +38,11 @@ class ModularidadeTest {
         assertThat(dependenciasDiretas("categorizacao")).containsExactlyInAnyOrder("compartilhado", "contas", "categorias", "cartoes",
                 "lancamentos");
         assertThat(dependenciasDiretas("importacao")).containsExactlyInAnyOrder("compartilhado", "contas", "lancamentos", "categorizacao", "cartoes");
+        assertThat(dependenciasDiretas("relatorios")).containsExactlyInAnyOrder("compartilhado");
         assertThat(dependenciasDiretas("acesso")).doesNotContain("contas", "categorias", "lancamentos", "importacao", "categorizacao", "cartoes");
+        for (String modulo : Set.of("contas", "categorias", "cartoes", "lancamentos", "categorizacao", "importacao", "acesso")) {
+            assertThat(dependenciasDiretas(modulo)).doesNotContain("relatorios");
+        }
     }
 
     private Set<String> dependenciasDiretas(String modulo) {

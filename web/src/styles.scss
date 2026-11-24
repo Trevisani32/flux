@@ -16,6 +16,8 @@
 @use 'styles/regras';
 @use 'styles/conversao';
 @use 'styles/cartoes';
+@use 'styles/graficos';
+@use 'styles/relatorios';
 
 html {
   @include mat.theme(

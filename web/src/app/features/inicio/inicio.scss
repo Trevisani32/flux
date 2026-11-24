@@ -70,6 +70,12 @@
   gap: 12px;
 }
 
+.inicio-mes__acoes {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
 .inicio-mes__nota {
   margin-top: -10px;
   color: var(--flux-texto-3);
@@ -123,5 +129,11 @@
   .inicio-contas,
   .inicio-movimento {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 959.98px) {
+  .inicio-mes__acoes {
+    gap: 10px;
   }
 }
