@@ -1,5 +1,8 @@
 package com.flux.suporte;
 
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 import com.flux.suporte.UsuariosDeTeste.UsuarioDeTeste;
@@ -72,5 +75,13 @@ public abstract class CartoesBase extends IntegracaoBase {
 
     protected int contar(String tabela, UsuarioDeTeste usuario) {
         return jdbc.queryForObject("select count(*) from " + tabela + " where usuario_id = ?", Integer.class, usuario.id());
+    }
+
+    /** Fixa o relógio de teste no dia 10 do mês corrente, antes de criar o usuário e o token. */
+    protected LocalDate fixarHojeNoDia10() {
+        LocalDate alvo = LocalDate.now(relogioDeTeste).withDayOfMonth(10);
+        var instanteDoAlvo = alvo.atTime(12, 0).atZone(ZoneId.of("America/Sao_Paulo")).toInstant();
+        relogioDeTeste.avancar(Duration.between(relogioDeTeste.instant(), instanteDoAlvo));
+        return LocalDate.now(relogioDeTeste);
     }
 }
