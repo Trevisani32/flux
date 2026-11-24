@@ -23,5 +23,5 @@ import { Valor } from '../valor/valor';
 })
 export class SaldoEmDestaque {
   readonly rotulo = input.required<string>();
-  readonly valor = input.required<number>();
+  readonly valor = input.required<number | null>();
 }

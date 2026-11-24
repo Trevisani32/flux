@@ -1,0 +1,162 @@
+@if (relatorio().categorias.length === 0) {
+  <p class="categorias__vazio">{{ nada() }}</p>
+} @else {
+  <p class="categorias__nota">{{ nota() }}</p>
+  @if (legenda(); as texto) {
+    <ul class="categorias__legenda">
+      <li>
+        <span class="legenda__sw categorias__legenda-sw"></span>
+        {{ nomeDoMesSemAno(relatorio().mes) }}
+      </li>
+      <li>
+        <span class="legenda__tick"></span>
+        {{ texto }}
+      </li>
+    </ul>
+  }
+  <ul class="categorias">
+    @for (categoria of relatorio().categorias; track categoria.id ?? categoria.nome) {
+      <li>
+        <div
+          class="categorias__linha"
+          [class.categorias__linha--sem]="categoria.id === null"
+          [class.categorias__linha--zero]="categoria.valor === 0"
+        >
+          @if (categoria.subcategorias.length > 0) {
+            <button
+              class="categorias__abrir"
+              type="button"
+              [attr.aria-expanded]="aberta(categoria)"
+              [attr.aria-controls]="'relatorios-sub-' + categoria.id"
+              [attr.aria-label]="'Subcategorias de ' + categoria.nome"
+              (click)="alternar(categoria)"
+            >
+              <app-icone nome="baixo" />
+            </button>
+          } @else {
+            <span></span>
+          }
+          @if (link(categoria); as destino) {
+            <a class="categorias__nome" routerLink="/lancamentos" [queryParams]="destino">
+              <span class="categorias__nome-texto">{{ categoria.nome }}</span>
+              @if (categoria.arquivada) {
+                <span class="flux-pilula">Arquivada</span>
+              }
+            </a>
+          } @else {
+            <span class="categorias__nome">
+              <span class="categorias__nome-texto">{{ categoria.nome }}</span>
+              @if (categoria.arquivada) {
+                <span class="flux-pilula">Arquivada</span>
+              }
+            </span>
+          }
+          <app-barra-horizontal
+            [valor]="categoria.valor"
+            [media]="categoria.media"
+            [maximo]="maximo()"
+            [variante]="categoria.id === null ? 'sem' : 'principal'"
+          />
+          @if (link(categoria); as destino) {
+            <a class="categorias__valor" routerLink="/lancamentos" [queryParams]="destino">{{
+              formatarMoeda(categoria.valor)
+            }}</a>
+          } @else {
+            <span class="categorias__valor">{{ formatarMoeda(categoria.valor) }}</span>
+          }
+          <span class="categorias__comparacao">
+            @if (categoria.comparacao; as comparacao) {
+              <span
+                [class]="
+                  'relatorios__delta relatorios__delta--' + corDaComparacao(comparacao, 'despesa')
+                "
+              >
+                <span aria-hidden="true">{{ textoDaComparacao(comparacao) }}</span>
+                <span class="flux-visualmente-oculto">{{
+                  leituraDaComparacao(comparacao, 'despesa')
+                }}</span>
+              </span>
+            }
+            <small class="categorias__media">{{
+              textoDaMediaDaLinha(categoria, relatorio().mesesDaMedia.length)
+            }}</small>
+          </span>
+        </div>
+        @if (categoria.subcategorias.length > 0) {
+          <ul
+            class="categorias__subcategorias"
+            [id]="'relatorios-sub-' + categoria.id"
+            [hidden]="!aberta(categoria)"
+          >
+            @for (sub of categoria.subcategorias; track sub.nome) {
+              <li>
+                <div class="categorias__linha categorias__linha--sub">
+                  <span></span>
+                  @if (link(sub); as destino) {
+                    <a
+                      class="categorias__nome"
+                      [class.categorias__nome--direto]="sub.direto"
+                      routerLink="/lancamentos"
+                      [queryParams]="destino"
+                    >
+                      <span class="categorias__nome-texto">{{ sub.nome }}</span>
+                    </a>
+                  } @else {
+                    <span
+                      class="categorias__nome"
+                      [class.categorias__nome--direto]="sub.direto"
+                    >
+                      <span class="categorias__nome-texto">{{ sub.nome }}</span>
+                    </span>
+                  }
+                  <app-barra-horizontal
+                    [valor]="sub.valor"
+                    [media]="sub.media"
+                    [maximo]="maximo()"
+                    variante="sub"
+                  />
+                  @if (link(sub); as destino) {
+                    <a
+                      class="categorias__valor"
+                      routerLink="/lancamentos"
+                      [queryParams]="destino"
+                      >{{ formatarMoeda(sub.valor) }}</a
+                    >
+                  } @else {
+                    <span class="categorias__valor">{{ formatarMoeda(sub.valor) }}</span>
+                  }
+                  <span class="categorias__comparacao">
+                    @if (sub.comparacao; as comparacao) {
+                      <span
+                        [class]="
+                          'relatorios__delta relatorios__delta--' +
+                          corDaComparacao(comparacao, 'despesa')
+                        "
+                      >
+                        <span aria-hidden="true">{{ textoDaComparacao(comparacao) }}</span>
+                        <span class="flux-visualmente-oculto">{{
+                          leituraDaComparacao(comparacao, 'despesa')
+                        }}</span>
+                      </span>
+                    }
+                    <small class="categorias__media">{{
+                      textoDaMediaDaLinha(sub, relatorio().mesesDaMedia.length)
+                    }}</small>
+                  </span>
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      </li>
+    }
+  </ul>
+  @if (relatorio().despesas.quantidade > 0) {
+    <p class="categorias__rodape">
+      <span>Total: <b>{{ totalDasDespesas() }}</b> em {{ quantidadeDasDespesas() }}</span>
+      <span class="flux-so-desktop">Clique numa categoria para ver os lançamentos dela.</span>
+    </p>
+  } @else {
+    <p class="categorias__rodape">{{ nada() }}</p>
+  }
+}

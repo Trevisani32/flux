@@ -1,0 +1,448 @@
+// Fatia 06a: página Relatórios e categorias; regras globais para preservar o orçamento dos componentes.
+app-relatorios .relatorios__subtitulo {
+  margin: 4px 0 0;
+  color: var(--flux-texto-2);
+  font-size: 13px;
+}
+
+app-relatorios .relatorios__mes {
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+  border: 1px solid var(--flux-borda);
+  border-radius: var(--flux-raio-controle);
+  background: var(--flux-card);
+}
+
+app-relatorios .relatorios__seta {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--flux-texto-2);
+  cursor: pointer;
+}
+
+app-relatorios .relatorios__seta:hover:not(:disabled) {
+  background: var(--flux-card-2);
+  color: var(--flux-texto);
+}
+
+app-relatorios .relatorios__seta:disabled {
+  color: var(--flux-texto-3);
+  cursor: default;
+}
+
+app-relatorios .relatorios__nome-do-mes {
+  min-width: 154px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--flux-texto);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+
+app-relatorios .relatorios__conteudo {
+  display: grid;
+  gap: 16px;
+  transition: opacity 0.15s;
+}
+
+app-relatorios .relatorios__conteudo--carregando {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+app-relatorios .relatorios__kpis {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+app-relatorios .relatorios__saldo {
+  color: inherit;
+  text-decoration: none;
+}
+
+app-relatorios .relatorios__kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
+app-relatorios .relatorios__rotulo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--flux-texto-2);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+app-relatorios .relatorios__cor {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--flux-receita);
+}
+
+app-relatorios .relatorios__kpi--despesas .relatorios__cor {
+  background: var(--flux-despesa);
+}
+
+app-relatorios .relatorios__numero {
+  color: var(--flux-texto);
+  font-size: 23px;
+  font-variant-numeric: tabular-nums;
+}
+
+app-relatorios .relatorios__delta {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+app-relatorios .relatorios__delta--ruim {
+  color: var(--flux-negativo);
+}
+
+app-relatorios .relatorios__delta--bom {
+  color: var(--flux-positivo);
+}
+
+app-relatorios .relatorios__delta--igual {
+  color: var(--flux-texto-2);
+}
+
+app-relatorios .relatorios__delta--novo {
+  color: var(--flux-ouro-texto);
+}
+
+app-relatorios .relatorios__nota,
+app-relatorios .relatorios__faixa {
+  margin: 0;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+}
+
+app-relatorios .relatorios__graficos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+app-relatorios .relatorios__legenda,
+app-gastos-por-categoria .categorias__legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  padding: 0;
+  color: var(--flux-texto-2);
+  font-size: 12px;
+  line-height: 16px;
+  list-style: none;
+}
+
+app-relatorios .relatorios__legenda li,
+app-gastos-por-categoria .categorias__legenda li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+app-relatorios .legenda__sw,
+app-gastos-por-categoria .legenda__sw {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 3px;
+}
+
+app-relatorios .relatorios__legenda-sw--receita {
+  background: var(--flux-receita);
+}
+
+app-relatorios .relatorios__legenda-sw--despesa {
+  background: var(--flux-despesa);
+}
+
+app-gastos-por-categoria .categorias__legenda-sw {
+  background: var(--flux-ouro);
+}
+
+app-relatorios .legenda__tick,
+app-gastos-por-categoria .legenda__tick {
+  width: 2px;
+  height: 14px;
+  flex: none;
+  border-radius: 1px;
+  background: var(--flux-texto-2);
+}
+
+app-relatorios .relatorios__alternar {
+  align-self: flex-start;
+}
+
+app-relatorios .relatorios__sem-saldo {
+  color: var(--flux-texto-2);
+}
+
+app-relatorios .relatorios__tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+app-relatorios .relatorios__tabela th,
+app-relatorios .relatorios__tabela td {
+  padding: 9px 6px;
+  border-top: 1px solid var(--flux-borda);
+  text-align: right;
+}
+
+app-relatorios .relatorios__tabela th:first-child,
+app-relatorios .relatorios__tabela td:first-child {
+  text-align: left;
+}
+
+app-relatorios .relatorios__tabela-sel {
+  background: rgba(var(--flux-ouro-rgb), 0.08);
+}
+
+app-gastos-por-categoria {
+  display: block;
+}
+
+app-gastos-por-categoria .categorias,
+app-gastos-por-categoria .categorias__subcategorias {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+app-gastos-por-categoria .categorias__subcategorias[hidden] {
+  display: none;
+}
+
+app-gastos-por-categoria .categorias > li + li {
+  border-top: 1px solid var(--flux-borda);
+}
+
+app-gastos-por-categoria .categorias__nota,
+app-gastos-por-categoria .categorias__legenda,
+app-gastos-por-categoria .categorias__vazio,
+app-gastos-por-categoria .categorias__rodape {
+  color: var(--flux-texto-2);
+  font-size: 13px;
+}
+
+app-gastos-por-categoria .categorias__linha {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'a n v'
+    '. t t'
+    '. c c';
+  align-items: center;
+  gap: 6px 10px;
+  padding: 10px 0;
+}
+
+app-gastos-por-categoria .categorias__linha--sub {
+  padding: 8px 0;
+}
+
+app-gastos-por-categoria .categorias__abrir {
+  grid-area: a;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--flux-texto-3);
+  cursor: pointer;
+}
+
+app-gastos-por-categoria .categorias__abrir:hover {
+  background: var(--flux-card-2);
+  color: var(--flux-texto);
+}
+
+app-gastos-por-categoria .categorias__linha > :first-child {
+  grid-area: a;
+}
+
+app-gastos-por-categoria .categorias__nome {
+  grid-area: n;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+app-gastos-por-categoria .categorias__nome-texto {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+app-gastos-por-categoria .categorias__nome:hover,
+app-gastos-por-categoria .categorias__valor:hover {
+  color: var(--flux-ouro-texto);
+  text-decoration: underline;
+}
+
+app-gastos-por-categoria .categorias__valor {
+  grid-area: v;
+  text-align: right;
+  color: var(--flux-texto);
+  font-weight: 800;
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+app-gastos-por-categoria .categorias__comparacao {
+  grid-area: c;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 2px 10px;
+}
+
+app-gastos-por-categoria .categorias__media {
+  color: var(--flux-texto-3);
+  white-space: nowrap;
+}
+
+app-gastos-por-categoria app-barra-horizontal {
+  grid-area: t;
+}
+
+app-gastos-por-categoria .categorias__linha--sem .categorias__nome-texto,
+app-gastos-por-categoria .categorias__nome--direto .categorias__nome-texto {
+  font-style: italic;
+}
+
+app-gastos-por-categoria .categorias__linha--zero .categorias__valor {
+  color: var(--flux-texto-3);
+}
+
+app-gastos-por-categoria .categorias__subcategorias {
+  margin: -4px 0 8px;
+}
+
+app-gastos-por-categoria .categorias__linha--sub .categorias__nome {
+  padding-left: 0;
+  color: var(--flux-texto-2);
+  font-weight: 600;
+}
+
+app-gastos-por-categoria .categorias__linha--sub .categorias__valor {
+  color: var(--flux-texto-2);
+  font-weight: 700;
+}
+
+app-gastos-por-categoria .categorias__rodape {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--flux-borda);
+  color: var(--flux-texto-3);
+  font-size: 12px;
+}
+
+app-gastos-por-categoria .categorias__rodape b {
+  color: var(--flux-texto-2);
+}
+
+app-relatorios .relatorios__saldo .flux-cartao-destaque__rodape {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+app-relatorios .relatorios__saldo .flux-cartao-destaque__rodape > * {
+  white-space: nowrap;
+}
+
+@media (max-width: 1279.98px) {
+  app-relatorios .relatorios__kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  app-relatorios .relatorios__saldo {
+    grid-column: 1 / -1;
+  }
+
+  app-relatorios .relatorios__graficos {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  app-gastos-por-categoria .categorias__linha {
+    grid-template-columns: 28px minmax(150px, 230px) minmax(0, 1fr) 120px 210px;
+    grid-template-areas: 'a n t v c';
+    gap: 0 16px;
+    min-height: 52px;
+    padding: 6px 0;
+  }
+
+  app-gastos-por-categoria .categorias__linha--sub {
+    min-height: 40px;
+    padding: 2px 0;
+  }
+
+  app-gastos-por-categoria .categorias__comparacao {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 1px;
+  }
+
+  app-gastos-por-categoria .categorias__linha--sub .categorias__nome {
+    padding-left: 14px;
+  }
+}
+
+@media (max-width: 959.98px) {
+  app-relatorios .relatorios__mes {
+    width: 100%;
+    height: 46px;
+    justify-content: space-between;
+  }
+
+  app-relatorios .relatorios__kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  app-relatorios .relatorios__saldo,
+  app-relatorios .relatorios__kpi--resultado {
+    grid-column: 1 / -1;
+  }
+
+  app-relatorios .relatorios__numero {
+    font-size: 18px;
+  }
+}

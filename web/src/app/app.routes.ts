@@ -49,6 +49,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/lancamentos/lancamentos').then((m) => m.Lancamentos),
       },
       {
+        path: 'relatorios', title: 'Relatórios | Flux',
+        loadComponent: () => import('./features/relatorios/relatorios').then((m) => m.Relatorios),
+      },
+      {
         path: 'importacao', title: 'Importação | Flux',
         loadComponent: () => import('./features/importacao/importacao').then((m) => m.Importacao),
       },

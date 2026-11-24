@@ -20,6 +20,14 @@ export interface FaturaDoCartao {
   readonly lancamentos: number;
 }
 
+/** Fatia 06a: uma fatura fechada que ainda tem valor pendente. */
+export interface FaturaAPagar {
+  readonly mes: string;
+  readonly fechamento: string;
+  readonly vencimento: string;
+  readonly pendente: number;
+}
+
 /** Um cartão como a API devolve (decisões 1 a 6, 26 e 29 da 05a). Valores prontos, com sinal. */
 export interface Cartao {
   readonly id: number;
@@ -45,6 +53,7 @@ export interface Cartao {
   readonly pendente?: number;
   readonly disponivel?: number;
   readonly usoDoLimite?: number;
+  readonly faturasAPagar?: readonly FaturaAPagar[];
 }
 
 /** Resposta de GET /api/cartoes. */

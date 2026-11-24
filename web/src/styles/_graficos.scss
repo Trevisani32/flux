@@ -1,0 +1,178 @@
+// Fatia 06a: gráficos SVG próprios; estilos globais para preservar o orçamento dos componentes.
+app-grafico-colunas svg,
+app-grafico-linha svg {
+  display: block;
+  max-width: 100%;
+  overflow: visible;
+}
+
+app-grafico-colunas .grafico__marca,
+app-grafico-linha .grafico__marca {
+  stroke: var(--flux-borda);
+  stroke-width: 1;
+}
+
+app-grafico-colunas .grafico__marca--zero,
+app-grafico-linha .grafico__marca--zero {
+  stroke: var(--flux-borda-2);
+}
+
+app-grafico-colunas .grafico__eixo,
+app-grafico-linha .grafico__eixo {
+  fill: var(--flux-texto-3);
+  font-size: 10px;
+}
+
+app-grafico-colunas .grafico__faixa,
+app-grafico-linha .grafico__faixa {
+  fill: transparent;
+}
+
+app-grafico-colunas .grafico__grupo,
+app-grafico-linha .grafico__grupo {
+  cursor: pointer;
+  outline: none;
+}
+
+app-grafico-colunas .grafico__grupo--sel .grafico__faixa,
+app-grafico-linha .grafico__grupo--sel .grafico__faixa {
+  fill: rgba(var(--flux-ouro-rgb), 0.07);
+}
+
+app-grafico-colunas .grafico__grupo:hover .grafico__faixa,
+app-grafico-linha .grafico__grupo:hover .grafico__faixa,
+app-grafico-colunas .grafico__grupo--ativo .grafico__faixa,
+app-grafico-linha .grafico__grupo--ativo .grafico__faixa {
+  fill: rgba(255, 255, 255, 0.045);
+}
+
+app-grafico-colunas .grafico__grupo--sel:hover .grafico__faixa,
+app-grafico-linha .grafico__grupo--sel:hover .grafico__faixa,
+app-grafico-colunas .grafico__grupo--sel.grafico__grupo--ativo .grafico__faixa,
+app-grafico-linha .grafico__grupo--sel.grafico__grupo--ativo .grafico__faixa {
+  fill: rgba(var(--flux-ouro-rgb), 0.11);
+}
+
+app-grafico-colunas .grafico__grupo:focus-visible .grafico__faixa,
+app-grafico-linha .grafico__grupo:focus-visible .grafico__faixa {
+  stroke: rgba(var(--flux-ouro-rgb), 0.85);
+  stroke-width: 1.5;
+}
+
+app-grafico-colunas .grafico__grupo:hover .grafico__coluna,
+app-grafico-colunas .grafico__grupo--ativo .grafico__coluna {
+  filter: brightness(1.15);
+}
+
+app-grafico-colunas .grafico__coluna--receita {
+  fill: var(--flux-receita);
+}
+
+app-grafico-colunas .grafico__coluna--despesa {
+  fill: var(--flux-despesa);
+}
+
+app-grafico-colunas .grafico__mes,
+app-grafico-linha .grafico__mes {
+  fill: var(--flux-texto-2);
+  font-size: 11px;
+}
+
+app-grafico-colunas .grafico__grupo--sel .grafico__mes,
+app-grafico-linha .grafico__grupo--sel .grafico__mes {
+  fill: var(--flux-texto);
+  font-weight: 800;
+}
+
+app-grafico-colunas .grafico__ano,
+app-grafico-linha .grafico__ano {
+  fill: var(--flux-texto-3);
+  font-size: 9px;
+}
+
+app-grafico-linha .grafico__area {
+  fill: rgba(var(--flux-ouro-rgb), 0.1);
+}
+
+app-grafico-linha .grafico__linha {
+  fill: none;
+  stroke: var(--flux-ouro);
+  stroke-width: 2;
+}
+
+app-grafico-linha .grafico__ponto {
+  fill: var(--flux-ouro);
+  stroke: var(--flux-card);
+  stroke-width: 2;
+}
+
+app-grafico-linha .grafico__cruz {
+  fill: none;
+  stroke: var(--flux-ouro-claro);
+  stroke-width: 1.5;
+}
+
+app-grafico-linha .grafico__rotulo-fim {
+  fill: var(--flux-ouro-claro);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+app-grafico-colunas .grafico__balao,
+app-grafico-linha .grafico__balao {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 160px;
+  padding: 10px 12px;
+  border: 1px solid var(--flux-borda-2);
+  border-radius: 10px;
+  background: var(--flux-card-2);
+  box-shadow: var(--flux-sombra);
+  color: var(--flux-texto-2);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+app-grafico-colunas .grafico__balao-titulo,
+app-grafico-linha .grafico__balao-titulo {
+  color: var(--flux-texto);
+}
+
+app-grafico-colunas .grafico__dica,
+app-grafico-linha .grafico__dica {
+  margin-top: 3px;
+  color: var(--flux-texto-3);
+}
+
+app-barra-horizontal {
+  height: 8px;
+  overflow: visible;
+  border-radius: var(--flux-raio-pilula);
+  background: var(--flux-card-2);
+}
+
+app-barra-horizontal .barra__preenche {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: var(--flux-ouro);
+}
+
+app-barra-horizontal .barra__media {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 14px;
+  background: var(--flux-texto-2);
+}
+
+app-barra-horizontal.grafico-barra--sem .barra__preenche {
+  background: var(--flux-barra-neutra);
+}
+
+app-barra-horizontal.grafico-barra--sub .barra__preenche {
+  background: color-mix(in srgb, var(--flux-ouro) 55%, var(--flux-card));
+}
