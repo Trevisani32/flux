@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AuthService } from '../../core/auth/auth.service';
 import { ICONES } from '../../shared/icone/icones';
 import { ExcluirContaDialogo } from './excluir-conta-dialogo/excluir-conta-dialogo';
+import { ExportarDadosDialogo } from './exportar-dados-dialogo/exportar-dados-dialogo';
 import { Conta, MinhaContaService } from './minha-conta.service';
 import { MinhaConta } from './minha-conta';
 
@@ -106,6 +107,32 @@ describe('MinhaConta', () => {
     dialogo.open.mockReturnValue({ afterClosed: () => of('') });
     componente.abrirExclusao();
     expect(auth.limparSessao).not.toHaveBeenCalled(); expect(navegar).not.toHaveBeenCalled();
+  });
+
+  it('o card Exportar meus dados fica antes de Excluir e cada botão abre o diálogo do seu formato', () => {
+    const { componente, elemento, dialogo } = criar();
+    expect(Array.from(elemento.querySelectorAll('h2')).map((h2) => h2.textContent?.trim())).toContain('Exportar meus dados');
+    const titulos = Array.from(elemento.querySelectorAll('h2')).map((h2) => h2.textContent?.trim());
+    expect(titulos.indexOf('Exportar meus dados')).toBeLessThan(titulos.indexOf('Excluir minha conta'));
+    componente.abrirExportacao('JSON');
+    expect(dialogo.open).toHaveBeenLastCalledWith(ExportarDadosDialogo, expect.objectContaining({ data: { formato: 'JSON' } }));
+    componente.abrirExportacao('CSV');
+    expect(dialogo.open).toHaveBeenLastCalledWith(ExportarDadosDialogo, expect.objectContaining({ data: { formato: 'CSV' } }));
+  });
+
+  it('o arquivo baixado mostra o aviso e o "exportar" da exclusão abre o diálogo do JSON', () => {
+    const exportacao = new Subject<string>();
+    const exclusao = new Subject<boolean | 'exportar'>();
+    const { componente, dialogo, snackBar } = criar();
+    dialogo.open.mockReturnValueOnce({ afterClosed: () => exportacao });
+    componente.abrirExportacao('JSON');
+    exportacao.next('flux-dados-2026-11-24.json');
+    expect(snackBar.open).toHaveBeenCalledWith('Arquivo baixado: flux-dados-2026-11-24.json', 'Fechar', { duration: 5000 });
+    dialogo.open.mockReturnValueOnce({ afterClosed: () => exclusao });
+    dialogo.open.mockReturnValueOnce({ afterClosed: () => of('') });
+    componente.abrirExclusao();
+    exclusao.next('exportar');
+    expect(dialogo.open).toHaveBeenLastCalledWith(ExportarDadosDialogo, expect.objectContaining({ data: { formato: 'JSON' } }));
   });
 
   it('oferece nova tentativa quando carregar falha', () => {

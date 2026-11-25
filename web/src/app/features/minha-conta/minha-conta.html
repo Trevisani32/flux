@@ -88,6 +88,54 @@
           </div>
         </section>
 
+        <section class="flux-card" aria-labelledby="minha-conta-exportar">
+          <div class="minha-conta__cabecalho">
+            <h2 id="minha-conta-exportar" class="minha-conta__titulo">Exportar meus dados</h2>
+            <p class="minha-conta__nota">Uma cópia de tudo o que você guardou no Flux, para guardar ou levar a outro serviço.</p>
+          </div>
+          <ul class="minha-conta__incluidos">
+            <li>
+              <app-icone nome="check" [tamanho]="16" [traco]="2.4" />
+              Contas e saldos iniciais
+            </li>
+            <li>
+              <app-icone nome="check" [tamanho]="16" [traco]="2.4" />
+              Categorias
+            </li>
+            <li>
+              <app-icone nome="check" [tamanho]="16" [traco]="2.4" />
+              Lançamentos e transferências
+            </li>
+            <li>
+              <app-icone nome="check" [tamanho]="16" [traco]="2.4" />
+              Cartões, faturas e compras
+            </li>
+            <li>
+              <app-icone nome="check" [tamanho]="16" [traco]="2.4" />
+              Importações e perfis de CSV
+            </li>
+            <li>
+              <app-icone nome="check" [tamanho]="16" [traco]="2.4" />
+              Regras de categorização
+            </li>
+            <li>
+              <app-icone nome="check" [tamanho]="16" [traco]="2.4" />
+              Seu perfil e o aceite dos termos
+            </li>
+          </ul>
+          <p class="minha-conta__nota">Não vão: a senha, as sessões e os códigos internos de segurança.</p>
+          <div class="minha-conta__botoes">
+            <button mat-stroked-button type="button" (click)="abrirExportacao('JSON')">
+              <app-icone nome="baixar" [tamanho]="18" [traco]="2.2" />
+              Baixar tudo (JSON)
+            </button>
+            <button mat-stroked-button type="button" (click)="abrirExportacao('CSV')">
+              <app-icone nome="baixar" [tamanho]="18" [traco]="2.2" />
+              Lançamentos (CSV)
+            </button>
+          </div>
+        </section>
+
         <section class="flux-card minha-conta__perigo" aria-labelledby="minha-conta-excluir">
           <h2 id="minha-conta-excluir" class="minha-conta__titulo"><app-icone nome="lixeira" [tamanho]="18" />Excluir minha conta</h2>
           <p class="minha-conta__texto">Apaga de forma definitiva a conta e todos os seus dados: contas, lançamentos, cartões, regras e orçamentos. <b>Não dá para desfazer.</b></p>

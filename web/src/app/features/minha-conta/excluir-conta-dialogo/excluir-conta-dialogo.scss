@@ -68,6 +68,16 @@
   margin-top: 6px;
 }
 
+.excluir__exportar {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+}
+
 @media (max-width: 959.98px) {
   .excluir__texto--desktop {
     display: none;

@@ -87,6 +87,8 @@ export const ICONES = {
   relatorios: ['M4 20V10', 'M10 20V4', 'M16 20v-7', 'M21 20H3'],
   tabela: ['M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z', 'M4 9.5h16M4 15h16M10 9.5V20'],
   grafico: ['m3 17 6-6 4 4 8-8', 'M3 21h18'],
+  // Fatia 06b (exportação): baixar.
+  baixar: ['M12 4v11', 'm7 10.5 5 5 5-5', 'M5 20h14'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type NomeIcone = keyof typeof ICONES;

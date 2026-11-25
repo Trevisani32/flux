@@ -16,6 +16,9 @@
     <p>Isso apaga de forma definitiva o acesso com <b>{{ dados.email }}</b> e todos os seus dados: contas, lançamentos, cartões, categorias, regras, orçamentos e importações.</p>
     <p><b>Não dá para desfazer.</b></p>
   </div>
+  <app-alerta tipo="info" icone="info" titulo="Quer uma cópia antes?">
+    <button type="button" class="flux-link excluir__exportar" (click)="exportar()">Exporte seus dados.</button>
+  </app-alerta>
   <div class="flux-campo">
     <label for="excluir-conta-senha">Senha atual</label>
     <div class="flux-entrada" [class.flux-entrada--invalida]="erroSenha() !== null">

@@ -13,6 +13,8 @@ import { Icone } from '../../shared/icone/icone';
 import { textoObrigatorio } from '../../shared/validadores/validadores';
 import { MENSAGEM_MUITAS_TENTATIVAS, detalheDoErro, statusDoErro } from '../auth/erros-http';
 import { ExcluirContaDialogo } from './excluir-conta-dialogo/excluir-conta-dialogo';
+import { ExportarDadosDialogo } from './exportar-dados-dialogo/exportar-dados-dialogo';
+import { FormatoDaExportacao } from './exportacao.service';
 import { Conta, MinhaContaService } from './minha-conta.service';
 
 @Component({
@@ -111,7 +113,7 @@ export class MinhaConta {
     if (conta === null) {
       return;
     }
-    this.dialogo.open<ExcluirContaDialogo, { email: string }, boolean>(ExcluirContaDialogo, {
+    this.dialogo.open<ExcluirContaDialogo, { email: string }, boolean | 'exportar'>(ExcluirContaDialogo, {
       data: { email: conta.email },
       panelClass: 'flux-dialogo-perigo',
       autoFocus: '#excluir-conta-senha',
@@ -121,6 +123,21 @@ export class MinhaConta {
       if (excluida === true) {
         this.auth.limparSessao();
         void this.router.navigate(['/entrar'], { state: { aviso: 'conta-excluida' } });
+      } else if (excluida === 'exportar') {
+        this.abrirExportacao('JSON');
+      }
+    });
+  }
+
+  abrirExportacao(formato: FormatoDaExportacao): void {
+    this.dialogo.open<ExportarDadosDialogo, { formato: FormatoDaExportacao }, string>(ExportarDadosDialogo, {
+      data: { formato },
+      autoFocus: '#exportar-dados-senha',
+      width: '460px',
+      maxWidth: 'calc(100vw - 32px)',
+    }).afterClosed().subscribe((nome) => {
+      if (nome) {
+        this.snackBar.open(`Arquivo baixado: ${nome}`, 'Fechar', { duration: 5000 });
       }
     });
   }
