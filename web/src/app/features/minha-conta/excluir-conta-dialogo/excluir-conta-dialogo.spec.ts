@@ -86,4 +86,11 @@ describe('ExcluirContaDialogo', () => {
       'Não dá para desfazer.',
     ]);
   });
+
+  it('o aviso "Quer uma cópia antes?" fecha com "exportar"', () => {
+    const fechar = vi.spyOn(referencia, 'close');
+    expect(painel().textContent).toContain('Quer uma cópia antes?');
+    Array.from(painel().querySelectorAll<HTMLButtonElement>('button')).find((botao) => botao.textContent?.trim() === 'Exporte seus dados.')?.click();
+    expect(fechar).toHaveBeenCalledWith('exportar');
+  });
 });

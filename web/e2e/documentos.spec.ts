@@ -13,7 +13,7 @@ test('termos de uso: versão igual à da API, contato da instância e índice', 
   await page.goto('/termos-de-uso');
   await expect(page.getByRole('heading', { name: 'Termos de uso', level: 1 })).toBeVisible();
   await expect(page.getByText(`Versão ${configuracao.versaoDosTermos}`, { exact: true })).toBeVisible();
-  await expect(page.getByText('Versão de 6 de novembro de 2026', { exact: false })).toBeVisible();
+  await expect(page.getByText('Versão de 24 de novembro de 2026', { exact: false })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2 })).toHaveCount(10);
   await expect(page.getByText(`Esta instância é mantida por ${configuracao.controlador.nome}`, { exact: false })).toBeVisible();
   await expect(page.getByRole('link', { name: configuracao.controlador.email, exact: true })).toBeVisible();

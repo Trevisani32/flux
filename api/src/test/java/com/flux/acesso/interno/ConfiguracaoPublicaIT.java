@@ -16,6 +16,6 @@ class ConfiguracaoPublicaIT extends IntegracaoBase {
         assertThat(mvc.get().uri("/api/publico/configuracao")).bodyJson().extractingPath("controlador.email")
                 .isEqualTo("privacidade@teste.local");
         assertThat(mvc.get().uri("/api/publico/configuracao")).bodyJson().extractingPath("versaoDosTermos")
-                .isEqualTo("2026-11-06");
+                .isEqualTo("2026-11-24");
     }
 }

@@ -1,0 +1,26 @@
+<form class="exportar" [formGroup]="formulario" (ngSubmit)="baixar()">
+  <h2 mat-dialog-title id="exportar-dados-titulo">Baixar seus dados</h2>
+  <p class="exportar__texto">Confirme a senha para baixar o arquivo <b>{{ nome }}</b>.</p>
+  <div class="flux-campo">
+    <label for="exportar-dados-senha">Senha atual</label>
+    <div class="flux-entrada" [class.flux-entrada--invalida]="erroSenha() !== null">
+      <input id="exportar-dados-senha" [type]="senhaVisivel() ? 'text' : 'password'" formControlName="senha" autocomplete="current-password" [attr.aria-invalid]="erroSenha() !== null ? 'true' : null" [attr.aria-describedby]="erroSenha() !== null ? 'exportar-dados-senha-erro' : null" />
+      <button type="button" class="flux-botao-olho" aria-label="Mostrar senha" aria-controls="exportar-dados-senha" [attr.aria-pressed]="senhaVisivel()" (click)="alternarSenha()">
+        <app-icone nome="olho" />
+      </button>
+    </div>
+    @if (erroSenha(); as mensagem) {
+      <p id="exportar-dados-senha-erro" class="flux-campo__erro">{{ mensagem }}</p>
+    }
+  </div>
+  @if (erro(); as atual) {
+    <app-alerta tipo="erro" [icone]="atual.icone" [titulo]="atual.texto" />
+  }
+  <div class="exportar__acoes">
+    <button mat-stroked-button type="button" mat-dialog-close>Cancelar</button>
+    <button mat-flat-button type="submit" [disabled]="senha.invalid || baixando()">
+      <app-icone nome="baixar" [tamanho]="18" [traco]="2.2" />
+      {{ baixando() ? 'Baixando…' : 'Baixar' }}
+    </button>
+  </div>
+</form>

@@ -12,7 +12,7 @@ export interface DadosDaExclusao {
   readonly email: string;
 }
 
-/** Diálogo "Excluir sua conta?". Fecha com true depois do 204 da API. */
+/** Diálogo "Excluir sua conta?". Fecha com true depois do 204 da API, ou com 'exportar' pelo aviso. */
 @Component({
   selector: 'app-excluir-conta-dialogo',
   imports: [MatButtonModule, MatDialogModule, ReactiveFormsModule, Alerta, Icone],
@@ -21,7 +21,7 @@ export interface DadosDaExclusao {
 })
 export class ExcluirContaDialogo {
   private readonly servico = inject(MinhaContaService);
-  private readonly referencia = inject<MatDialogRef<ExcluirContaDialogo, boolean>>(MatDialogRef);
+  private readonly referencia = inject<MatDialogRef<ExcluirContaDialogo, boolean | 'exportar'>>(MatDialogRef);
 
   readonly dados = inject<DadosDaExclusao>(MAT_DIALOG_DATA);
   readonly senha = new FormControl('', { nonNullable: true, validators: [Validators.required] });
@@ -57,5 +57,9 @@ export class ExcluirContaDialogo {
 
   alternarSenha(): void {
     this.senhaVisivel.update((visivel) => !visivel);
+  }
+
+  exportar(): void {
+    this.referencia.close('exportar');
   }
 }

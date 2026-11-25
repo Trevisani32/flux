@@ -141,9 +141,11 @@ O que isso exige do produto:
    - **Excluir minha conta:** pede a senha atual e apaga o usuário e todos os dados
      dele, de forma definitiva. O e-mail recebe a confirmação da exclusão.
    - **Termos de uso e política de privacidade:** páginas públicas, em linguagem
-     simples, na versão `2026-11-06`. Mudar o texto é mudar a versão. O nome e o
-     e-mail do responsável pela instância vêm de `APP_CONTROLADOR_NOME` e
-     `APP_CONTROLADOR_EMAIL`; com o cadastro ligado, os dois são obrigatórios.
+     simples, na versão `2026-11-24` (a Fatia 06b trocou a frase da portabilidade;
+     quem aceitou a anterior não aceita de novo, porque a mudança só acrescenta um
+     direito). Mudar o texto é mudar a versão. O nome e o e-mail do responsável pela
+     instância vêm de `APP_CONTROLADOR_NOME` e `APP_CONTROLADOR_EMAIL`; com o cadastro
+     ligado, os dois são obrigatórios.
    - **Limite de tentativas:**
 
      | Ação | Por e-mail | Por IP |
@@ -153,7 +155,7 @@ O que isso exige do produto:
      | Reenviar confirmação | 3 por hora | 10 por hora |
      | Esqueci a senha | 3 por hora | 10 por hora |
      | Redefinir senha | — | 10 em 15 min |
-     | Conferir a senha atual (trocar senha, trocar e-mail, excluir conta) | 10 em 15 min, por usuário | — |
+     | Conferir a senha atual (trocar senha, trocar e-mail, excluir conta, exportar os dados; a certa também conta) | 10 em 15 min, por usuário | — |
      | Pedir a troca de e-mail (além da senha atual) | 3 por hora por endereço novo e 3 por hora por conta | — |
 
      - quando o limite estoura, a resposta é "Muitas tentativas. Tente de novo em
@@ -166,8 +168,18 @@ O que isso exige do produto:
      letras, apóstrofos e hífens; senão, por "Usuário".
 
 
-**Fatia 06b:** **exportar meus dados**, um arquivo com todos os dados do usuário
-(LGPD, direito de portabilidade).
+**Exportar meus dados** (Fatia 06b, [ADR 0021](decisoes/0021-exportacao-dos-dados.md)):
+
+- fica em Minha conta, antes de “Excluir minha conta”; o diálogo de exclusão oferece
+  exportar antes de apagar;
+- pede a senha atual e usa o mesmo limite de conferência das operações da conta;
+- o JSON completo leva os dados gravados, ligados pelos ids, com valores com sinal,
+  datas ISO, horários em UTC e listas por id. Ficam fora senha, sessões, links,
+  hashes e chaves internas; o próprio arquivo explica isso em `foraDoArquivo`;
+- o CSV só dos lançamentos abre no Excel em português: UTF-8 com BOM, `;`, vírgula
+  decimal, `DD/MM/AAAA`, CRLF, parcela “1 de 3” e apóstrofo antes de fórmula. Os
+  lançamentos ignorados não entram;
+- o arquivo é gerado aos poucos, sem montar tudo na memória.
 
 ### 2. Contas — Fatia 03a
 - Tipos: `CORRENTE`, `POUPANCA`, `CARTEIRA` (dinheiro em espécie) e `INVESTIMENTO`
@@ -733,7 +745,7 @@ Ver [ADR 0020](decisoes/0020-graficos-sem-biblioteca-e-modulo-de-relatorios.md).
 | 05a | Cartões, faturas, compras parceladas, estornos e ajuste de fechamento | Concluída |
 | 05b | Pagamento da fatura, situação paga, paga fora do Flux, conversão do importado em pagamento e limite disponível | Concluída |
 | 05c | Importação de fatura de cartão e regras com cartão | Concluída |
-| 06a | Dashboard e relatórios: página Relatórios, gráficos sem biblioteca e próximas faturas no Início | Implementada, aguardando publicação |
-| 06b | Exportação dos dados (LGPD) | — |
+| 06a | Dashboard e relatórios: página Relatórios, gráficos sem biblioteca e próximas faturas no Início | Concluída |
+| 06b | Exportação dos dados (LGPD): JSON completo e CSV dos lançamentos, com a senha | Implementada, aguardando publicação |
 | 07 | Recorrências, orçamento e projeção de saldo | — |
 | 08 | Deploy, demo pública e README completo | — |

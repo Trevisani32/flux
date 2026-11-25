@@ -7,7 +7,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { ConfiguracaoService } from '../../../core/configuracao/configuracao.service';
 import { TermosDeUso } from './termos-de-uso';
 
-const configuracao = { cadastroPublico: true, controlador: { nome: 'Responsável fictício', email: 'privacidade@teste.local' }, versaoDosTermos: '2026-11-06' };
+const configuracao = { cadastroPublico: true, controlador: { nome: 'Responsável fictício', email: 'privacidade@teste.local' }, versaoDosTermos: '2026-11-24' };
 
 describe('TermosDeUso', () => {
   function criar(logado = false, contato = 'privacidade@teste.local'): HTMLElement {
@@ -27,7 +27,7 @@ describe('TermosDeUso', () => {
   it('mostra título, versão, leitura e as dez seções', () => {
     const elemento = criar();
     expect(elemento.querySelector('h1')?.textContent).toBe('Termos de uso');
-    expect(elemento.textContent).toContain('Versão de 6 de novembro de 2026 · cerca de 4 minutos de leitura');
+    expect(elemento.textContent).toContain('Versão de 24 de novembro de 2026 · cerca de 4 minutos de leitura');
     expect(Array.from(elemento.querySelectorAll('h2')).map((h2) => h2.id)).toEqual(Array.from({ length: 10 }, (_, indice) => `t${indice + 1}`));
   });
 
@@ -42,6 +42,6 @@ describe('TermosDeUso', () => {
     const elemento = criar(true, '');
     expect(elemento.textContent).toContain('—');
     expect(elemento.textContent).toContain('Voltar ao Flux');
-    expect(elemento.textContent).toContain('Versão 2026-11-06');
+    expect(elemento.textContent).toContain('Versão 2026-11-24');
   });
 });

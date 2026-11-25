@@ -29,4 +29,10 @@ describe('Privacidade', () => {
     const elemento = criar();
     expect(elemento.querySelector('a[href="/termos-de-uso"]')?.textContent).toBe('← Termos de uso');
   });
+
+  it('a portabilidade aponta para Minha conta', () => {
+    const elemento = criar();
+    expect(elemento.textContent).toContain('“Exportar meus dados” baixa um arquivo com tudo o que você guardou');
+    expect(elemento.textContent).not.toContain('chega numa próxima versão');
+  });
 });

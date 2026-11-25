@@ -113,6 +113,34 @@
   color: var(--flux-texto-3);
 }
 
+.minha-conta__incluidos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.minha-conta__incluidos li {
+  display: flex;
+  gap: 10px;
+  color: var(--flux-texto-2);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.minha-conta__incluidos .flux-icone {
+  flex: none;
+  color: var(--flux-ouro-texto);
+}
+
+.minha-conta__botoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .minha-conta__perigo {
   border-color: color-mix(in srgb, var(--flux-negativo) 30%, var(--flux-borda));
 }
@@ -134,5 +162,13 @@
   .minha-conta__formulario > button,
   .minha-conta__acao {
     align-self: stretch;
+  }
+
+  .minha-conta__botoes {
+    flex-direction: column;
+  }
+
+  .minha-conta__botoes button {
+    width: 100%;
   }
 }

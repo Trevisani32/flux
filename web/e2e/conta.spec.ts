@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 import { botaoDoUsuario, emailUnico, entrarCom, esperarEmails, tokenDoEmail } from './apoio';
 
@@ -129,6 +130,53 @@ test('minha conta: troca do nome e do e-mail', async ({ page, request }) => {
   await expect(page.getByText('Troca pendente para', { exact: false })).toHaveCount(0);
 });
 
+test('exportar meus dados com a senha atual', async ({ page, request }) => {
+  await entrarCom(page, conta.emailNovo, conta.senhaNova);
+  await expect(page.getByRole('heading', { name: `Olá, ${conta.nomeNovo}` })).toBeVisible();
+  await page.goto('/minha-conta');
+  const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+  const configuracao = await (await request.get('/api/publico/configuracao')).json() as { versaoDosTermos: string };
+  const card = page.getByRole('region', { name: 'Exportar meus dados' });
+
+  await card.getByRole('button', { name: 'Baixar tudo (JSON)' }).click();
+  const dialogo = page.getByRole('dialog', { name: 'Baixar seus dados' });
+  await expect(dialogo).toContainText(`flux-dados-${hoje}.json`);
+  const senha = dialogo.getByLabel('Senha atual', { exact: true });
+  await senha.fill('senha-errada-123');
+  await dialogo.getByRole('button', { name: 'Baixar' }).click();
+  await expect(dialogo.getByText('Senha atual incorreta.')).toBeVisible();
+  await senha.fill(conta.senhaNova);
+  const downloadJson = page.waitForEvent('download');
+  await dialogo.getByRole('button', { name: 'Baixar' }).click();
+  const json = await downloadJson;
+  expect(json.suggestedFilename()).toBe(`flux-dados-${hoje}.json`);
+  const arquivoJson = JSON.parse(await readFile(await json.path() as string, 'utf8')) as {
+    formato: string;
+    usuario: { email: string; nome: string; termosVersao: string };
+    categorias: unknown[];
+    lancamentos: unknown[];
+  };
+  expect(arquivoJson.formato).toBe('flux-exportacao');
+  expect(arquivoJson.usuario.email).toBe(conta.emailNovo);
+  expect(arquivoJson.usuario.nome).toBe(conta.nomeNovo);
+  expect(arquivoJson.usuario.termosVersao).toBe(configuracao.versaoDosTermos);
+  expect(arquivoJson.categorias).toHaveLength(24);
+  expect(arquivoJson.lancamentos).toHaveLength(0);
+  expect(JSON.stringify(arquivoJson)).not.toContain(conta.senhaNova);
+  await expect(page.getByText(`Arquivo baixado: flux-dados-${hoje}.json`)).toBeVisible();
+
+  await card.getByRole('button', { name: 'Lançamentos (CSV)' }).click();
+  const dialogoCsv = page.getByRole('dialog', { name: 'Baixar seus dados' });
+  await dialogoCsv.getByLabel('Senha atual', { exact: true }).fill(conta.senhaNova);
+  const downloadCsv = page.waitForEvent('download');
+  await dialogoCsv.getByRole('button', { name: 'Baixar' }).click();
+  const csv = await downloadCsv;
+  expect(csv.suggestedFilename()).toBe(`flux-lancamentos-${hoje}.csv`);
+  const arquivoCsv = await readFile(await csv.path() as string);
+  expect(arquivoCsv.subarray(0, 3).toString('hex')).toBe('efbbbf');
+  expect(arquivoCsv.subarray(3).toString('utf8')).toBe('Data;Descrição;Valor;Tipo;Categoria;Subcategoria;Conta;Cartão;Parcela;Data da compra;Observação;Origem;Descrição do extrato\r\n');
+});
+
 test('exclusão da conta com a senha atual', async ({ page, request }) => {
   await entrarCom(page, conta.emailNovo, conta.senhaNova);
   await expect(page.getByRole('heading', { name: `Olá, ${conta.nomeNovo}` })).toBeVisible();
@@ -136,6 +184,8 @@ test('exclusão da conta com a senha atual', async ({ page, request }) => {
   await page.getByRole('button', { name: 'Excluir minha conta' }).click();
   const dialogo = page.getByRole('dialog', { name: 'Excluir sua conta?' });
   await expect(dialogo).toBeVisible();
+  await expect(dialogo.getByText('Quer uma cópia antes?')).toBeVisible();
+  await expect(dialogo.getByRole('button', { name: 'Exporte seus dados.' })).toBeVisible();
   const campo = dialogo.getByLabel('Senha atual', { exact: true });
   await expect(campo).toBeFocused();
   const excluir = dialogo.getByRole('button', { name: 'Excluir definitivamente' });

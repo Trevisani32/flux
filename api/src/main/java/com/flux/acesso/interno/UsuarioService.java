@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
 
+import com.flux.acesso.ConferenciaDaSenhaAtual;
 import com.flux.acesso.UsuarioCriado;
 import com.flux.acesso.interno.dto.ContaResponse;
 import com.flux.acesso.interno.dto.EntrarRequest;
@@ -20,7 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class UsuarioService {
+public class UsuarioService implements ConferenciaDaSenhaAtual {
 
     private final UsuarioRepository usuarioRepository;
     private final TokenRenovacaoRepository tokenRenovacaoRepository;
@@ -128,11 +129,7 @@ public class UsuarioService {
 
     @Transactional
     public void trocarSenha(Long usuarioId, String senhaAtual, String novaSenha) {
-        limites.conferirSenhaAtual(usuarioId);
-        Usuario usuario = buscar(usuarioId);
-        if (!passwordEncoder.matches(senhaAtual, usuario.getSenhaHash())) {
-            throw new RegraDeNegocioException("Senha atual incorreta.");
-        }
+        Usuario usuario = conferirSenhaAtual(usuarioId, senhaAtual);
         if (novaSenha.getBytes(UTF_8).length > 72) {
             throw new RegraDeNegocioException("A nova senha é longa demais.");
         }
@@ -143,19 +140,30 @@ public class UsuarioService {
 
     @Transactional
     public void excluir(Long usuarioId, String senhaAtual) {
-        limites.conferirSenhaAtual(usuarioId);
-        Usuario usuario = buscar(usuarioId);
-        if (!passwordEncoder.matches(senhaAtual, usuario.getSenhaHash())) {
-            throw new RegraDeNegocioException("Senha atual incorreta.");
-        }
+        Usuario usuario = conferirSenhaAtual(usuarioId, senhaAtual);
         eventos.publishEvent(new ContaExcluida(UUID.randomUUID(), usuario.getEmail(), usuario.getNome(),
                 Instant.now(clock)));
         // ON DELETE CASCADE apaga sessões, links por e-mail e, nas próximas fatias, todos os dados do usuário.
         usuarioRepository.delete(usuario);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public void conferir(Long usuarioId, String senhaAtual) {
+        conferirSenhaAtual(usuarioId, senhaAtual);
+    }
+
     public UsuarioResponse resposta(Usuario usuario) {
         return new UsuarioResponse(usuario.getId(), usuario.getNome(), usuario.getEmail());
+    }
+
+    private Usuario conferirSenhaAtual(Long usuarioId, String senhaAtual) {
+        limites.conferirSenhaAtual(usuarioId);
+        Usuario usuario = buscar(usuarioId);
+        if (!passwordEncoder.matches(senhaAtual, usuario.getSenhaHash())) {
+            throw new RegraDeNegocioException("Senha atual incorreta.");
+        }
+        return usuario;
     }
 
     private Usuario buscar(Long usuarioId) {

@@ -1,0 +1,52 @@
+.exportar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--flux-espaco-4);
+  padding: 26px 26px 22px;
+}
+
+.exportar h2 {
+  margin: 0;
+  padding: 0;
+  color: var(--flux-texto);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+
+.exportar h2::before {
+  display: none;
+}
+
+.exportar__texto {
+  color: var(--flux-texto-2);
+  font-size: 14px;
+  line-height: 21px;
+}
+
+.exportar__texto b {
+  color: var(--flux-texto);
+}
+
+.exportar__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+@media (max-width: 959.98px) {
+  .exportar {
+    padding: 22px var(--flux-espaco-5) var(--flux-espaco-5);
+  }
+
+  .exportar__acoes {
+    flex-direction: column-reverse;
+  }
+
+  .exportar__acoes button {
+    width: 100%;
+  }
+}
