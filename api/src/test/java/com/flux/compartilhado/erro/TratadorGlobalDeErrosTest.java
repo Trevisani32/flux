@@ -1,8 +1,11 @@
 package com.flux.compartilhado.erro;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.io.IOException;
 import java.time.Duration;
 import com.flux.compartilhado.limite.LimiteExcedidoException;
 import org.junit.jupiter.api.Test;
@@ -137,6 +140,18 @@ class TratadorGlobalDeErrosTest {
         assertThat(resultado).bodyJson().extractingPath("detail").isEqualTo("Muitas tentativas. Tente de novo em alguns minutos.");
     }
 
+    @Test
+    void respostaJaComecadaNaoRecebeProblemDetail() {
+        org.springframework.test.web.servlet.assertj.MvcTestResult cortada = mvc.get().uri("/teste/arquivo-cortado").exchange();
+
+        assertThat(cortada.getUnresolvedException()).isInstanceOf(ServletException.class).hasRootCauseMessage("banco caiu");
+
+        org.springframework.test.web.servlet.assertj.MvcTestResult semComecar = mvc.get().uri("/teste/arquivo-sem-comecar").exchange();
+        assertThat(semComecar).hasStatus(500).hasContentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON)
+                .bodyJson().extractingPath("title").isEqualTo("Erro interno");
+        assertThat(semComecar.getResponse().getHeader("Content-Disposition")).isNull();
+    }
+
     @RestController
     @RequestMapping("/teste")
     public static class ControladorDeTeste {
@@ -184,6 +199,23 @@ class TratadorGlobalDeErrosTest {
         @GetMapping("/limite")
         public void limite() {
             throw new LimiteExcedidoException(Duration.ofMillis(1500));
+        }
+
+        @GetMapping("/arquivo-cortado")
+        public void arquivoCortado(HttpServletResponse resposta) throws IOException {
+            resposta.setContentType("application/json;charset=UTF-8");
+            resposta.setHeader("Content-Disposition", "attachment; filename=\"teste.json\"");
+            resposta.getOutputStream().print("{\"lista\" : [");
+            resposta.flushBuffer();
+            throw new IllegalStateException("banco caiu");
+        }
+
+        @GetMapping("/arquivo-sem-comecar")
+        public void arquivoSemComecar(HttpServletResponse resposta) throws IOException {
+            resposta.setContentType("application/json;charset=UTF-8");
+            resposta.setHeader("Content-Disposition", "attachment; filename=\"teste.json\"");
+            resposta.getOutputStream().print("{\"lista\" : [");
+            throw new IllegalStateException("banco caiu");
         }
     }
 

@@ -27,7 +27,8 @@ class ModularidadeTest {
      * implementam UsoDaCategoria e LimpezaDaConta; a importação depende de lançamentos, de contas, de cartões e
      * das regras; ninguém depende da importação; contas, categorias e lançamentos não dependem das
      * regras, e contas e categorias não dependem dos cartões. Relatórios depende só de compartilhado, e ninguém depende de
-     * relatórios (ADR 0020).
+     * relatórios (ADR 0020). Exportação depende só de compartilhado e de acesso (a conferência da senha), e ninguém depende
+     * dela (ADR 0021).
      */
     @Test
     void dependenciasSeguemADirecaoCombinada() {
@@ -39,9 +40,10 @@ class ModularidadeTest {
                 "lancamentos");
         assertThat(dependenciasDiretas("importacao")).containsExactlyInAnyOrder("compartilhado", "contas", "lancamentos", "categorizacao", "cartoes");
         assertThat(dependenciasDiretas("relatorios")).containsExactlyInAnyOrder("compartilhado");
+        assertThat(dependenciasDiretas("exportacao")).containsExactlyInAnyOrder("compartilhado", "acesso");
         assertThat(dependenciasDiretas("acesso")).doesNotContain("contas", "categorias", "lancamentos", "importacao", "categorizacao", "cartoes");
-        for (String modulo : Set.of("contas", "categorias", "cartoes", "lancamentos", "categorizacao", "importacao", "acesso")) {
-            assertThat(dependenciasDiretas(modulo)).doesNotContain("relatorios");
+        for (String modulo : Set.of("contas", "categorias", "cartoes", "lancamentos", "categorizacao", "importacao", "acesso", "relatorios")) {
+            assertThat(dependenciasDiretas(modulo)).doesNotContain("relatorios", "exportacao");
         }
     }
 

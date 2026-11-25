@@ -3,6 +3,7 @@ package com.flux.compartilhado.erro;
 import java.util.Comparator;
 import java.util.List;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.jspecify.annotations.Nullable;
 import com.flux.compartilhado.limite.LimiteExcedidoException;
 import org.slf4j.Logger;
@@ -99,7 +100,13 @@ public class TratadorGlobalDeErros extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ProblemDetail> trataExcecao(Exception ex) {
+    public ResponseEntity<ProblemDetail> trataExcecao(Exception ex, HttpServletResponse respostaHttp) throws Exception {
+        if (respostaHttp.isCommitted()) {
+            // A resposta já começou (o arquivo da exportação): o ProblemDetail iria grudado no fim do arquivo. Relançada,
+            // a exceção chega ao Tomcat, que derruba a conexão, e o navegador vê o download incompleto.
+            LOGGER.warn("Erro depois de a resposta começar: {}", ex.toString());
+            throw ex;
+        }
         LOGGER.error("Erro interno não tratado", ex);
         return resposta(HttpStatus.INTERNAL_SERVER_ERROR, "Erro interno", "Ocorreu um erro inesperado.");
     }
