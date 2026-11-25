@@ -746,6 +746,6 @@ Ver [ADR 0020](decisoes/0020-graficos-sem-biblioteca-e-modulo-de-relatorios.md).
 | 05b | Pagamento da fatura, situação paga, paga fora do Flux, conversão do importado em pagamento e limite disponível | Concluída |
 | 05c | Importação de fatura de cartão e regras com cartão | Concluída |
 | 06a | Dashboard e relatórios: página Relatórios, gráficos sem biblioteca e próximas faturas no Início | Concluída |
-| 06b | Exportação dos dados (LGPD): JSON completo e CSV dos lançamentos, com a senha | Implementada, aguardando publicação |
+| 06b | Exportação dos dados (LGPD): JSON completo e CSV dos lançamentos, com a senha | Concluída |
 | 07 | Recorrências, orçamento e projeção de saldo | — |
 | 08 | Deploy, demo pública e README completo | — |
