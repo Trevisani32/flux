@@ -763,7 +763,7 @@ Ver [ADR 0022](decisoes/0022-recorrencias-calculadas.md).
 | 05c | Importação de fatura de cartão e regras com cartão | Concluída |
 | 06a | Dashboard e relatórios: página Relatórios, gráficos sem biblioteca e próximas faturas no Início | Concluída |
 | 06b | Exportação dos dados (LGPD): JSON completo e CSV dos lançamentos, com a senha | Concluída |
-| 07a | Recorrências: cadastro, previstos, confirmar, "Já lancei", pular, os previstos em Lançamentos e o card "A confirmar" | Implementada, aguardando publicação |
+| 07a | Recorrências: cadastro, previstos, confirmar, "Já lancei", pular, os previstos em Lançamentos e o card "A confirmar" | Concluída |
 | 07b | Projeção de saldo | — |
 | 07c | Ligação das recorrências na importação | — |
 | 07d | Orçamento | — |
