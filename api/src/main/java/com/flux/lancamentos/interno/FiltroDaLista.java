@@ -17,7 +17,8 @@ public record FiltroDaLista(
         Long categoriaId,
         boolean semCategoria,
         TipoLancamento tipo,
-        String busca) {
+        String busca,
+        boolean previstos) {
 
     static final int TAMANHO_MAXIMO_DA_BUSCA = 100;
 
@@ -26,6 +27,11 @@ public record FiltroDaLista(
      * "despesa", "transferencia" ou, desde a Fatia 05b, "pagamento" (decisão 32); a busca vazia é ignorada.
      */
     public static FiltroDaLista de(YearMonth mes, Long conta, Long cartao, String categoria, String tipo, String busca) {
+        return de(mes, conta, cartao, categoria, tipo, busca, true);
+    }
+
+    public static FiltroDaLista de(YearMonth mes, Long conta, Long cartao, String categoria, String tipo, String busca,
+                                   boolean previstos) {
         if (conta != null && cartao != null) {
             throw new CampoInvalidoException("cartao", "Filtre por uma conta ou por um cartão, não pelos dois.");
         }
@@ -56,6 +62,7 @@ public record FiltroDaLista(
         if (buscaLimpa.length() > TAMANHO_MAXIMO_DA_BUSCA) {
             throw new CampoInvalidoException("busca", "Use no máximo " + TAMANHO_MAXIMO_DA_BUSCA + " caracteres.");
         }
-        return new FiltroDaLista(mes, conta, cartao, categoriaId, semCategoria, tipoLido, buscaLimpa.isEmpty() ? null : buscaLimpa);
+        return new FiltroDaLista(mes, conta, cartao, categoriaId, semCategoria, tipoLido, buscaLimpa.isEmpty() ? null : buscaLimpa,
+                previstos);
     }
 }

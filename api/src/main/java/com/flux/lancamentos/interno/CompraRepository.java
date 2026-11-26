@@ -13,6 +13,11 @@ public interface CompraRepository extends JpaRepository<Compra, Long> {
 
     List<Compra> findAllByUsuarioIdAndIdIn(Long usuarioId, Collection<Long> ids);
 
+    /** Compras do cartão para escolher uma compra já registrada numa recorrência. */
+    List<Compra> findAllByUsuarioIdAndCartaoIdAndTipoAndDataCompraBetweenOrderByDataCompraAscIdAsc(Long usuarioId, Long cartaoId,
+                                                                                                      TipoCompra tipo, LocalDate de,
+                                                                                                      LocalDate ate);
+
     /** Ajuste de fechamento (decisão 12): as compras com data no trecho que mudou de fatura. */
     List<Compra> findAllByUsuarioIdAndCartaoIdAndDataCompraBetween(Long usuarioId, Long cartaoId, LocalDate inicio, LocalDate fim);
 

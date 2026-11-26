@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class IsolamentoDaExportacaoIT extends ExportacaoBase {
 
     private static final List<String> TABELAS = List.of("contas", "categorias", "cartoes", "faturas", "compras", "lancamentos",
-            "transferencias", "importacoes", "perfis_csv", "regras_categorizacao");
+            "transferencias", "importacoes", "perfis_csv", "regras_categorizacao", "recorrencias", "ocorrencias_tratadas");
 
     @Test
     void oUsuarioBNuncaRecebeDadoDoA() {
@@ -33,7 +33,8 @@ class IsolamentoDaExportacaoIT extends ExportacaoBase {
         JsonNode arquivoB = jsonDoArquivo(exportar(usuarioB, "JSON", usuarioB.senha()));
         for (String tabela : TABELAS) {
             String lista = listaDoJson(tabela);
-            List<Long> esperados = jdbc.queryForList("select id from " + tabela + " where usuario_id = ? order by id", Long.class, usuarioB.id());
+            List<Long> esperados = jdbc.queryForList(
+                    "select id from " + tabela + " where usuario_id = ? order by id", Long.class, usuarioB.id());
             assertThat(ids(arquivoB.get(lista))).isEqualTo(esperados);
         }
         String textoB = new String(bytes(exportar(usuarioB, "JSON", usuarioB.senha())), java.nio.charset.StandardCharsets.UTF_8);
@@ -80,6 +81,7 @@ class IsolamentoDaExportacaoIT extends ExportacaoBase {
         return switch (tabela) {
             case "perfis_csv" -> "perfisCsv";
             case "regras_categorizacao" -> "regras";
+            case "ocorrencias_tratadas" -> "ocorrenciasTratadas";
             default -> tabela;
         };
     }

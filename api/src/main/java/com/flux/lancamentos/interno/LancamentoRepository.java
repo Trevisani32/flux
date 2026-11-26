@@ -165,6 +165,13 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, Long> {
 
     List<Lancamento> findAllByUsuarioIdAndIdIn(Long usuarioId, Collection<Long> ids);
 
+    /** Receitas e despesas da conta para escolher um lançamento já registrado numa recorrência. */
+    List<Lancamento> findAllByUsuarioIdAndContaIdAndTipoInAndIgnoradoEmIsNullAndDataBetweenOrderByDataAscIdAsc(Long usuarioId,
+            Long contaId,
+            Collection<TipoLancamento> tipos,
+            LocalDate de,
+            LocalDate ate);
+
     /** Fatia 05a: as parcelas de compras (e os estornos), a primeira de cada compra antes. */
     List<Lancamento> findAllByUsuarioIdAndCompraIdInOrderByCompraIdAscNumeroParcelaAsc(Long usuarioId, Collection<Long> compraIds);
 

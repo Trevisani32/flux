@@ -51,8 +51,10 @@ class ExportacaoIT extends ExportacaoBase {
         assertThat(arquivo.get("importacoes").size()).isEqualTo(contar("importacoes", usuario));
         assertThat(arquivo.get("perfisCsv").size()).isEqualTo(contar("perfis_csv", usuario));
         assertThat(arquivo.get("regras").size()).isEqualTo(contar("regras_categorizacao", usuario));
+        assertThat(arquivo.get("recorrencias").size()).isEqualTo(contar("recorrencias", usuario));
+        assertThat(arquivo.get("ocorrenciasTratadas").size()).isEqualTo(contar("ocorrencias_tratadas", usuario));
         for (String lista : List.of("contas", "categorias", "cartoes", "faturas", "compras", "lancamentos", "transferencias",
-                "importacoes", "perfisCsv", "regras")) {
+                "importacoes", "perfisCsv", "regras", "recorrencias", "ocorrenciasTratadas")) {
             assertThat(ids(arquivo.get(lista))).isSorted();
         }
 
@@ -88,6 +90,18 @@ class ExportacaoIT extends ExportacaoBase {
         assertThat(importado.get("importacaoId").asLong()).isEqualTo(dados.importacao());
         assertThat(importado.get("descricaoBanco").asString()).isEqualTo("PAG BOLETO");
         assertThat(porId(arquivo.get("importacoes"), dados.importacao()).get("finalDoExtrato").asString()).isEqualTo("4821");
+
+        JsonNode assinatura = porId(arquivo.get("recorrencias"), dados.assinatura());
+        assertThat(assinatura.get("descricao").asString()).isEqualTo("Assinatura Fictícia");
+        assertThat(decimal(assinatura.get("valor"))).isEqualByComparingTo(new BigDecimal("29.90"));
+        assertThat(assinatura.get("frequencia").asString()).isEqualTo("MENSAL");
+        assertThat(assinatura.get("diaDoMes").asInt()).isEqualTo(12);
+        assertThat(assinatura.get("ocorrenciasDesde").asString()).isEqualTo(dados.hoje().toString());
+        JsonNode pulada = arquivo.get("ocorrenciasTratadas").get(0);
+        assertThat(pulada.get("recorrenciaId").asLong()).isEqualTo(dados.assinatura());
+        assertThat(pulada.get("situacao").asString()).isEqualTo("PULADA");
+        assertThat(pulada.get("periodo").asString()).isEqualTo(YearMonth.from(dados.hoje()).atDay(1).toString());
+        assertThat(pulada.get("lancamentoId").isNull()).isTrue();
 
         String texto = ApiDeTeste.texto(resposta);
         String senhaHash = jdbc.queryForObject("select senha_hash from usuarios where id = ?", String.class, usuario.id());
@@ -164,7 +178,9 @@ class ExportacaoIT extends ExportacaoBase {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"senhaAtual\":\"" + usuario.senha() + "\"}").exchange();
         MvcTestResult formatoInvalido = mvc.post().uri("/api/minha-conta/exportacao")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + usuario.tokenAcesso())
-                .contentType(MediaType.APPLICATION_JSON).content("{\"formato\":\"PDF\",\"senhaAtual\":\"" + usuario.senha() + "\"}").exchange();
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"formato\":\"PDF\",\"senhaAtual\":\"" + usuario.senha() + "\"}")
+                .exchange();
         MvcTestResult senhaEmBranco = mvc.post().uri("/api/minha-conta/exportacao")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + usuario.tokenAcesso())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"formato\":\"JSON\",\"senhaAtual\":\"\"}").exchange();

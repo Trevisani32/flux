@@ -118,17 +118,25 @@ abstract class ExportacaoBase extends CartoesBase {
                         + "values (?, 1, 'CONTEM', 'pag uber', 'pag uber', 'DESPESA', ?, 'Uber') returning id",
                 Long.class, usuario.id(), appDeTransporte);
         long perfilCsv = jdbc.queryForObject(
-                "insert into perfis_csv (usuario_id, conta_id, separador, linhas_de_cabecalho, coluna_data, formato_data, coluna_descricao, "
+                "insert into perfis_csv (usuario_id, conta_id, separador, linhas_de_cabecalho, coluna_data, formato_data, "
+                        + "coluna_descricao, "
                         + "coluna_valor, coluna_saidas, coluna_identificador, separador_decimal) values (?, ?, 'PONTO_E_VIRGULA', 1, 1, "
                         + "'DD_MM_AAAA', 2, 3, null, null, 'VIRGULA') returning id",
                 Long.class, usuario.id(), horizonte);
+        long assinatura = api.idCriado(api.post(usuario, "/api/recorrencias",
+                "{\"tipo\":\"DESPESA\",\"descricao\":\"Assinatura Fictícia\",\"valor\":29.90,\"valorVaria\":false,"
+                        + "\"categoriaId\":" + compras + ",\"contaId\":" + horizonte + ",\"cartaoId\":null,\"frequencia\":\"MENSAL\","
+                        + "\"diaDoMes\":12,\"comecaEm\":\"" + hoje + "\",\"terminaEm\":null}"));
+        assertThat(api.acao(usuario, "/api/recorrencias/{id}/ocorrencias/{periodo}/pular", assinatura,
+                YearMonth.from(hoje).atDay(1))).hasStatusOk();
 
         return new DadosDaExportacao(horizonte, poupanca, antiga, mercado, salarioCategoria, compras, viagens, cartaoLua, compraSapataria,
                 estornoTenis, faturaMesPassado, faturaMesAtual, faturaMesSeguinte, parcelaUm, pagamento, transferencia, cafe, somaPromocao,
-                salario, importacao, importadoIgnorado, perfilCsv, regra, hoje);
+                salario, importacao, importadoIgnorado, perfilCsv, regra, assinatura, hoje);
     }
 
-    private static String lancamentoComObservacao(String tipo, String valor, LocalDate data, String descricao, long contaId, long categoriaId,
+    private static String lancamentoComObservacao(String tipo, String valor, LocalDate data, String descricao, long contaId,
+                                                  long categoriaId,
                                                   String observacao) {
         return "{\"tipo\":\"" + tipo + "\",\"valor\":" + valor + ",\"data\":\"" + data + "\",\"descricao\":\"" + descricao
                 + "\",\"contaId\":" + contaId + ",\"categoriaId\":" + categoriaId + ",\"observacao\":\"" + observacao + "\"}";
@@ -151,6 +159,6 @@ abstract class ExportacaoBase extends CartoesBase {
                                        long viagens, long cartaoLua, long compraSapataria, long estornoTenis, long faturaMesPassado,
                                        long faturaMesAtual, long faturaMesSeguinte, long parcelaUm, long pagamento, long transferencia,
                                        long cafe, long somaPromocao, long salario, long importacao, long importadoIgnorado, long perfilCsv,
-                                       long regra, LocalDate hoje) {
+                                       long regra, long assinatura, LocalDate hoje) {
     }
 }

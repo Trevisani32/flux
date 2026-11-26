@@ -65,7 +65,19 @@ public record ItemDaLista(
         Integer parcela,
         Integer parcelas,
         LocalDate dataCompra,
-        String faturaPagaMes) {
+        String faturaPagaMes,
+        Long recorrenciaId) {
+
+    public ItemDaLista(TipoLancamento tipo, Long id, LocalDate data, String descricao, BigDecimal valor, String observacao,
+                       Long contaId, String contaNome, Long categoriaId, String categoriaNome, String categoriaMaeNome,
+                       boolean categoriaArquivada, Long contaDestinoId, String contaDestinoNome, String direcao, boolean futuro,
+                       boolean somenteLeitura, OrigemLancamento origem, String descricaoBanco, List<Lado> lados, Long cartaoId,
+                       String cartaoNome, String cartaoCor, Long compraId, boolean estorno, Integer parcela, Integer parcelas,
+                       LocalDate dataCompra, String faturaPagaMes) {
+        this(tipo, id, data, descricao, valor, observacao, contaId, contaNome, categoriaId, categoriaNome, categoriaMaeNome,
+                categoriaArquivada, contaDestinoId, contaDestinoNome, direcao, futuro, somenteLeitura, origem, descricaoBanco,
+                lados, cartaoId, cartaoNome, cartaoCor, compraId, estorno, parcela, parcelas, dataCompra, faturaPagaMes, null);
+    }
 
     /** Um lado da transferência. {@code descricaoBanco} só no importado. */
     public record Lado(Long contaId, String contaNome, LocalDate data, OrigemLancamento origem, String descricaoBanco,
