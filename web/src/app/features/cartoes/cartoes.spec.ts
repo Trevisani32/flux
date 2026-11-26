@@ -10,6 +10,7 @@ import { Conta, ContasService, ListaDeContas } from '../contas/contas.service';
 import { CartaoDialogo } from './cartao-dialogo/cartao-dialogo';
 import { Cartao, CartoesService, ListaDeCartoes } from './cartoes.service';
 import { Cartoes } from './cartoes';
+import { RecorrenciasService } from '../recorrencias/recorrencias.service';
 
 function conta(parcial: Partial<Conta>): Conta {
   return { id: 1, nome: 'Banco Horizonte', tipo: 'CORRENTE', saldoInicial: 0, dataSaldoInicial: '2026-10-01', cor: null, saldoAtual: 0, arquivadaEm: null,
@@ -35,7 +36,17 @@ const lista: ListaDeCartoes = {
 };
 
 describe('Cartoes', () => {
-  function criar(cartoes: ListaDeCartoes = lista, listaDeContas: ListaDeContas = contas, novo: string | null = null) {
+  function criar(
+    cartoes: ListaDeCartoes = lista,
+    listaDeContas: ListaDeContas = contas,
+    novo: string | null = null,
+    recorrencias: () => Observable<unknown> = () => of({
+      ativas: [],
+      pausadas: [],
+      encerradas: [],
+      aConfirmar: { ate: '2026-11-16', recorrencias: 0, ocorrencias: [] },
+    }),
+  ) {
     const servico = {
       listar: vi.fn(() => of(cartoes)),
       arquivar: vi.fn(() => of(cartao({}))),
@@ -56,6 +67,7 @@ describe('Cartoes', () => {
         provideRouter([]),
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(novo === null ? {} : { novo }) } } },
         { provide: CartoesService, useValue: servico },
+        { provide: RecorrenciasService, useValue: { listar: recorrencias } },
         { provide: ContasService, useValue: { listar: () => of(listaDeContas) } },
         { provide: MatDialog, useValue: dialogo },
         { provide: MatSnackBar, useValue: snackBar },
@@ -152,5 +164,21 @@ describe('Cartoes', () => {
     const { componente, navegar } = criar();
     componente.importarFatura(lista.ativos[0]);
     expect(navegar).toHaveBeenCalledWith(['/importacao'], { queryParams: { cartao: lista.ativos[0].id } });
+  });
+
+  it('excluir cartão com recorrência avisa que ela sai junto', () => {
+    const recorrencias = () => of({
+      ativas: [{ id: 31, descricao: 'Netflix Fictícia', cartaoId: 7 }],
+      pausadas: [],
+      encerradas: [{ id: 32, descricao: 'Streaming antigo Fictício', cartaoId: 7 }],
+      aConfirmar: { ate: '2026-11-16', recorrencias: 2, ocorrencias: [] },
+    });
+    const { componente, dialogo } = criar(lista, contas, null, recorrencias);
+    componente.excluir(lista.ativos[0]);
+    const configuracao = (dialogo.open.mock.calls[0] as unknown as [unknown, { data: DadosDaConfirmacao }])[1].data;
+    expect(configuracao.paragrafos).toEqual([
+      ['O cartão sai do Flux de vez, com as faturas vazias. ', { forte: 'Não dá para desfazer.' }],
+      ['As recorrências ', { forte: 'Netflix Fictícia' }, ' e ', { forte: 'Streaming antigo Fictício' }, ', só deste cartão, saem junto.'],
+    ]);
   });
 });

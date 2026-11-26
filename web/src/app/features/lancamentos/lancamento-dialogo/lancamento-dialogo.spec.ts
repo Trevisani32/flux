@@ -380,4 +380,11 @@ describe('LancamentoDialogo', () => {
     expect(contaPadrao(contas.ativas, null, null)).toBeNull();
     expect(contaPadrao([contas.ativas[0]], null, null)).toBe(1);
   });
+
+  it('com recorrenciaId mostra Ver histórico da recorrência', () => {
+    abrir(item({ recorrenciaId: 7, descricao: 'Conta de luz Fictícia', data: '2026-11-30', valor: -189.9 }));
+    const botoes = Array.from(painel().querySelectorAll<HTMLButtonElement>('button')).map((botao) => botao.textContent?.trim());
+    expect(botoes).toContain('Ver histórico da recorrência');
+    expect(painel().querySelector<HTMLInputElement>('#lancamento-descricao')?.value).toBe('Conta de luz Fictícia');
+  });
 });

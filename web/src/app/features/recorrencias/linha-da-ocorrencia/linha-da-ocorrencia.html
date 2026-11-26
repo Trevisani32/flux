@@ -1,0 +1,59 @@
+<div class="flux-ocorrencia" [class.flux-ocorrencia--lista]="modo() === 'lista'">
+  <button
+    type="button"
+    class="flux-ocorrencia__toque flux-so-celular"
+    [attr.aria-label]="ocorrencia().descricao + ', previsto para ' + ocorrencia().data.slice(8, 10) + '/' + ocorrencia().data.slice(5, 7)"
+    (click)="acoes()"
+  ></button>
+  <span
+    class="flux-ocorrencia__selo"
+    [class.flux-ocorrencia__selo--atrasada]="ocorrencia().atrasada"
+    [style.--flux-cor]="ocorrencia().cartaoId === null ? null : corDaConta(ocorrencia().cartaoCor)"
+    aria-hidden="true"
+  >
+    <app-icone [nome]="ocorrencia().cartaoId === null ? 'repetir' : 'cartao'" [tamanho]="17" />
+  </span>
+  <span class="flux-ocorrencia__textos">
+    <span class="flux-ocorrencia__titulo">{{ ocorrencia().descricao }}</span>
+    @if (modo() === 'confirmar') {
+      <span class="flux-ocorrencia__meta" [class.flux-ocorrencia__meta--atrasada]="ocorrencia().atrasada">
+        {{ quandoAConfirmar(ocorrencia().data, hoje()) }} · {{ local() }}
+      </span>
+    } @else {
+      <span class="flux-ocorrencia__meta">
+        <span class="flux-pilula" [class.flux-pilula--atrasada]="ocorrencia().atrasada">
+          {{ ocorrencia().atrasada ? 'Atrasada' : 'Previsto' }}
+        </span>
+        {{ textoDaCategoria(ocorrencia().categoriaNome, ocorrencia().categoriaMaeNome) }} ·
+        {{ contaFiltrada() ? 'fora do saldo' : local() }}
+        @if (ocorrencia().cartaoId !== null) {
+          · compra prevista em {{ ocorrencia().data.slice(8, 10) }}/{{ ocorrencia().data.slice(5, 7) }}
+        }
+      </span>
+    }
+  </span>
+  <span class="flux-ocorrencia__valor">
+    @if (ocorrencia().valorVaria) {
+      ≈
+    }
+    <app-valor [valor]="ocorrencia().valor" tipo="previsto" />
+  </span>
+  <span class="flux-ocorrencia__acoes flux-so-desktop">
+    <button
+      mat-stroked-button
+      type="button"
+      [attr.aria-label]="'Confirmar ' + ocorrencia().descricao + ' de ' + ocorrencia().data.slice(8, 10)
+        + '/' + ocorrencia().data.slice(5, 7)"
+      (click)="confirmar()"
+    >
+      <app-icone nome="check" [tamanho]="16" />
+      Confirmar
+    </button>
+    <button
+      type="button"
+      class="flux-link"
+      [attr.aria-label]="'Pular ' + ocorrencia().descricao + ' de ' + ocorrencia().data.slice(8, 10) + '/' + ocorrencia().data.slice(5, 7)"
+      (click)="pular()"
+    >Pular</button>
+  </span>
+</div>

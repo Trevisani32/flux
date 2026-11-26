@@ -1,0 +1,152 @@
+<h2 mat-dialog-title>{{ titulo() }}</h2>
+
+<div mat-dialog-content class="confirmar-dialogo__conteudo">
+  @if (erro(); as erro) {
+    <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível confirmar.">
+      <p class="flux-alerta__texto">{{ erro }}</p>
+    </app-alerta>
+  }
+
+  @if (!jaLancei()) {
+    <p class="confirmar-dialogo__subtitulo">
+      @if (dados.ocorrencia.atrasada) {
+        <span class="flux-pilula flux-pilula--atrasada">Atrasada</span>
+      }
+      Prevista para {{ dataLonga(dados.ocorrencia.data) }} · {{ dados.ocorrencia.cartaoNome ?? dados.ocorrencia.contaNome }}
+    </p>
+
+    @if (candidatos()?.sugerido; as sugerido) {
+      <app-alerta tipo="info" icone="ligar" titulo="Parece que já está no Flux">
+        <p class="flux-alerta__texto">
+          {{ sugerido.descricao }} · {{ sugerido.data.slice(8, 10) }}/{{ sugerido.data.slice(5, 7) }} ·
+          <app-valor [valor]="sugerido.valor" tipo="sinal" />
+          @if (sugerido.alvo === 'LANCAMENTO') {
+            <span> · {{ sugerido.origem === 'IMPORTADO' ? 'importado' : 'lançado à mão' }}</span>
+          }
+        </p>
+        <div class="flux-alerta__acoes">
+          <button mat-flat-button type="button" (click)="ligar(sugerido)">Ligar a este</button>
+        </div>
+      </app-alerta>
+    }
+
+    <form [formGroup]="formulario" class="confirmar-dialogo__formulario">
+      <label>
+        {{ deCartao ? 'Data da compra' : 'Data' }}
+        <input id="confirmar-data" type="date" formControlName="data" [attr.aria-invalid]="erros().data !== null" />
+      </label>
+      @if (erros().data; as erro) {
+        <small>{{ erro }}</small>
+      }
+
+      <label>
+        Valor
+        <span class="confirmar-dialogo__moeda">
+          R$
+          <input
+            id="confirmar-valor"
+            inputmode="decimal"
+            formControlName="valor"
+            [placeholder]="dados.ocorrencia.valorVaria ? '0,00' : ''"
+            [attr.aria-invalid]="erros().valor !== null"
+          />
+        </span>
+      </label>
+      @if (dados.ocorrencia.valorVaria) {
+        <p class="confirmar-dialogo__dica">{{ textoDoValorVariavel }}<app-valor [valor]="dados.ocorrencia.valor" tipo="sinal" />).</p>
+      }
+      @if (erros().valor; as erro) {
+        <small>{{ erro }}</small>
+      }
+      @if (dados.ocorrencia.atrasada && dados.ocorrencia.visivelAte; as ate) {
+        <p class="confirmar-dialogo__dica">{{ dicaDaAtrasada(ate) }}</p>
+      }
+
+      <dl>
+        <dt>Descrição</dt>
+        <dd>{{ dados.ocorrencia.descricao }}</dd>
+        <dt>Categoria</dt>
+        <dd>{{ textoDaCategoria(dados.ocorrencia.categoriaNome, dados.ocorrencia.categoriaMaeNome) }}</dd>
+      </dl>
+
+      <label>
+        Observação (opcional)
+        <textarea id="confirmar-observacao" maxlength="1000" formControlName="observacao"></textarea>
+      </label>
+      @if (erros().observacao; as erro) {
+        <small>{{ erro }}</small>
+      }
+    </form>
+
+    @if (previaDaCompra(); as previa) {
+      <section class="confirmar-dialogo__previa">
+        <b>Compra à vista na fatura de {{ mesSemAno(previa.primeiraFatura.mes) }}</b>
+        <p>
+          Fecha {{ previa.primeiraFatura.fechamento.slice(8, 10) }}/{{ previa.primeiraFatura.fechamento.slice(5, 7) }} e vence
+          {{ dataCurta(previa.primeiraFatura.vencimento) }}.
+        </p>
+        @if (previa.disponivelDepois !== undefined) {
+          <p>Disponível depois desta compra: <app-valor [valor]="previa.disponivelDepois" tipo="saldo" />.</p>
+        }
+        @if (previa.avisoDaFaturaPaga) {
+          <app-alerta tipo="atencao" icone="alerta" titulo="Atenção">
+            <p class="flux-alerta__texto">{{ previa.avisoDaFaturaPaga }}</p>
+          </app-alerta>
+        }
+      </section>
+    }
+  } @else {
+    <p>
+      {{ deCartao ? 'Compras de' : 'Lançamentos de' }} {{ dados.ocorrencia.cartaoNome ?? dados.ocorrencia.contaNome }} de
+      {{ candidatos()?.de?.slice(8, 10) }}/{{ candidatos()?.de?.slice(5, 7) }} a
+      {{ candidatos()?.ate?.slice(8, 10) }}/{{ candidatos()?.ate?.slice(5, 7) }}, sem outra ligação.
+    </p>
+    <fieldset class="confirmar-dialogo__candidatos">
+      <legend>{{ deCartao ? 'Compra' : 'Lançamento' }}</legend>
+      @for (candidato of candidatos()?.candidatos ?? []; track candidato.id) {
+        <label>
+          <input type="radio" name="candidato" [checked]="escolhido() === candidato.id" (change)="selecionar(candidato)" />
+          <span>
+            <b>{{ candidato.descricao }}</b>
+            <small>
+              {{ candidato.data.slice(8, 10) }}/{{ candidato.data.slice(5, 7) }} ·
+              {{ candidato.origem === 'IMPORTADO' ? 'importado' : 'à mão' }} ·
+              {{ textoDaCategoria(candidato.categoriaNome, candidato.categoriaMaeNome) }}
+            </small>
+          </span>
+          <app-valor [valor]="candidato.valor" tipo="sinal" />
+        </label>
+      } @empty {
+        <p>{{ deCartao ? 'Nenhuma compra deste cartão nessas datas.' : 'Nenhum lançamento desta conta nessas datas.' }}</p>
+      }
+    </fieldset>
+  }
+</div>
+
+<div mat-dialog-actions class="confirmar-dialogo__acoes">
+  @if (jaLancei()) {
+    <button mat-button type="button" (click)="voltar()">Voltar</button>
+    <button mat-flat-button type="button" [disabled]="escolhido() === null || enviando()" (click)="ligar()">
+      <app-icone nome="ligar" [tamanho]="18" />
+      Ligar
+    </button>
+  } @else {
+    @if (!candidatos()?.sugerido) {
+      <button mat-button type="button" (click)="abrirJaLancei()">
+        <app-icone nome="ligar" [tamanho]="18" />
+        Já lancei
+      </button>
+    }
+    <button mat-button type="button" (click)="pular()">
+      <app-icone nome="pular" [tamanho]="18" />
+      Pular
+    </button>
+    <span class="confirmar-dialogo__espaco"></span>
+    <button mat-button type="button" mat-dialog-close>Cancelar</button>
+    @if (candidatos()?.sugerido) {
+      <button mat-stroked-button type="button" [disabled]="enviando()" (click)="confirmar()">Confirmar mesmo assim</button>
+    } @else {
+      <button mat-flat-button type="button" [disabled]="enviando()" (click)="confirmar()">Confirmar</button>
+    }
+  }
+</div>

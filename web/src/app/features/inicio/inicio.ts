@@ -27,6 +27,10 @@ import { mesDe } from '../lancamentos/filtros';
 import { abrirDialogoDeLancamento, contaPadrao } from '../lancamentos/lancamento-dialogo/lancamento-dialogo';
 import { ItemDaLista, LancamentosService, ListaDoMes } from '../lancamentos/lancamentos.service';
 import { LinhaDoLancamento } from '../lancamentos/linha-do-lancamento/linha-do-lancamento';
+import { maisAte, notaDoAConfirmar } from '../recorrencias/frases';
+import { FluxoDaOcorrencia } from '../recorrencias/fluxo-da-ocorrencia';
+import { LinhaDaOcorrencia } from '../recorrencias/linha-da-ocorrencia/linha-da-ocorrencia';
+import { AConfirmar, RecorrenciasService } from '../recorrencias/recorrencias.service';
 import { metaDaProximaFatura, proximasFaturas, tituloDaProximaFatura } from './proximas-faturas';
 
 /**
@@ -35,7 +39,19 @@ import { metaDaProximaFatura, proximasFaturas, tituloDaProximaFatura } from './p
  */
 @Component({
   selector: 'app-inicio',
-  imports: [MatButtonModule, RouterLink, Alerta, CabecalhoPagina, Card, EstadoVazio, Icone, LinhaDoLancamento, SaldoEmDestaque, Valor],
+  imports: [
+    MatButtonModule,
+    RouterLink,
+    Alerta,
+    CabecalhoPagina,
+    Card,
+    EstadoVazio,
+    Icone,
+    LinhaDaOcorrencia,
+    LinhaDoLancamento,
+    SaldoEmDestaque,
+    Valor,
+  ],
   templateUrl: './inicio.html',
   styleUrl: './inicio.scss',
 })
@@ -44,6 +60,8 @@ export class Inicio {
   private readonly contasService = inject(ContasService);
   private readonly cartoesService = inject(CartoesService);
   private readonly lancamentosService = inject(LancamentosService);
+  private readonly recorrenciasService = inject(RecorrenciasService);
+  private readonly fluxoDaOcorrencia = inject(FluxoDaOcorrencia);
   private readonly dialogo = inject(MatDialog);
   private readonly agora = inject(AGORA)();
 
@@ -62,6 +80,8 @@ export class Inicio {
   readonly cartoes = signal<ListaDeCartoes | null>(null);
   readonly mes = signal<ListaDoMes | null>(null);
   readonly ultimos = signal<readonly ItemDaLista[] | null>(null);
+  /** Sem a resposta, o card some, como o de próximas faturas. */
+  readonly aConfirmar = signal<AConfirmar | null>(null);
   readonly falhaAoCarregar = signal(false);
   private readonly categorias = signal<ListaDeCategorias | null>(null);
   readonly temInvestimento = computed(() => this.contas()?.ativas.some((conta) => conta.tipo === 'INVESTIMENTO') ?? false);
@@ -72,10 +92,13 @@ export class Inicio {
     return mes !== null && mes.quantidadeLancamentos + mes.quantidadeTransferencias > 0 ? mes : null;
   });
   readonly faturas = computed(() => proximasFaturas(this.cartoes()?.ativos ?? []));
+  readonly notaDoAConfirmar = notaDoAConfirmar;
+  readonly maisAte = maisAte;
   constructor() {
     this.carregar();
     // O "Desfazer" de um importado excluído volta depois que o diálogo fechou (Fatia 04a).
     this.lancamentosService.restaurado$.pipe(takeUntilDestroyed()).subscribe(() => this.carregar());
+    this.fluxoDaOcorrencia.mudou$.pipe(takeUntilDestroyed()).subscribe(() => this.carregarAConfirmar());
     inject(CategoriasService).listar().subscribe({
       next: (categorias) => this.categorias.set(categorias),
       error: () => this.categorias.set(null),
@@ -132,13 +155,29 @@ export class Inicio {
       error: () => this.cartoes.set(null),
     });
     // Sem os lançamentos, o Início continua com as contas: os dois cartões só somem.
-    this.lancamentosService.listar({ mes: mesDe(this.hojeIso), conta: null, cartao: null, categoria: null, tipo: null, busca: '' }).subscribe({
+    this.lancamentosService.listar({
+      mes: mesDe(this.hojeIso),
+      conta: null,
+      cartao: null,
+      categoria: null,
+      tipo: null,
+      busca: '',
+      previstos: false,
+    }).subscribe({
       next: (mes) => this.mes.set(mes),
       error: () => this.mes.set(null),
     });
     this.lancamentosService.ultimos().subscribe({
       next: (ultimos) => this.ultimos.set(ultimos),
       error: () => this.ultimos.set(null),
+    });
+    this.carregarAConfirmar();
+  }
+
+  private carregarAConfirmar(): void {
+    this.recorrenciasService.aConfirmar().subscribe({
+      next: (aConfirmar) => this.aConfirmar.set(aConfirmar),
+      error: () => this.aConfirmar.set(null),
     });
   }
 }

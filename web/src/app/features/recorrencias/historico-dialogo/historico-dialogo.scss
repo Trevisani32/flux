@@ -1,0 +1,39 @@
+// O recuo dos diálogos do Flux (o mesmo do lancamento-dialogo e da confirmação): os tokens do
+// "flux-dialogo" zeram o do Material.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 26px 26px 22px;
+}
+
+.historico-dialogo__intro {
+  color: var(--flux-texto-2);
+}
+
+.historico-dialogo__lista {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.historico-dialogo__lista li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--flux-borda);
+}
+
+.historico-dialogo__lista small {
+  display: block;
+  margin-top: 3px;
+  color: var(--flux-texto-3);
+}
+
+.historico-dialogo__atrasada {
+  color: var(--flux-cor-conta-laranja);
+  font-weight: 700;
+}

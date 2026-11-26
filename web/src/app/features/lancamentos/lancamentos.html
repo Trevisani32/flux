@@ -68,6 +68,22 @@
             </section>
           }
 
+          @if (lista.previstos && lista.previstos.quantidade > 0 && filtros().cartao === null) {
+            <div class="flux-faixa-previstos" role="note">
+              <app-icone nome="repetir" [tamanho]="18" />
+              <span class="flux-so-desktop">Previstos em {{ nomeDoMes(lista.mes).split(' ')[0] }}:
+                @if (lista.previstos.entradas !== 0) { <b><app-valor [valor]="lista.previstos.entradas" tipo="sinal" /></b> }
+                @if (lista.previstos.entradas !== 0 && lista.previstos.saidas !== 0) { e }
+                @if (lista.previstos.saidas !== 0) { <b><app-valor [valor]="lista.previstos.saidas" tipo="sinal" /></b> }
+                {{ quantidadeNaFaixa(lista.previstos.quantidade, lista.previstos.atrasadas) }}. Ficam fora dos totais até você confirmar.
+                <a class="flux-link" routerLink="/recorrencias">Ver recorrências</a>
+              </span>
+              <span class="flux-so-celular">
+                Previstos: {{ quantidadeNaFaixa(lista.previstos.quantidade, lista.previstos.atrasadas) }}. Fora dos totais.
+              </span>
+            </div>
+          }
+
           <div class="lancamentos__filtros" role="search" aria-label="Filtros dos lançamentos">
             <div class="lancamentos__busca">
               <app-icone nome="busca" [tamanho]="18" />
@@ -134,6 +150,12 @@
                 </select>
                 <app-icone nome="baixo" [tamanho]="16" />
               </label>
+              <button
+                type="button"
+                class="lancamentos__previstos"
+                [attr.aria-pressed]="filtros().previstos !== false"
+                (click)="mudarPrevistos()"
+              ><app-icone nome="repetir" [tamanho]="16" />Previstos</button>
             </div>
           </div>
 
@@ -146,7 +168,13 @@
           }
           @if (lista.fatura; as fatura) {
             <div class="lancamentos__fatura" role="note">
-              <span><b>Fatura de {{ mesSemAno(fatura.mes) }}</b> · fecha {{ diaEMes(fatura.fechamento) }} · vence {{ diaEMes(fatura.vencimento) }} · <b class="flux-num">{{ textoDoTotal(fatura.total) }}</b></span>
+              <span>
+                <b>Fatura de {{ mesSemAno(fatura.mes) }}</b> · fecha {{ diaEMes(fatura.fechamento) }} ·
+                vence {{ diaEMes(fatura.vencimento) }} ·
+                <b class="flux-num">{{ textoDoTotal(fatura.total) }}</b>@if (fatura.previsto) {
+                  · mais <app-valor [valor]="fatura.previsto" tipo="neutro" /> previsto
+                }
+              </span>
               <a class="flux-link" [routerLink]="['/cartoes', fatura.cartaoId, 'faturas', fatura.mes]">Ver fatura</a>
             </div>
           }
@@ -165,6 +193,16 @@
                     }
                   </h3>
                   <ul class="flux-lista">
+                    @for (ocorrencia of dia.previstos ?? []; track ocorrencia.recorrenciaId + ocorrencia.periodo) {
+                      <li class="lancamentos__item">
+                        <app-linha-da-ocorrencia
+                          [ocorrencia]="ocorrencia"
+                          [hoje]="lista.hoje"
+                          modo="lista"
+                          [contaFiltrada]="filtros().conta !== null"
+                        />
+                      </li>
+                    }
                     @for (item of dia.itens; track item.tipo + item.id) {
                       <li class="lancamentos__item"><app-linha-do-lancamento [item]="item" [contaFiltrada]="filtros().conta !== null || filtros().cartao !== null" (abrir)="abrir($event)" /></li>
                     }

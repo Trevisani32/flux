@@ -20,6 +20,8 @@ import { ContasService, ListaDeContas } from '../contas/contas.service';
 import { diaEMes, diasDoCartao, mesSemAno, quantidadeDeCartoesAtivos, textoDoTotal } from './apresentacao';
 import { CartaoDialogo, DadosDoDialogoDeCartao } from './cartao-dialogo/cartao-dialogo';
 import { Cartao, CartoesService, ListaDeCartoes } from './cartoes.service';
+import { paragrafoDasQueSaemJunto } from '../recorrencias/frases';
+import { Recorrencia, RecorrenciasService } from '../recorrencias/recorrencias.service';
 
 /**
  * A tela de Cartões (decisões 1 a 6, 26 e 29 da 05a): um card por cartão ativo, com os dias, a conta de pagamento, a
@@ -34,6 +36,7 @@ import { Cartao, CartoesService, ListaDeCartoes } from './cartoes.service';
 })
 export class Cartoes {
   private readonly servico = inject(CartoesService);
+  private readonly recorrenciasService = inject(RecorrenciasService);
   private readonly contasService = inject(ContasService);
   private readonly dialogo = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
@@ -151,12 +154,24 @@ export class Cartoes {
 
   /** Decisão 5: com compras ou estornos, o mesmo diálogo vira o bloqueio, com o uso que veio no 422, e leva a arquivar. */
   excluir(cartao: Cartao): void {
+    this.recorrenciasService.listar().subscribe({
+      next: (lista) => this.abrirExclusao(cartao, [...lista.ativas, ...lista.pausadas, ...lista.encerradas]),
+      error: () => this.abrirExclusao(cartao, []),
+    });
+  }
+
+  private abrirExclusao(cartao: Cartao, recorrencias: readonly Recorrencia[]): void {
     const arquivado = cartao.arquivadoEm !== null;
+    const queSaem = recorrencias.filter((recorrencia) => recorrencia.cartaoId === cartao.id).map((recorrencia) => recorrencia.descricao);
+    const paragrafos = [['O cartão sai do Flux de vez, com as faturas vazias. ', { forte: 'Não dá para desfazer.' }]];
+    if (queSaem.length > 0) {
+      paragrafos.push(paragrafoDasQueSaemJunto(queSaem, true));
+    }
     abrirConfirmacao(this.dialogo, {
       titulo: `Excluir ${cartao.nome}?`,
       icone: 'lixeira',
       perigo: true,
-      paragrafos: [['O cartão sai do Flux de vez, com as faturas vazias. ', { forte: 'Não dá para desfazer.' }]],
+      paragrafos,
       confirmar: 'Excluir cartão',
       falha: 'Não foi possível excluir o cartão. Tente novamente.',
       acao: () => this.servico.excluir(cartao.id),

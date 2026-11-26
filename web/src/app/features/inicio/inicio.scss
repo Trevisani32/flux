@@ -123,11 +123,42 @@
   align-self: flex-start;
 }
 
+.inicio-planejamento {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--flux-espaco-4);
+  margin-top: var(--flux-espaco-4);
+}
+
+.inicio-confirmar__nota {
+  margin: calc(-1 * var(--flux-espaco-2)) 0 0;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+}
+
+.inicio-confirmar__lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inicio-confirmar__lista li + li {
+  border-top: 1px solid var(--flux-borda);
+}
+
+.inicio-confirmar__vazio,
+.inicio-confirmar__mais {
+  color: var(--flux-texto-2);
+  font-size: 14px;
+}
+
 // Abaixo de 1.280 px, o cartão dourado fica em cima da lista, como no celular, para o saldo
 // total caber.
 @media (max-width: 1279.98px) {
   .inicio-contas,
-  .inicio-movimento {
+  .inicio-movimento,
+  .inicio-planejamento {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -135,5 +166,13 @@
 @media (max-width: 959.98px) {
   .inicio-mes__acoes {
     gap: 10px;
+  }
+
+  .inicio-confirmar {
+    order: -1;
+  }
+
+  .inicio-confirmar__a-mais {
+    display: none;
   }
 }

@@ -20,6 +20,8 @@ import { detalheDoErro, statusDoErro } from '../auth/erros-http';
 import { corDaConta, quantidadeDeContasAtivas, tipoDaConta } from './apresentacao';
 import { ContaDialogo, DadosDoDialogoDeConta } from './conta-dialogo/conta-dialogo';
 import { Conta, ContasService, ListaDeContas } from './contas.service';
+import { paragrafoDasQueSaemJunto } from '../recorrencias/frases';
+import { Recorrencia, RecorrenciasService } from '../recorrencias/recorrencias.service';
 
 @Component({
   selector: 'app-contas',
@@ -29,6 +31,7 @@ import { Conta, ContasService, ListaDeContas } from './contas.service';
 })
 export class Contas {
   private readonly servico = inject(ContasService);
+  private readonly recorrenciasService = inject(RecorrenciasService);
   private readonly dialogo = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly rota = inject(ActivatedRoute);
@@ -133,12 +136,24 @@ export class Contas {
   }
 
   excluir(conta: Conta): void {
+    this.recorrenciasService.listar().subscribe({
+      next: (lista) => this.abrirExclusao(conta, [...lista.ativas, ...lista.pausadas, ...lista.encerradas]),
+      error: () => this.abrirExclusao(conta, []),
+    });
+  }
+
+  private abrirExclusao(conta: Conta, recorrencias: readonly Recorrencia[]): void {
     const arquivada = conta.arquivadaEm !== null;
+    const queSaem = recorrencias.filter((recorrencia) => recorrencia.contaId === conta.id).map((recorrencia) => recorrencia.descricao);
+    const paragrafos = [['A conta sai do Flux de vez. ', { forte: 'Não dá para desfazer.' }]];
+    if (queSaem.length > 0) {
+      paragrafos.push(paragrafoDasQueSaemJunto(queSaem, false));
+    }
     abrirConfirmacao(this.dialogo, {
       titulo: `Excluir ${conta.nome}?`,
       icone: 'lixeira',
       perigo: true,
-      paragrafos: [['A conta sai do Flux de vez. ', { forte: 'Não dá para desfazer.' }]],
+      paragrafos,
       confirmar: 'Excluir conta',
       falha: 'Não foi possível excluir a conta. Tente novamente.',
       acao: () => this.servico.excluir(conta.id),

@@ -1,0 +1,61 @@
+<h2 mat-dialog-title>Histórico de {{ historico()?.descricao ?? '' }}</h2>
+
+<div mat-dialog-content class="historico-dialogo__conteudo">
+  @if (historico(); as historico) {
+    <p>
+      Desde o cadastro, em {{ historico.desde.slice(8, 10) }}/{{ historico.desde.slice(5, 7) }}/{{ historico.desde.slice(0, 4) }}.
+      As previstas ficam em Lançamentos.
+    </p>
+    <ul class="historico-dialogo__lista">
+      @for (item of historico.itens; track item.periodo) {
+        <li>
+          <span>
+            <b>{{ tituloDoItem(historico, item) }}</b>
+            @if (item.situacao === 'PREVISTA') {
+              <small>Prevista</small>
+            }
+            @if (item.situacao === 'ATRASADA') {
+              <small>Atrasada</small>
+            }
+            @if (item.situacao === 'EFETIVADA') {
+              <small>
+                Confirmada em {{ item.data?.slice(8, 10) }}/{{ item.data?.slice(5, 7) }} ·
+                @if (item.mesNaLista && item.contaId !== null) {
+                  <a
+                    [routerLink]="['/lancamentos']"
+                    [queryParams]="{ mes: item.mesNaLista, conta: item.contaId }"
+                    (click)="fechar()"
+                  >ver lançamento</a>
+                }
+                @if (item.mesNaLista && item.cartaoId !== null) {
+                  <a
+                    [routerLink]="['/lancamentos']"
+                    [queryParams]="{ mes: item.mesNaLista, cartao: item.cartaoId }"
+                    (click)="fechar()"
+                  >ver lançamento</a>
+                }
+              </small>
+            }
+            @if (item.situacao === 'PULADA') {
+              <small>
+                Pulada ·
+                <button type="button" class="flux-link" (click)="voltarAPrever(item.periodo)">Voltar a prever</button>
+              </small>
+            }
+          </span>
+          @if (item.valor === null) {
+            <span>—</span>
+          } @else {
+            <app-valor [valor]="item.valor" tipo="sinal" />
+          }
+        </li>
+      }
+    </ul>
+  } @else if (falha()) {
+    <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível carregar o histórico."></app-alerta>
+  }
+</div>
+
+<div mat-dialog-actions align="end">
+  <button mat-button type="button" mat-dialog-close>Fechar</button>
+</div>

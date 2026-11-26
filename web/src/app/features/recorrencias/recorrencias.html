@@ -1,0 +1,230 @@
+<app-cabecalho-pagina titulo="Recorrências">
+  <p complemento class="app-recorrencias__subtitulo app-recorrencias__subtitulo--desktop">
+    O que se repete. Os previstos não mexem no saldo até você confirmar.
+  </p>
+  <p complemento class="app-recorrencias__subtitulo app-recorrencias__subtitulo--celular">
+    Os previstos não mexem no saldo até você confirmar.
+  </p>
+  <button mat-flat-button type="button" class="app-recorrencias__nova" (click)="novaRecorrencia()">
+    <app-icone nome="mais" [tamanho]="18" />
+    Nova recorrência
+  </button>
+</app-cabecalho-pagina>
+
+<div class="flux-conteudo">
+  @if (falha()) {
+    <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível carregar as recorrências.">
+      <div class="flux-alerta__acoes">
+        <button mat-stroked-button type="button" (click)="carregar()">Tentar de novo</button>
+      </div>
+    </app-alerta>
+  } @else if (lista(); as lista) {
+    @if (lista.ativas.length + lista.pausadas.length + lista.encerradas.length === 0) {
+      <app-estado-vazio
+        icone="repetir"
+        titulo="Nada se repete por aqui ainda"
+        texto="Cadastre o salário, o aluguel e as assinaturas para ver o que vem por aí e projetar o saldo."
+      >
+        <button mat-flat-button type="button" (click)="novaRecorrencia()">
+          <app-icone nome="mais" [tamanho]="18" />
+          Nova recorrência
+        </button>
+      </app-estado-vazio>
+    } @else {
+      <section class="flux-card app-recorrencias__card" aria-labelledby="a-confirmar">
+        <div class="app-recorrencias__titulo">
+          <div>
+            <h2 id="a-confirmar">A confirmar</h2>
+            <p class="flux-so-desktop">{{ notaDoCardAConfirmar() }}</p>
+            <p class="flux-so-celular">{{ notaDoCardAConfirmar(true) }}</p>
+          </div>
+        </div>
+        @if (lista.aConfirmar.ocorrencias.length === 0) {
+          <p class="app-recorrencias__vazio">Nada a confirmar nos próximos 7 dias.</p>
+        } @else {
+          <ul class="app-recorrencias__ocorrencias">
+            @for (ocorrencia of lista.aConfirmar.ocorrencias; track ocorrencia.recorrenciaId + ocorrencia.periodo) {
+              <li>
+                <app-linha-da-ocorrencia [ocorrencia]="ocorrencia" [hoje]="hoje" modo="confirmar" />
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section class="flux-card app-recorrencias__card" aria-label="Recorrências">
+        <h2>Ativas {{ lista.ativas.length }}</h2>
+        <ul class="app-recorrencias__lista">
+          @for (recorrencia of lista.ativas; track recorrencia.id) {
+            <li class="app-recorrencias__linha">
+              <span class="app-recorrencias__selo" [style.--flux-cor]="corDaRecorrencia(recorrencia)">
+                <app-icone [nome]="recorrencia.cartaoId === null ? 'repetir' : 'cartao'" [tamanho]="17" />
+              </span>
+              <span class="app-recorrencias__textos">
+                <b>{{ recorrencia.descricao }}</b>
+                <span class="app-recorrencias__meta flux-so-desktop">
+                  @if (recorrencia.valorVaria) {
+                    <span class="flux-pilula">Varia</span>
+                  }
+                  @if (recorrencia.atrasadas > 0) {
+                    <span class="flux-pilula flux-pilula--atrasada">{{ textoDasAtrasadas(recorrencia) }}</span>
+                  }
+                  {{ fraseDaRecorrencia(recorrencia, hoje) }} · {{ recorrencia.cartaoNome ?? recorrencia.contaNome }}
+                  @if (recorrencia.categoriaNome !== null) {
+                    · {{ textoDaCategoria(recorrencia.categoriaNome, recorrencia.categoriaMaeNome) }}
+                  }
+                </span>
+                <!-- No celular, a meta em duas linhas: a próxima com a conta ou o cartão, e a frase (seção 3.4). -->
+                <span class="app-recorrencias__meta flux-so-celular">
+                  @if (recorrencia.valorVaria) {
+                    <span class="flux-pilula">Varia</span>
+                  }
+                  @if (recorrencia.atrasadas > 0) {
+                    <span class="flux-pilula flux-pilula--atrasada">{{ textoDasAtrasadas(recorrencia) }}</span>
+                  }
+                  Próxima {{ recorrencia.proxima === null ? '—' : dataDaOcorrencia(recorrencia.proxima, hoje) }} ·
+                  {{ recorrencia.cartaoNome ?? recorrencia.contaNome }}
+                </span>
+                <span class="app-recorrencias__meta flux-so-celular">{{ fraseDaRecorrencia(recorrencia, hoje) }}</span>
+              </span>
+              <span
+                class="app-recorrencias__proxima flux-so-desktop"
+                [attr.aria-label]="'Próxima ' + (recorrencia.proxima === null ? '—' : dataDaOcorrencia(recorrencia.proxima, hoje))"
+              >
+                <small>Próxima</small>
+                <span>{{ recorrencia.proxima === null ? '—' : dataDaOcorrencia(recorrencia.proxima, hoje) }}</span>
+              </span>
+              <span class="app-recorrencias__valor">
+                @if (recorrencia.valorVaria) {
+                  ≈
+                }
+                <app-valor [valor]="recorrencia.valorComSinal" tipo="sinal" />
+              </span>
+              <button
+                type="button"
+                class="flux-botao-acoes"
+                [attr.aria-label]="'Ações de ' + recorrencia.descricao"
+                [matMenuTriggerFor]="menuDaAtiva"
+                [matMenuTriggerData]="{ recorrencia }"
+              >
+                <app-icone nome="mais-h" />
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+
+      @if (lista.pausadas.length > 0) {
+        <section class="flux-card app-recorrencias__card">
+          <h2>Pausadas {{ lista.pausadas.length }}</h2>
+          <ul class="app-recorrencias__lista">
+            @for (recorrencia of lista.pausadas; track recorrencia.id) {
+              <li class="app-recorrencias__linha app-recorrencias__linha--pausada">
+                <span class="app-recorrencias__selo">
+                  <app-icone [nome]="recorrencia.cartaoId === null ? 'repetir' : 'cartao'" [tamanho]="17" />
+                </span>
+                <span class="app-recorrencias__textos">
+                  <b>{{ recorrencia.descricao }}</b>
+                  <span class="app-recorrencias__meta">
+                    <span class="flux-pilula">Pausada</span>
+                    {{ recorrencia.motivoDaPausa }} · {{ fraseDaRecorrencia(recorrencia, hoje) }} ·
+                    {{ textoDaCategoria(recorrencia.categoriaNome, recorrencia.categoriaMaeNome) }}
+                  </span>
+                </span>
+                <app-valor [valor]="recorrencia.valorComSinal" tipo="sinal" />
+                <button
+                  type="button"
+                  class="flux-botao-acoes"
+                  [attr.aria-label]="'Ações de ' + recorrencia.descricao"
+                  [matMenuTriggerFor]="menuDaAtiva"
+                  [matMenuTriggerData]="{ recorrencia }"
+                >
+                  <app-icone nome="mais-h" />
+                </button>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      @if (lista.encerradas.length > 0) {
+        <section class="flux-card app-recorrencias__card">
+          <button
+            type="button"
+            class="app-recorrencias__alternar"
+            [attr.aria-expanded]="encerradasAbertas()"
+            (click)="alternarEncerradas()"
+          >
+            Encerradas {{ lista.encerradas.length }}
+            <app-icone [nome]="encerradasAbertas() ? 'cima' : 'baixo'" [tamanho]="16" />
+          </button>
+          @if (encerradasAbertas()) {
+            <ul class="app-recorrencias__lista">
+              @for (recorrencia of lista.encerradas; track recorrencia.id) {
+                <li class="app-recorrencias__linha app-recorrencias__linha--pausada">
+                  <span class="app-recorrencias__selo">
+                    <app-icone [nome]="recorrencia.cartaoId === null ? 'repetir' : 'cartao'" [tamanho]="17" />
+                  </span>
+                  <span class="app-recorrencias__textos">
+                    <b>{{ recorrencia.descricao }}</b>
+                    <span class="app-recorrencias__meta">
+                      <span class="flux-pilula">Encerrada</span>
+                      terminou em {{ dataCurta(recorrencia.terminaEm!) }} · {{ recorrencia.cartaoNome ?? recorrencia.contaNome }}
+                    </span>
+                  </span>
+                  <app-valor [valor]="recorrencia.valorComSinal" tipo="sinal" />
+                  <button mat-stroked-button type="button" (click)="retomar(recorrencia)">Retomar</button>
+                  <button
+                    type="button"
+                    class="flux-botao-acoes"
+                    [attr.aria-label]="'Ações de ' + recorrencia.descricao"
+                    [matMenuTriggerFor]="menuDaEncerrada"
+                    [matMenuTriggerData]="{ recorrencia }"
+                  >
+                    <app-icone nome="mais-h" />
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      }
+    }
+  }
+</div>
+
+<mat-menu #menuDaAtiva="matMenu" class="flux-menu" xPosition="before">
+  <ng-template matMenuContent let-recorrencia="recorrencia">
+    <button mat-menu-item type="button" (click)="editar(recorrencia)">
+      <app-icone matMenuItemIcon nome="editar" />
+      Editar
+    </button>
+    <button mat-menu-item type="button" (click)="historico(recorrencia)">
+      <app-icone matMenuItemIcon nome="calendario" />
+      Histórico
+    </button>
+    <button mat-menu-item type="button" (click)="encerrar(recorrencia)">
+      <app-icone matMenuItemIcon nome="encerrar" />
+      Encerrar
+    </button>
+    <mat-divider />
+    <button mat-menu-item type="button" class="flux-menu__perigo" (click)="excluir(recorrencia)">
+      <app-icone matMenuItemIcon nome="lixeira" />
+      Excluir
+    </button>
+  </ng-template>
+</mat-menu>
+
+<mat-menu #menuDaEncerrada="matMenu" class="flux-menu" xPosition="before">
+  <ng-template matMenuContent let-recorrencia="recorrencia">
+    <button mat-menu-item type="button" (click)="historico(recorrencia)">
+      <app-icone matMenuItemIcon nome="calendario" />
+      Histórico
+    </button>
+    <mat-divider />
+    <button mat-menu-item type="button" class="flux-menu__perigo" (click)="excluir(recorrencia)">
+      <app-icone matMenuItemIcon nome="lixeira" />
+      Excluir
+    </button>
+  </ng-template>
+</mat-menu>

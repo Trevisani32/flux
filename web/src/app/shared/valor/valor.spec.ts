@@ -43,4 +43,15 @@ describe('Valor', () => {
       expect([...elemento.classList]).not.toContain('flux-valor--neutro');
     }
   });
+
+  it('o tipo previsto tem o sinal e a cor neutra', () => {
+    const despesa = criar(-189.9, 'previsto');
+    expect(textoSemEspacoEspecial(despesa.querySelector('.valor__texto')?.textContent ?? null)).toBe('−R$ 189,90');
+    expect(textoSemEspacoEspecial(despesa.querySelector('.flux-visualmente-oculto')?.textContent ?? null)).toBe('menos R$ 189,90');
+    expect(despesa.classList).toContain('flux-valor--neutro');
+    const receita = criar(8200, 'previsto');
+    expect(textoSemEspacoEspecial(receita.querySelector('.valor__texto')?.textContent ?? null)).toBe('+R$ 8.200,00');
+    expect(textoSemEspacoEspecial(receita.querySelector('.flux-visualmente-oculto')?.textContent ?? null)).toBe('mais R$ 8.200,00');
+    expect(receita.classList).toContain('flux-valor--neutro');
+  });
 });

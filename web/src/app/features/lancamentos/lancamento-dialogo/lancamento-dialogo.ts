@@ -23,6 +23,7 @@ import { abrirConversao } from '../conversao-dialogo/conversao-dialogo';
 import { convertida } from '../conversao';
 import { abrirConvertida, ResultadoDaConvertida } from '../convertida-dialogo/convertida-dialogo';
 import { DadosDaTransferencia, DadosDoLancamento, ItemDaLista, LancamentosService } from '../lancamentos.service';
+import { abrirHistorico } from '../../recorrencias/historico-dialogo/historico-dialogo';
 
 export interface DadosDoDialogoDeLancamento {
   /** null = Novo. */
@@ -164,6 +165,13 @@ export class LancamentoDialogo {
     }
     return opcoes;
   });
+
+  verHistoricoDaRecorrencia(): void {
+    if (this.item?.recorrenciaId === null || this.item?.recorrenciaId === undefined) {
+      return;
+    }
+    abrirHistorico(this.dialogo, this.item.recorrenciaId, this.dados.hoje).subscribe();
+  }
   readonly enviando = signal(false);
   readonly erroGeral = signal<string | null>(null);
   /** Erros que vieram da API, por campo; somem quando o campo muda. */

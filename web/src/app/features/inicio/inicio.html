@@ -69,8 +69,9 @@
       </app-estado-vazio>
     }
   }
-  @if (cartoes(); as lista) {
-    <app-card class="inicio-faturas" titulo="Próximas faturas">
+  <div class="inicio-planejamento">
+    @if (cartoes(); as lista) {
+      <app-card class="inicio-faturas" titulo="Próximas faturas">
       <a acao class="flux-link" routerLink="/cartoes">Ver cartões</a>
       @if (lista.ativos.length > 0) {
         @if (faturas().length === 0) {
@@ -118,6 +119,47 @@
           [queryParams]="{ novo: 'cartao' }"
         >Novo cartão</a>
       }
-    </app-card>
-  }
+      </app-card>
+    }
+    @if (aConfirmar(); as aConfirmar) {
+      <app-card class="inicio-confirmar" titulo="A confirmar">
+        <span acao class="inicio-confirmar__acoes">
+          @if (aConfirmar.ocorrencias.length > 0) {
+            <a class="flux-link" routerLink="/recorrencias">Ver todas</a>
+          }
+        </span>
+        @if (aConfirmar.ocorrencias.length > 0) {
+          <p class="inicio-confirmar__nota">{{ notaDoAConfirmar(
+            aConfirmar.ocorrencias.filter((ocorrencia) => ocorrencia.atrasada).length,
+            aConfirmar.ate,
+            false
+          ) }}</p>
+          <ul class="inicio-confirmar__lista">
+            @for (ocorrencia of aConfirmar.ocorrencias.slice(0, 6); track ocorrencia.recorrenciaId + ocorrencia.periodo;
+                  let indice = $index) {
+              <li [class.inicio-confirmar__a-mais]="indice >= 3">
+                <app-linha-da-ocorrencia [ocorrencia]="ocorrencia" [hoje]="hojeIso" modo="confirmar" />
+              </li>
+            }
+          </ul>
+          @if (aConfirmar.ocorrencias.length > 6) {
+            <p class="inicio-confirmar__mais flux-so-desktop">
+              {{ maisAte(aConfirmar.ocorrencias.length - 6, aConfirmar.ate, hojeIso) }}
+            </p>
+          }
+          @if (aConfirmar.ocorrencias.length > 3) {
+            <p class="inicio-confirmar__mais flux-so-celular">
+              {{ maisAte(aConfirmar.ocorrencias.length - 3, aConfirmar.ate, hojeIso) }}
+            </p>
+          }
+        } @else if (aConfirmar.recorrencias > 0) {
+          <p class="inicio-confirmar__vazio">Nada a confirmar nos próximos 7 dias.</p>
+          <a class="flux-link" routerLink="/recorrencias">Ver recorrências</a>
+        } @else {
+          <p class="inicio-confirmar__vazio">Cadastre o salário, o aluguel e as assinaturas para ver o que vem por aí.</p>
+          <a mat-stroked-button routerLink="/recorrencias" [queryParams]="{ nova: 'recorrencia' }">Nova recorrência</a>
+        }
+      </app-card>
+    }
+  </div>
 </div>

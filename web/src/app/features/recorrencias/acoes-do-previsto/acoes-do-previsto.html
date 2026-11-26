@@ -1,0 +1,31 @@
+<h2 mat-dialog-title>{{ dados.ocorrencia.descricao }}</h2>
+
+<div mat-dialog-content class="acoes-previsto__conteudo">
+  <p>
+    <span class="flux-pilula" [class.flux-pilula--atrasada]="dados.ocorrencia.atrasada">{{ rotulo() }}</span>
+    {{ dataLonga(dados.ocorrencia.data).replace('/' + dados.ocorrencia.data.slice(0, 4), '') }} ·
+    <app-valor [valor]="dados.ocorrencia.valor" tipo="previsto" /> ·
+    {{ dados.ocorrencia.cartaoNome ?? dados.ocorrencia.contaNome }}
+  </p>
+</div>
+
+<div mat-dialog-actions class="acoes-previsto__acoes">
+  <button mat-flat-button type="button" (click)="escolher('confirmar')">
+    <app-icone nome="check" [tamanho]="18" />
+    Confirmar
+  </button>
+  <button mat-stroked-button type="button" (click)="escolher('pular')">
+    <app-icone nome="pular" [tamanho]="18" />
+    Pular esta
+  </button>
+  <button mat-stroked-button type="button" (click)="escolher('ligar')">
+    <app-icone nome="ligar" [tamanho]="18" />
+    Já lancei
+  </button>
+  <hr />
+  <button mat-button type="button" (click)="escolher('editar')">
+    <app-icone nome="editar" [tamanho]="18" />
+    Editar a recorrência
+  </button>
+  <button mat-button type="button" mat-dialog-close>Fechar</button>
+</div>

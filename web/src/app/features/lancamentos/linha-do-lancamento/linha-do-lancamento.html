@@ -16,6 +16,10 @@
       }
       <span class="linha__meta-texto flux-so-desktop">{{ meta() }}</span>
       <span class="linha__meta-texto flux-so-celular">{{ metaCurta() }}</span>
+      @if (item().recorrenciaId) {
+        <span class="linha__da-recorrencia-separador" aria-hidden="true">·</span>
+        <span class="linha__da-recorrencia">da recorrência</span>
+      }
     </span>
   </span>
   <app-valor class="linha__valor" [valor]="item().valor" [tipo]="tipoDoValor()" />

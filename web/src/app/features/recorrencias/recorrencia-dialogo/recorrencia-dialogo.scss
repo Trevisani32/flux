@@ -1,0 +1,119 @@
+// O recuo dos diálogos do Flux (o mesmo do lancamento-dialogo e da confirmação): os tokens do
+// "flux-dialogo" zeram o do Material.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 26px 26px 22px;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.recorrencia-dialogo__conteudo {
+  display: grid;
+  gap: 10px;
+}
+
+.recorrencia-dialogo__conteudo label {
+  display: grid;
+  gap: 5px;
+  color: var(--flux-texto-2);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.recorrencia-dialogo__conteudo input,
+.recorrencia-dialogo__conteudo select {
+  min-height: 42px;
+  padding: 0 10px;
+  border: 1px solid var(--flux-borda);
+  border-radius: var(--flux-raio-controle);
+  background: var(--flux-card);
+  color: var(--flux-texto);
+  font: inherit;
+}
+
+.recorrencia-dialogo__segmentado {
+  display: flex;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+}
+
+.recorrencia-dialogo__segmentado legend {
+  margin-bottom: 5px;
+  color: var(--flux-texto-2);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.recorrencia-dialogo__segmentado button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--flux-borda);
+  border-radius: var(--flux-raio-controle);
+  background: transparent;
+  color: var(--flux-texto-2);
+  font: inherit;
+  cursor: pointer;
+}
+
+.recorrencia-dialogo__segmentado button.ativo {
+  border-color: rgba(var(--flux-ouro-rgb), 0.65);
+  background: rgba(var(--flux-ouro-rgb), 0.14);
+  color: var(--flux-ouro-texto);
+}
+
+.recorrencia-dialogo__caixa {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+}
+
+.recorrencia-dialogo__caixa input {
+  min-height: auto;
+}
+
+.recorrencia-dialogo__moeda {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recorrencia-dialogo__moeda input {
+  width: 100%;
+}
+
+.recorrencia-dialogo__erro {
+  color: var(--flux-negativo);
+}
+
+.recorrencia-dialogo__dica {
+  margin: 0;
+  color: var(--flux-texto-3);
+  font-size: 13px;
+}
+
+.recorrencia-dialogo__previa {
+  padding-top: 10px;
+  border-top: 1px solid var(--flux-borda);
+}
+
+.recorrencia-dialogo__previa h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.recorrencia-dialogo__previa p {
+  margin: 4px 0;
+}
+
+.recorrencia-dialogo__ajustada {
+  text-decoration: underline dashed;
+}

@@ -17,6 +17,8 @@ export interface Filtros {
   readonly categoria: number | 'sem' | null;
   readonly tipo: TipoDoFiltro | null;
   readonly busca: string;
+  /** Ausente ou true mostra os previstos; só `false` fica explícito na URL. */
+  readonly previstos?: boolean;
 }
 
 const MES = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -41,7 +43,7 @@ export function filtrosDaUrl(parametros: ParamMap, hoje: string): Filtros {
   const categoria = parametros.get('categoria');
   const tipo = parametros.get('tipo');
   const daConta = conta !== null && ID.test(conta) ? Number(conta) : null;
-  return {
+  const filtros: Filtros = {
     mes: mes !== null && MES.test(mes) ? mes : mesDe(hoje),
     conta: daConta,
     cartao: daConta === null && cartao !== null && ID.test(cartao) ? Number(cartao) : null,
@@ -49,11 +51,12 @@ export function filtrosDaUrl(parametros: ParamMap, hoje: string): Filtros {
     tipo: TIPOS.find((item) => item === tipo) ?? null,
     busca: (parametros.get('busca') ?? '').trim().slice(0, TAMANHO_MAXIMO_DA_BUSCA),
   };
+  return parametros.get('previstos') === 'nao' ? { ...filtros, previstos: false } : filtros;
 }
 
 /** Parâmetros para a URL. O padrão fica de fora (null): sem filtro e o mês de hoje. */
 export function parametrosDaUrl(filtros: Filtros, hoje: string): Params {
-  return {
+  const parametros: Params = {
     mes: filtros.mes === mesDe(hoje) ? null : filtros.mes,
     conta: filtros.conta,
     cartao: filtros.cartao ?? null,
@@ -61,6 +64,10 @@ export function parametrosDaUrl(filtros: Filtros, hoje: string): Params {
     tipo: filtros.tipo,
     busca: filtros.busca === '' ? null : filtros.busca,
   };
+  if (filtros.previstos === false) {
+    parametros['previstos'] = 'nao';
+  }
+  return parametros;
 }
 
 /** Parâmetros de GET /api/lancamentos: o mês sempre; os filtros só quando têm valor. */
@@ -80,6 +87,9 @@ export function parametrosDaApi(filtros: Filtros): Record<string, string> {
   }
   if (filtros.busca !== '') {
     parametros['busca'] = filtros.busca;
+  }
+  if (filtros.previstos === false) {
+    parametros['previstos'] = 'false';
   }
   return parametros;
 }
