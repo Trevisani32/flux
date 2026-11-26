@@ -1,0 +1,341 @@
+app-recorrencias .app-recorrencias__card {
+  margin-bottom: 16px;
+  padding: 20px;
+}
+
+.app-recorrencias__subtitulo--celular {
+  display: none;
+}
+
+app-recorrencias .app-recorrencias__card h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+app-recorrencias .app-recorrencias__titulo {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+app-recorrencias .app-recorrencias__titulo p,
+app-recorrencias .app-recorrencias__vazio {
+  margin: 4px 0 0;
+  color: var(--flux-texto-3);
+  font-size: 13px;
+}
+
+app-recorrencias .app-recorrencias__ocorrencias,
+app-recorrencias .app-recorrencias__lista {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+app-recorrencias .app-recorrencias__ocorrencias li + li,
+app-recorrencias .app-recorrencias__linha + .app-recorrencias__linha {
+  border-top: 1px solid var(--flux-borda);
+}
+
+app-recorrencias .app-recorrencias__linha {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(96px, auto) minmax(120px, auto) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 0;
+}
+
+// Desktop: a próxima, o valor e o "⋯" em colunas fixas, alinhados à direita como no mockup, também nas
+// pausadas e nas encerradas, que não têm a próxima.
+@media (min-width: 960px) {
+  app-recorrencias .app-recorrencias__proxima {
+    justify-items: end;
+    text-align: right;
+  }
+
+  app-recorrencias .app-recorrencias__linha > .app-recorrencias__valor,
+  app-recorrencias .app-recorrencias__linha > app-valor {
+    grid-row: 1;
+    grid-column: 4;
+    justify-self: end;
+  }
+
+  app-recorrencias .app-recorrencias__linha > .mat-mdc-outlined-button {
+    grid-row: 1;
+    grid-column: 3;
+    justify-self: end;
+  }
+
+  app-recorrencias .app-recorrencias__linha > .flux-botao-acoes {
+    grid-row: 1;
+    grid-column: 5;
+  }
+}
+
+app-recorrencias .app-recorrencias__selo,
+.flux-ocorrencia__selo {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  border: 1px dashed color-mix(in srgb, var(--flux-cor, var(--flux-ouro-texto)) 60%, transparent);
+  border-radius: 50%;
+  color: var(--flux-cor, var(--flux-ouro-texto));
+}
+
+app-recorrencias .app-recorrencias__linha--pausada .app-recorrencias__selo {
+  --flux-cor: var(--flux-texto-3);
+}
+
+app-recorrencias .app-recorrencias__textos,
+.flux-ocorrencia__textos {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+app-recorrencias .app-recorrencias__meta,
+.flux-ocorrencia__meta {
+  color: var(--flux-texto-3);
+  font-size: 13px;
+  line-height: 19px;
+}
+
+app-recorrencias .app-recorrencias__proxima {
+  display: grid;
+  gap: 2px;
+  color: var(--flux-texto-2);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+app-recorrencias .app-recorrencias__proxima small {
+  color: var(--flux-texto-3);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+app-recorrencias .app-recorrencias__valor {
+  white-space: nowrap;
+}
+
+app-recorrencias .app-recorrencias__linha--pausada {
+  opacity: 0.78;
+}
+
+app-recorrencias .app-recorrencias__alternar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  background: transparent;
+  color: var(--flux-texto);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.flux-ocorrencia {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+}
+
+.flux-ocorrencia__titulo {
+  color: var(--flux-texto-2);
+  font-weight: 700;
+}
+
+.flux-ocorrencia__meta--atrasada,
+.flux-ocorrencia__selo--atrasada {
+  color: var(--flux-cor-conta-laranja);
+  font-weight: 700;
+}
+
+.flux-ocorrencia__selo--atrasada {
+  border-color: var(--flux-cor-conta-laranja);
+}
+
+.flux-ocorrencia__valor {
+  white-space: nowrap;
+}
+
+.flux-ocorrencia__acoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flux-ocorrencia__acoes .flux-link {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+// O "Confirmar" compacto, como os botões "btn-mini" do mockup.
+.flux-ocorrencia__acoes .mat-mdc-outlined-button {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+// No card do Início, que tem meia largura a partir de 1.280 px (abaixo disso, os cards do Início
+// ficam um embaixo do outro), as ações descem para baixo da descrição.
+@media (min-width: 1280px) {
+  .inicio-confirmar .flux-ocorrencia {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    row-gap: 6px;
+  }
+
+  .inicio-confirmar .flux-ocorrencia__acoes {
+    grid-column: 2 / -1;
+  }
+}
+
+.flux-ocorrencia__toque {
+  display: none;
+}
+
+.flux-faixa-previstos {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 14px 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(var(--flux-ouro-rgb), 0.35);
+  border-radius: var(--flux-raio-controle);
+  background: rgba(var(--flux-ouro-rgb), 0.08);
+  color: var(--flux-texto-2);
+  font-size: 13px;
+}
+
+.flux-faixa-previstos app-icone {
+  color: var(--flux-ouro-texto);
+}
+
+.flux-pilula--atrasada {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--flux-cor-conta-laranja) 18%, transparent);
+  color: var(--flux-cor-conta-laranja);
+}
+
+@media (max-width: 959.98px) {
+  .app-recorrencias__subtitulo--desktop {
+    display: none;
+  }
+
+  .app-recorrencias__subtitulo--celular {
+    display: block;
+  }
+
+  // No celular, "Nova recorrência" na largura toda, embaixo do cabeçalho (seção 3.4).
+  app-recorrencias .cabecalho__acoes {
+    flex: 1 1 100%;
+  }
+
+  app-recorrencias .app-recorrencias__nova {
+    width: 100%;
+  }
+
+  app-recorrencias .app-recorrencias__card {
+    padding: 16px;
+  }
+
+  // No celular, uma linha só: selo, textos (com a próxima na meta), valor e "⋯"; o "Retomar" da
+  // encerrada desce para baixo dos textos.
+  app-recorrencias .app-recorrencias__linha {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    gap: 10px;
+  }
+
+  app-recorrencias .app-recorrencias__linha > .app-recorrencias__valor,
+  app-recorrencias .app-recorrencias__linha > app-valor {
+    grid-row: 1;
+    grid-column: 3;
+  }
+
+  app-recorrencias .app-recorrencias__linha > .flux-botao-acoes {
+    grid-row: 1;
+    grid-column: 4;
+  }
+
+  app-recorrencias .app-recorrencias__linha > .mat-mdc-outlined-button {
+    grid-row: 3;
+    grid-column: 2 / -1;
+    justify-self: start;
+  }
+
+  // O título fica ao lado do valor; as linhas da meta usam a largura de baixo, até o "⋯".
+  app-recorrencias .app-recorrencias__linha {
+    row-gap: 3px;
+  }
+
+  app-recorrencias .app-recorrencias__textos {
+    display: contents;
+  }
+
+  app-recorrencias .app-recorrencias__textos > b {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  app-recorrencias .app-recorrencias__textos > .app-recorrencias__meta {
+    grid-column: 2 / -1;
+  }
+
+  app-recorrencias .app-recorrencias__selo {
+    grid-row: 1 / span 3;
+    align-self: start;
+  }
+
+  .flux-ocorrencia {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    min-height: 64px;
+  }
+
+  .flux-ocorrencia__acoes {
+    display: none;
+  }
+
+  .flux-ocorrencia__toque {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    display: block;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .flux-ocorrencia__selo,
+  .flux-ocorrencia__textos,
+  .flux-ocorrencia__valor {
+    z-index: 2;
+    pointer-events: none;
+  }
+}
+
+// Abaixo de 600 px, o confirmar e as ações do previsto encostam embaixo, na largura toda menos 24 px
+// (a largura vem do maxWidth do diálogo). A margem automática de cima vence o centro do overlay.
+@media (max-width: 599.98px) {
+  .cdk-overlay-pane.flux-dialogo--embaixo-no-celular {
+    margin-top: auto !important;
+    margin-bottom: 0 !important;
+  }
+
+  .flux-dialogo--embaixo-no-celular .mat-mdc-dialog-surface {
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+}

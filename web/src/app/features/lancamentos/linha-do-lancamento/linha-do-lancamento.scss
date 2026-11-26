@@ -2,6 +2,17 @@
   display: block;
 }
 
+// A marca do lançamento ligado a uma recorrência (seção 3.8): não quebra, quem encolhe é a meta.
+.linha__da-recorrencia,
+.linha__da-recorrencia-separador {
+  flex: none;
+  white-space: nowrap;
+}
+
+.linha__da-recorrencia {
+  color: var(--flux-ouro-texto);
+}
+
 .linha {
   width: 100%;
   min-height: 64px;
@@ -137,5 +148,10 @@
 
   .linha__valor {
     font-size: 14px;
+  }
+
+  // No celular não cabem a conta e a marca: o lançamento ligado mostra só "da recorrência".
+  .linha__meta:has(.linha__da-recorrencia) .linha__meta-texto {
+    display: none;
   }
 }

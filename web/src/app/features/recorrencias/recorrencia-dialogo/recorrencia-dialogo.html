@@ -1,0 +1,187 @@
+<h2 mat-dialog-title>{{ dados.recorrencia === null ? 'Nova recorrência' : 'Editar recorrência' }}</h2>
+
+<form [formGroup]="formulario" (ngSubmit)="salvar()">
+  <div mat-dialog-content class="recorrencia-dialogo__conteudo">
+    @if (erroGeral(); as erro) {
+      <app-alerta tipo="erro" icone="alerta" titulo="Não foi possível salvar.">
+        <p class="flux-alerta__texto">{{ erro }}</p>
+      </app-alerta>
+    }
+
+    <fieldset class="recorrencia-dialogo__segmentado">
+      <legend>Tipo</legend>
+      <button
+        type="button"
+        [class.ativo]="formulario.controls.tipo.value === 'DESPESA'"
+        (click)="escolherTipo('DESPESA')"
+      >Despesa</button>
+      <button
+        type="button"
+        [disabled]="alvoEhCartao()"
+        [class.ativo]="formulario.controls.tipo.value === 'RECEITA'"
+        (click)="escolherTipo('RECEITA')"
+      >Receita</button>
+    </fieldset>
+
+    <label>
+      Descrição
+      <input
+        id="recorrencia-descricao"
+        type="text"
+        formControlName="descricao"
+        maxlength="255"
+        [attr.aria-invalid]="erro('descricao') !== null"
+      />
+    </label>
+    @if (erro('descricao'); as erro) {
+      <small class="recorrencia-dialogo__erro">{{ erro }}</small>
+    }
+
+    <label>
+      Valor
+      <span class="recorrencia-dialogo__moeda">
+        R$
+        <input id="recorrencia-valor" inputmode="decimal" formControlName="valor" [attr.aria-invalid]="erro('valor') !== null" />
+      </span>
+    </label>
+    @if (erro('valor'); as erro) {
+      <small class="recorrencia-dialogo__erro">{{ erro }}</small>
+    }
+
+    <label>
+      Conta ou cartão
+      <select formControlName="alvo" (change)="mudouAlvo()" [attr.aria-invalid]="erro('alvo') !== null">
+        <option value="">Escolha</option>
+        <optgroup label="Contas">
+          @for (conta of dados.contas.ativas; track conta.id) {
+            <option [value]="'conta-' + conta.id">{{ conta.nome }}</option>
+          }
+          @if (alvoArquivado(); as alvo) {
+            <option [value]="formulario.controls.alvo.value">{{ alvo }}</option>
+          }
+        </optgroup>
+        <optgroup label="Cartões">
+          @for (cartao of dados.cartoes.ativos; track cartao.id) {
+            <option [value]="'cartao-' + cartao.id">{{ cartao.nome }}</option>
+          }
+        </optgroup>
+      </select>
+    </label>
+    @if (alvoEhCartao()) {
+      <p class="recorrencia-dialogo__dica">O cartão só recebe despesa.</p>
+    }
+    @if (erro('alvo'); as erro) {
+      <small class="recorrencia-dialogo__erro">{{ erro }}</small>
+    }
+
+    <label class="recorrencia-dialogo__caixa">
+      <input type="checkbox" formControlName="valorVaria" />
+      O valor varia (conta de luz, água): o previsto é uma estimativa.
+    </label>
+
+    <label>
+      Categoria (opcional)
+      <select formControlName="categoria">
+        <option value="">Sem categoria</option>
+        @for (opcao of opcoesDeCategoria(); track opcao.id) {
+          <option [value]="opcao.id">{{ opcao.rotulo }}</option>
+        }
+      </select>
+    </label>
+
+    <fieldset class="recorrencia-dialogo__segmentado">
+      <legend>Frequência</legend>
+      @for (opcao of frequencias; track opcao) {
+        <button
+          type="button"
+          [disabled]="dados.recorrencia !== null"
+          [class.ativo]="frequencia() === opcao"
+          (click)="escolherFrequencia(opcao)"
+        >{{ opcao === 'MENSAL' ? 'Mensal' : opcao === 'SEMANAL' ? 'Semanal' : 'Anual' }}</button>
+      }
+    </fieldset>
+    @if (dados.recorrencia !== null) {
+      <p class="recorrencia-dialogo__dica">A frequência não muda. Encerre esta recorrência e crie outra.</p>
+    }
+
+    @if (frequencia() === 'MENSAL') {
+      <label>
+        Dia do mês
+        <input type="number" min="1" max="31" formControlName="diaDoMes" [attr.aria-invalid]="erro('diaDoMes') !== null" />
+      </label>
+      @if (erro('diaDoMes'); as erro) {
+        <small class="recorrencia-dialogo__erro">{{ erro }}</small>
+      }
+    }
+
+    <label>
+      Começa em
+      <input type="date" formControlName="comecaEm" [attr.aria-invalid]="erro('comecaEm') !== null" />
+    </label>
+    @if (erro('comecaEm'); as erro) {
+      <small class="recorrencia-dialogo__erro">{{ erro }}</small>
+    }
+
+    <label>
+      Termina em (opcional)
+      <input type="date" formControlName="terminaEm" [attr.aria-invalid]="erro('terminaEm') !== null" />
+    </label>
+    @if (erro('terminaEm'); as erro) {
+      <small class="recorrencia-dialogo__erro">{{ erro }}</small>
+    }
+    @if (dicaDaFrequencia(frequencia(), diaDoMes(), comecaEm()); as dica) {
+      <p class="recorrencia-dialogo__dica">{{ dica }}</p>
+    }
+
+    <section class="recorrencia-dialogo__previa" aria-live="polite">
+      <h3>
+        <app-icone [nome]="alvoEhCartao() ? 'cartao' : 'calendario'" [tamanho]="18" />
+        Próximas ocorrências
+      </h3>
+      @if (previa(); as previa) {
+        @for (ocorrencia of previa.ocorrencias; track ocorrencia.data) {
+          <p [class.recorrencia-dialogo__ajustada]="ocorrencia.ajustada">
+            {{ dataDaOcorrencia(ocorrencia.data, dados.hoje) }}
+            @if (ocorrencia.faturaMes !== null) {
+              → fatura de {{ ocorrencia.faturaMes.slice(5, 7) }}
+            }
+          </p>
+        }
+        @if (previa.ocorrencias.find((ocorrencia) => ocorrencia.ajustada); as ajustada) {
+          <p class="recorrencia-dialogo__dica">{{ notaDoDiaAjustado(ajustada.data, diaDoMes() ?? 0) }}</p>
+        }
+        @if (previa.comecaAntes && dados.recorrencia === null) {
+          <p class="recorrencia-dialogo__dica">
+            Começou antes de hoje: só contam as ocorrências a partir de hoje, o dia do cadastro.
+          </p>
+        }
+        @if (previa.comecaAntes && dados.recorrencia !== null) {
+          <p class="recorrencia-dialogo__dica">
+            Começou antes do cadastro: só contam as ocorrências a partir de {{ previa.desde.split('-').reverse().join('/') }}.
+          </p>
+        }
+        @if (alvoEhCartao() && previa.ocorrencias[0]?.faturaMes && previa.ocorrencias[0]?.faturaVencimento) {
+          <p class="recorrencia-dialogo__dica">
+            {{ notaDoCartao(previa.ocorrencias[0].data, previa.ocorrencias[0].faturaMes!, previa.ocorrencias[0].faturaVencimento!) }}
+          </p>
+        }
+        @if (valorDaPrevia(); as valor) {
+          <p class="recorrencia-dialogo__dica">
+            Cada uma aparece como prevista em Lançamentos, com
+            @if (formulario.controls.valorVaria.value) {
+              ≈
+            }
+            <app-valor [valor]="formulario.controls.tipo.value === 'DESPESA' ? -valor : valor" tipo="sinal" />.
+          </p>
+        }
+      } @else if (carregandoPrevia()) {
+        <p>Carregando prévia…</p>
+      }
+    </section>
+  </div>
+
+  <div mat-dialog-actions align="end">
+    <button mat-button type="button" mat-dialog-close>Cancelar</button>
+    <button mat-flat-button type="submit" [disabled]="enviando()">Salvar recorrência</button>
+  </div>
+</form>

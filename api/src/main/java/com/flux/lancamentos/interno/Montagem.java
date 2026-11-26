@@ -24,15 +24,25 @@ final class Montagem {
     private final Map<Long, CategoriaResumo> categorias;
     private final Map<Long, Compra> compras;
     private final Map<Long, Fatura> faturasPagas;
+    private final Map<Long, Long> recorrenciasPorLancamento;
+    private final Map<Long, Long> recorrenciasPorCompra;
     private final LocalDate hoje;
 
     Montagem(List<ContaResumo> contas, List<CartaoResumo> cartoes, List<CategoriaResumo> categorias, Map<Long, Compra> compras,
              Map<Long, Fatura> faturasPagas, LocalDate hoje) {
+        this(contas, cartoes, categorias, compras, faturasPagas, Map.of(), Map.of(), hoje);
+    }
+
+    Montagem(List<ContaResumo> contas, List<CartaoResumo> cartoes, List<CategoriaResumo> categorias, Map<Long, Compra> compras,
+             Map<Long, Fatura> faturasPagas, Map<Long, Long> recorrenciasPorLancamento,
+             Map<Long, Long> recorrenciasPorCompra, LocalDate hoje) {
         this.contas = contas.stream().collect(Collectors.toMap(ContaResumo::id, Function.identity()));
         this.cartoes = cartoes.stream().collect(Collectors.toMap(CartaoResumo::id, Function.identity()));
         this.categorias = categorias.stream().collect(Collectors.toMap(CategoriaResumo::id, Function.identity()));
         this.compras = compras;
         this.faturasPagas = faturasPagas;
+        this.recorrenciasPorLancamento = recorrenciasPorLancamento;
+        this.recorrenciasPorCompra = recorrenciasPorCompra;
         this.hoje = hoje;
     }
 
@@ -60,7 +70,8 @@ final class Montagem {
                 categoria == null ? null : categoria.id(), categoria == null ? null : categoria.nome(),
                 categoria == null ? null : categoria.nomeDaMae(), categoria != null && categoria.arquivada(),
                 null, null, null, lancamento.getData().isAfter(hoje), conta.arquivada(), lancamento.getOrigem(),
-                lancamento.getDescricaoBanco(), null, null, null, null, null, false, null, null, null, null);
+                lancamento.getDescricaoBanco(), null, null, null, null, null, false, null, null, null, null,
+                recorrenciasPorLancamento.get(lancamento.getId()));
     }
 
     /**
@@ -74,7 +85,7 @@ final class Montagem {
                 lancamento.getValor(), lancamento.getObservacao(), conta.id(), conta.nome(), null, null, null, false,
                 null, null, null, lancamento.getData().isAfter(hoje), conta.arquivada() || cartao.arquivado(), lancamento.getOrigem(),
                 lancamento.getDescricaoBanco(), null, cartao.id(), cartao.nome(), cartao.cor(), null, false, null, null, null,
-                fatura.mes().toString());
+                fatura.mes().toString(), null);
     }
 
     /**
@@ -91,7 +102,7 @@ final class Montagem {
                 categoria == null ? null : categoria.nomeDaMae(), categoria != null && categoria.arquivada(),
                 null, null, null, lancamento.getData().isAfter(hoje), cartao.arquivado(), lancamento.getOrigem(), null, null,
                 cartao.id(), cartao.nome(), cartao.cor(), compra.getId(), compra.estorno(), lancamento.getNumeroParcela(),
-                compra.getParcelas(), compra.getDataCompra(), null);
+                compra.getParcelas(), compra.getDataCompra(), null, recorrenciasPorCompra.get(compra.getId()));
     }
 
     /**
@@ -106,11 +117,16 @@ final class Montagem {
                 referencia.getDescricao(), entrada.getValor(), referencia.getObservacao(), origem.id(), origem.nome(),
                 null, null, null, false, destino.id(), destino.nome(), direcao, referencia.getData().isAfter(hoje),
                 origem.arquivada() || destino.arquivada(), referencia.getOrigem(), null,
-                List.of(lado(saida, origem), lado(entrada, destino)), null, null, null, null, false, null, null, null, null);
+                List.of(lado(saida, origem), lado(entrada, destino)), null, null, null, null, false, null, null, null, null,
+                null);
     }
 
     private CategoriaResumo categoria(Lancamento lancamento) {
         return lancamento.getCategoriaId() == null ? null : categorias.get(lancamento.getCategoriaId());
+    }
+
+    CategoriaResumo categoriaPorId(Long categoriaId) {
+        return categoriaId == null ? null : categorias.get(categoriaId);
     }
 
     private static ItemDaLista.Lado lado(Lancamento lancamento, ContaResumo conta) {

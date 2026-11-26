@@ -28,7 +28,8 @@ class ModularidadeTest {
      * das regras; ninguém depende da importação; contas, categorias e lançamentos não dependem das
      * regras, e contas e categorias não dependem dos cartões. Relatórios depende só de compartilhado, e ninguém depende de
      * relatórios (ADR 0020). Exportação depende só de compartilhado e de acesso (a conferência da senha), e ninguém depende
-     * dela (ADR 0021).
+     * dela (ADR 0021). Recorrências depende de contas, cartões, categorias e lançamentos, implementa PrevistosNaLista e
+     * UsoDaCategoria, e ninguém depende dela (ADR 0022).
      */
     @Test
     void dependenciasSeguemADirecaoCombinada() {
@@ -38,12 +39,21 @@ class ModularidadeTest {
         assertThat(dependenciasDiretas("lancamentos")).containsExactlyInAnyOrder("compartilhado", "contas", "categorias", "cartoes");
         assertThat(dependenciasDiretas("categorizacao")).containsExactlyInAnyOrder("compartilhado", "contas", "categorias", "cartoes",
                 "lancamentos");
-        assertThat(dependenciasDiretas("importacao")).containsExactlyInAnyOrder("compartilhado", "contas", "lancamentos", "categorizacao", "cartoes");
+        assertThat(dependenciasDiretas("importacao"))
+                .containsExactlyInAnyOrder("compartilhado", "contas", "lancamentos", "categorizacao", "cartoes");
         assertThat(dependenciasDiretas("relatorios")).containsExactlyInAnyOrder("compartilhado");
         assertThat(dependenciasDiretas("exportacao")).containsExactlyInAnyOrder("compartilhado", "acesso");
-        assertThat(dependenciasDiretas("acesso")).doesNotContain("contas", "categorias", "lancamentos", "importacao", "categorizacao", "cartoes");
-        for (String modulo : Set.of("contas", "categorias", "cartoes", "lancamentos", "categorizacao", "importacao", "acesso", "relatorios")) {
+        assertThat(dependenciasDiretas("acesso"))
+                .doesNotContain("contas", "categorias", "lancamentos", "importacao", "categorizacao", "cartoes");
+        assertThat(dependenciasDiretas("recorrencias")).containsExactlyInAnyOrder("compartilhado", "contas", "categorias", "cartoes",
+                "lancamentos");
+        for (String modulo : Set.of("contas", "categorias", "cartoes", "lancamentos", "categorizacao", "importacao", "acesso", "relatorios",
+                "recorrencias")) {
             assertThat(dependenciasDiretas(modulo)).doesNotContain("relatorios", "exportacao");
+        }
+        for (String modulo : Set.of("contas", "categorias", "cartoes", "lancamentos", "categorizacao", "importacao", "acesso", "relatorios",
+                "exportacao")) {
+            assertThat(dependenciasDiretas(modulo)).doesNotContain("recorrencias");
         }
     }
 

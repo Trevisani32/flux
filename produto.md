@@ -240,10 +240,11 @@ O que isso exige do produto:
 - **Arquivar:** categoria em uso pode ser arquivada. Arquivar a principal arquiva junto
   as subcategorias ativas; reativar a principal traz de volta as que foram arquivadas
   com ela. A subcategoria de uma principal arquivada não se reativa sozinha. As regras de
-  categorização de uma categoria arquivada ficam pausadas até ela ser reativada.
-- **Excluir:** só se a categoria não tiver lançamentos, regras nem orçamentos. Excluir a
-  principal exclui as subcategorias junto. Com lançamentos ou regras, o sistema diz quantos
-  são e oferece arquivar.
+  categorização de uma categoria arquivada ficam pausadas até ela ser reativada. As
+  recorrências de uma categoria arquivada ficam pausadas até ela ser reativada (módulo 10).
+- **Excluir:** só se a categoria não tiver lançamentos, regras, recorrências nem orçamentos.
+  Excluir a principal exclui as subcategorias junto. Com lançamentos, regras ou recorrências,
+  o sistema diz quantos são e oferece arquivar.
 - As categorias não têm ícone nem cor. Aparecem em ordem alfabética, e cada usuário
   pode ter até 200, contando as arquivadas.
 ### 4. Lançamentos — Fatia 03b
@@ -274,6 +275,13 @@ O que isso exige do produto:
   cima). Há filtros por conta ou cartão (módulo 8), categoria (a principal inclui as
   subcategorias, e há "Sem categoria"), tipo (receitas, despesas, transferências ou pagamentos de fatura) e texto da
   descrição, sem diferenciar maiúsculas e acentos. O mês e os filtros ficam no endereço da página.
+- **Previstos (Fatia 07a):** as ocorrências das recorrências aparecem no dia delas, do mês
+  atual até 12 meses à frente (a atrasada, no mês dela, por até 60 dias), com "Previsto" ou
+  "Atrasada" e com Confirmar e Pular; a do cartão, no vencimento da fatura em que cairia.
+  Ficam fora das entradas, das saídas, do resultado e do saldo do dia; uma faixa diz quanto
+  está previsto no mês. Os filtros valem; "Transferências" e "Pagamentos de fatura" não os
+  mostram; "Previstos" esconde todos (`?previstos=nao`). O lançamento confirmado por uma
+  recorrência diz "da recorrência".
 - **Totais do filtro:** entradas, saídas e resultado, só de receitas e despesas, inclusive as
   parcelas e os estornos dos cartões. Os lançamentos futuros do mês entram; os pagamentos de fatura, não.
 - Com o filtro de uma conta, cada dia mostra o saldo da conta no fim do dia.
@@ -665,20 +673,29 @@ Ver [ADR 0020](decisoes/0020-graficos-sem-biblioteca-e-modulo-de-relatorios.md).
 
 **Fatia 06b:** exportar meus dados (módulo 1).
 
-### 10. Recorrências — Fatia 07
+### 10. Recorrências — Fatia 07a
 
-- Campos: descrição, valor, tipo, categoria, conta ou cartão, frequência (mensal no
-  dia D, semanal ou anual), data de início e data de fim (opcional).
-- As ocorrências futuras aparecem como **previstas**. Elas não mexem no saldo
-  atual, só na projeção.
-- **Um previsto vira efetivado** quando:
-  - o usuário confirma, podendo ajustar valor e data; ou
-  - uma importação traz um lançamento compatível (mesma conta, mesmo tipo, valor
-    próximo, data até 3 dias de diferença). Nesse caso o sistema sugere a ligação
-    na pré-visualização e o usuário confirma.
-- Uma ocorrência pode ser pulada só naquele mês.
-- Para valores variáveis, como a conta de luz, o previsto é uma estimativa. A
-  efetivação usa o valor real.
+Ver [ADR 0022](decisoes/0022-recorrencias-calculadas.md).
+
+- Uma recorrência tem descrição, valor, tipo, categoria opcional, uma conta ou cartão,
+  frequência, início e fim opcional. São no máximo 200 por usuário, inclusive as encerradas.
+- A mensal usa o dia escolhido; a semanal, o dia da semana do início; a anual, o dia e mês
+  do início. O dia 31 cai no último dia do mês curto e 29/02 cai em 28/02 nos anos sem esse dia.
+- O período é a chave: mês, semana de segunda a domingo ou ano. Só existe uma ocorrência
+  tratada por recorrência e período, sempre a partir do maior entre início e cadastro.
+- As ocorrências são calculadas: previstas até 12 meses à frente e atrasadas por até 60 dias.
+  Aparecem em Recorrências, Lançamentos e no card "A confirmar" do Início, sem alterar saldo,
+  relatórios, exportação de lançamentos ou limites antes da confirmação.
+- Confirmar cria um lançamento na conta ou uma compra à vista no cartão. "Já lancei" sugere
+  o lançamento compatível em até 3 dias e 10% do valor (50% quando varia), e também deixa
+  escolher um da lista de até 10 dias. A ocorrência pode ser pulada e voltar a ser prevista.
+- Excluir o lançamento confirmado, ignorar o importado ligado ou desfazer a importação devolve
+  a ocorrência. Editar muda as próximas; encerrar tira só as previstas depois de hoje; retomar
+  começa dali; excluir apaga o histórico da recorrência, sem apagar os lançamentos ou compras.
+- Conta, cartão ou categoria arquivados pausam a recorrência. Excluir a conta ou o cartão leva
+  suas recorrências junto; uma recorrência é uso da categoria.
+- Para valores variáveis, como conta de luz, o previsto é uma estimativa e a confirmação usa o
+  valor real. Uma importação que traz um lançamento compatível pode sugerir a ligação (Fatia 07c).
 
 ### 11. Orçamento — Fatia 07
 
@@ -722,7 +739,6 @@ Ver [ADR 0020](decisoes/0020-graficos-sem-biblioteca-e-modulo-de-relatorios.md).
 
 | Ponto | Decidir em |
 |---|---|
-| Recorrência: gravar as ocorrências no banco ou calcular quando precisar | Fatia 07 |
 | Demo: conta compartilhada, usuário temporário por visitante ou cadastro com dados de exemplo | Fatia 08 |
 | Provedor de e-mail em produção (SMTP) | Fatia 08 |
 | Hospedagem e domínio | Fatia 08 |
@@ -746,6 +762,9 @@ Ver [ADR 0020](decisoes/0020-graficos-sem-biblioteca-e-modulo-de-relatorios.md).
 | 05b | Pagamento da fatura, situação paga, paga fora do Flux, conversão do importado em pagamento e limite disponível | Concluída |
 | 05c | Importação de fatura de cartão e regras com cartão | Concluída |
 | 06a | Dashboard e relatórios: página Relatórios, gráficos sem biblioteca e próximas faturas no Início | Concluída |
-| 06b | Exportação dos dados (LGPD): JSON completo e CSV dos lançamentos, com a senha | Implementada, aguardando publicação |
-| 07 | Recorrências, orçamento e projeção de saldo | — |
+| 06b | Exportação dos dados (LGPD): JSON completo e CSV dos lançamentos, com a senha | Concluída |
+| 07a | Recorrências: cadastro, previstos, confirmar, "Já lancei", pular, os previstos em Lançamentos e o card "A confirmar" | Implementada, aguardando publicação |
+| 07b | Projeção de saldo | — |
+| 07c | Ligação das recorrências na importação | — |
+| 07d | Orçamento | — |
 | 08 | Deploy, demo pública e README completo | — |

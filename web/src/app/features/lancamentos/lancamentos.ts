@@ -18,6 +18,9 @@ import { CartoesService, ListaDeCartoes } from '../cartoes/cartoes.service';
 import { diaEMes, mesSemAno, textoDoTotal } from '../cartoes/apresentacao';
 import { CategoriasService, ListaDeCategorias } from '../categorias/categorias.service';
 import { ContasService, ListaDeContas } from '../contas/contas.service';
+import { quantidadeNaFaixa } from '../recorrencias/frases';
+import { FluxoDaOcorrencia } from '../recorrencias/fluxo-da-ocorrencia';
+import { LinhaDaOcorrencia } from '../recorrencias/linha-da-ocorrencia/linha-da-ocorrencia';
 import { FluxoDeRegras } from '../regras/fluxo-de-regras';
 import {
   marcaDoDia, nomeDoMes, opcoesDeCategoria, opcoesDeCategoriasArquivadas, quantidadeDeItens, rotuloDoDia,
@@ -39,7 +42,7 @@ interface OpcaoDeTipo {
  */
 @Component({
   selector: 'app-lancamentos',
-  imports: [MatButtonModule, RouterLink, Alerta, CabecalhoPagina, EstadoVazio, Icone, LinhaDoLancamento, Valor],
+  imports: [MatButtonModule, RouterLink, Alerta, CabecalhoPagina, EstadoVazio, Icone, LinhaDaOcorrencia, LinhaDoLancamento, Valor],
   templateUrl: './lancamentos.html',
   styleUrl: './lancamentos.scss',
 })
@@ -52,6 +55,7 @@ export class Lancamentos {
   private readonly categoriasService = inject(CategoriasService);
   private readonly dialogo = inject(MatDialog);
   private readonly fluxoDeRegras = inject(FluxoDeRegras);
+  private readonly fluxoDaOcorrencia = inject(FluxoDaOcorrencia);
   private readonly buscas = new Subject<string>();
   private pedido: Subscription | null = null;
 
@@ -62,6 +66,7 @@ export class Lancamentos {
   readonly diaEMes = diaEMes;
   readonly mesSemAno = mesSemAno;
   readonly textoDoTotal = textoDoTotal;
+  readonly quantidadeNaFaixa = quantidadeNaFaixa;
   readonly tipos: readonly OpcaoDeTipo[] = [
     { valor: null, rotulo: 'Todos' },
     { valor: 'receita', rotulo: 'Receitas' },
@@ -111,6 +116,7 @@ export class Lancamentos {
     this.servico.restaurado$.pipe(takeUntilDestroyed()).subscribe(() => this.carregarLista());
     // Fatia 04b: "Aplicar regras" pode terminar depois de um aviso curto, com outra tela aberta por cima.
     this.fluxoDeRegras.aplicadas$.pipe(takeUntilDestroyed()).subscribe(() => this.carregarLista());
+    this.fluxoDaOcorrencia.mudou$.pipe(takeUntilDestroyed()).subscribe(() => this.carregarLista());
     this.carregarApoio();
   }
 
@@ -147,13 +153,25 @@ export class Lancamentos {
     this.navegar({ ...this.filtros(), categoria: valor === '' ? null : valor === 'sem' ? 'sem' : Number(valor) });
   }
 
+  mudarPrevistos(): void {
+    this.navegar({ ...this.filtros(), previstos: this.filtros().previstos === false });
+  }
+
   /** A busca espera 300 ms sem digitar antes de mudar a URL. */
   buscar(texto: string): void {
     this.buscas.next(texto);
   }
 
   limparFiltros(): void {
-    this.navegar({ mes: this.filtros().mes, conta: null, cartao: null, categoria: null, tipo: null, busca: '' });
+    this.navegar({
+      mes: this.filtros().mes,
+      conta: null,
+      cartao: null,
+      categoria: null,
+      tipo: null,
+      busca: '',
+      previstos: this.filtros().previstos,
+    });
   }
 
   /**

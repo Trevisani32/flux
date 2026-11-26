@@ -108,7 +108,11 @@ export interface UsuarioDaJornada {
  * Cria e confirma um usuário pela API (cadastro + link do Mailpit), para jornadas que
  * começam sem contas. Cada chamada conta 1 no limite de cadastros por IP (10 por hora).
  */
-export async function criarUsuarioConfirmado(request: APIRequestContext, prefixo: string, nomeDoUsuario: string): Promise<UsuarioDaJornada> {
+export async function criarUsuarioConfirmado(
+  request: APIRequestContext,
+  prefixo: string,
+  nomeDoUsuario: string,
+): Promise<UsuarioDaJornada> {
   const usuario: UsuarioDaJornada = { nome: nomeDoUsuario, email: emailUnico(prefixo), senha: 'senha-da-jornada-123' };
   const cadastro = await request.post('/api/auth/cadastrar', { data: { ...usuario, aceiteDosTermos: true } });
   expect(cadastro.status()).toBe(202);
@@ -119,7 +123,10 @@ export async function criarUsuarioConfirmado(request: APIRequestContext, prefixo
 }
 
 /** Navega pelo menu principal; no celular, abre a gaveta antes. */
-export async function irPeloMenu(page: Page, item: 'Início' | 'Lançamentos' | 'Relatórios' | 'Importação' | 'Contas' | 'Cartões' | 'Categorias' | 'Regras'): Promise<void> {
+export async function irPeloMenu(
+  page: Page,
+  item: 'Início' | 'Lançamentos' | 'Relatórios' | 'Importação' | 'Contas' | 'Cartões' | 'Recorrências' | 'Categorias' | 'Regras',
+): Promise<void> {
   if (!ehDesktop(page)) {
     await page.getByRole('button', { name: 'Abrir menu' }).click();
   }

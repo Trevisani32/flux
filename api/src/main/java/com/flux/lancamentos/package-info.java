@@ -6,6 +6,8 @@
  * TrocaDeDias) e lê contas, categorias e cartões pelas consultas deles (ADR 0012, ADR 0013 e ADR 0017). A API pública é a
  * {@link com.flux.lancamentos.LancamentosImportados}, usada pela importação (ADR 0014; desde a 04c,
  * também os pares sugeridos e os importados convertidos), e a
- * {@link com.flux.lancamentos.LancamentosParaRegras}, usada pelas regras de categorização (ADR 0015).
+ * {@link com.flux.lancamentos.LancamentosParaRegras}, usada pelas regras de categorização (ADR 0015), e, desde a Fatia 07a,
+ * a {@link com.flux.lancamentos.LancamentosDasRecorrencias}, usada pelas recorrências, que implementam o
+ * {@link com.flux.lancamentos.PrevistosNaLista} (ADR 0022).
  */
 package com.flux.lancamentos;

@@ -16,7 +16,13 @@ public record ListaDoMesResponse(
         int quantidadeLancamentos,
         int quantidadeTransferencias,
         List<Dia> dias,
-        FaturaDoFiltro fatura) {
+        FaturaDoFiltro fatura,
+        ResumoDosPrevistos previstos) {
+
+    public ListaDoMesResponse(String mes, LocalDate hoje, Totais totais, int quantidadeLancamentos, int quantidadeTransferencias,
+                              List<Dia> dias, FaturaDoFiltro fatura) {
+        this(mes, hoje, totais, quantidadeLancamentos, quantidadeTransferencias, dias, fatura, null);
+    }
 
     /**
      * Só receitas e despesas que passaram pelos filtros, sem transferências (decisão 9).
@@ -30,7 +36,10 @@ public record ListaDoMesResponse(
      * Os itens de um dia, na ordem da lista. {@code saldoNoFimDoDia} só vem com o filtro de
      * uma conta: o saldo dela no fim do dia, contando todos os lançamentos dela (decisão 7).
      */
-    public record Dia(LocalDate data, BigDecimal saldoNoFimDoDia, List<ItemDaLista> itens) {
+    public record Dia(LocalDate data, BigDecimal saldoNoFimDoDia, List<ItemDaLista> itens, List<PrevistoDaLista> previstos) {
+        public Dia(LocalDate data, BigDecimal saldoNoFimDoDia, List<ItemDaLista> itens) {
+            this(data, saldoNoFimDoDia, itens, List.of());
+        }
     }
 
     /**
@@ -38,6 +47,14 @@ public record ListaDoMesResponse(
      * PAGA) e o total = compras − estornos da fatura inteira, sem os outros filtros.
      */
     public record FaturaDoFiltro(Long cartaoId, String cartaoNome, String cartaoCor, String mes, LocalDate fechamento,
-                                 LocalDate vencimento, String situacao, BigDecimal total) {
+                                 LocalDate vencimento, String situacao, BigDecimal total, BigDecimal previsto) {
+        public FaturaDoFiltro(Long cartaoId, String cartaoNome, String cartaoCor, String mes, LocalDate fechamento,
+                              LocalDate vencimento, String situacao, BigDecimal total) {
+            this(cartaoId, cartaoNome, cartaoCor, mes, fechamento, vencimento, situacao, total, null);
+        }
+    }
+
+    /** A faixa dos previstos, sempre fora dos totais e do saldo confirmado. */
+    public record ResumoDosPrevistos(BigDecimal entradas, BigDecimal saidas, int quantidade, int atrasadas) {
     }
 }

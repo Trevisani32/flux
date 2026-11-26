@@ -11,6 +11,7 @@ import { ConfirmacaoDialogo, DadosDaConfirmacao } from '../../shared/confirmacao
 import { ContaDialogo } from './conta-dialogo/conta-dialogo';
 import { Conta, ContasService, ListaDeContas } from './contas.service';
 import { Contas } from './contas';
+import { RecorrenciasService } from '../recorrencias/recorrencias.service';
 
 function conta(parcial: Partial<Conta>): Conta {
   return { id: 1, nome: 'Conta', tipo: 'CORRENTE', saldoInicial: 0, dataSaldoInicial: '2026-10-01', cor: null, saldoAtual: 0, arquivadaEm: null, ...parcial };
@@ -28,7 +29,16 @@ const lista: ListaDeContas = {
 };
 
 describe('Contas', () => {
-  function criar(resposta: () => Observable<ListaDeContas> = () => of(lista), nova: string | null = null) {
+  function criar(
+    resposta: () => Observable<ListaDeContas> = () => of(lista),
+    nova: string | null = null,
+    recorrencias: () => Observable<unknown> = () => of({
+      ativas: [],
+      pausadas: [],
+      encerradas: [],
+      aConfirmar: { ate: '2026-11-16', recorrencias: 0, ocorrencias: [] },
+    }),
+  ) {
     const servico = {
       listar: vi.fn(resposta),
       arquivar: vi.fn(() => of(conta({}))),
@@ -50,6 +60,7 @@ describe('Contas', () => {
         provideRouter([]),
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(nova === null ? {} : { nova }) } } },
         { provide: ContasService, useValue: servico },
+        { provide: RecorrenciasService, useValue: { listar: recorrencias } },
         { provide: MatDialog, useValue: dialogo },
         { provide: MatSnackBar, useValue: snackBar },
         { provide: AGORA, useValue: () => new Date('2026-11-09T15:00:00Z') },
@@ -222,5 +233,27 @@ describe('Contas', () => {
     componente.novaConta();
     fechamentos[1].next(lista.ativas[0]);
     expect(servico.listar).toHaveBeenCalledTimes(2);
+  });
+
+  it('excluir conta com recorrência avisa que ela sai junto', () => {
+    const recorrencias = () => of({
+      ativas: [{ id: 31, descricao: 'Mensalidade do clube Fictícia', contaId: 1 }],
+      pausadas: [{ id: 32, descricao: 'Netflix Fictícia', contaId: 1 }],
+      encerradas: [{ id: 33, descricao: 'Água Fictícia', contaId: 2 }],
+      aConfirmar: { ate: '2026-11-16', recorrencias: 2, ocorrencias: [] },
+    });
+    const { componente, dialogo } = criar(() => of(lista), null, recorrencias);
+    componente.excluir(lista.ativas[0]);
+    const configuracao = (dialogo.open.mock.calls[0] as unknown as [unknown, { data: DadosDaConfirmacao }])[1].data;
+    expect(configuracao.paragrafos).toEqual([
+      ['A conta sai do Flux de vez. ', { forte: 'Não dá para desfazer.' }],
+      [
+        'As recorrências ',
+        { forte: 'Mensalidade do clube Fictícia' },
+        ' e ',
+        { forte: 'Netflix Fictícia' },
+        ', só desta conta, saem junto.',
+      ],
+    ]);
   });
 });

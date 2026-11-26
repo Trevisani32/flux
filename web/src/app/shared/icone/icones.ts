@@ -78,6 +78,7 @@ export const ICONES = {
   // Fatia 05a (cartões): as parcelas da compra, na prévia.
   parcelas: ['M4 6h16M4 12h10M4 18h6', 'm16 15 3 3-3 3', 'M19 18h-6'],
   // Fatia 05b (cartões): o pagamento da fatura.
+  repetir: ['m17 2.5 3.5 3.5L17 9.5', 'M3.5 11.5V10a4 4 0 0 1 4-4h13', 'M7 21.5 3.5 18 7 14.5', 'M20.5 12.5V14a4 4 0 0 1-4 4h-13'],
   pagar: [
     'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0',
     'M14.8 9.2c-.4-1-1.5-1.7-2.8-1.7-1.6 0-2.8.9-2.8 2.1 0 2.9 5.8 1.5 5.8 4.4 0 1.2-1.2 2.1-2.9 2.1-1.4 0-2.6-.7-3-1.8',
@@ -89,6 +90,10 @@ export const ICONES = {
   grafico: ['m3 17 6-6 4 4 8-8', 'M3 21h18'],
   // Fatia 06b (exportação): baixar.
   baixar: ['M12 4v11', 'm7 10.5 5 5 5-5', 'M5 20h14'],
+  // Fatia 07a (recorrências): repetir, pular, ligar e encerrar.
+  pular: ['m5 5 10 7-10 7z', 'M19 5v14'],
+  ligar: ['M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1', 'M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1'],
+  encerrar: ['M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0', 'M9.5 9.5h5v5h-5z'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type NomeIcone = keyof typeof ICONES;

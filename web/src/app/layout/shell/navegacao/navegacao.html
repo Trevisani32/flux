@@ -21,6 +21,16 @@
       <a class="navegacao__link" routerLink="/cartoes" routerLinkActive="navegacao__link--ativo" ariaCurrentWhenActive="page" (click)="navegou.emit()"><app-icone nome="cartao" />Cartões</a>
     </li>
   </ul>
+  <p class="navegacao__grupo navegacao__grupo--seguinte" id="navegacao-planejamento">Planejamento</p>
+  <ul class="navegacao__lista" aria-labelledby="navegacao-planejamento">
+    <li>
+      <a class="navegacao__link"
+         routerLink="/recorrencias"
+         routerLinkActive="navegacao__link--ativo"
+         ariaCurrentWhenActive="page"
+         (click)="navegou.emit()"><app-icone nome="repetir" />Recorrências</a>
+    </li>
+  </ul>
   <p class="navegacao__grupo navegacao__grupo--seguinte" id="navegacao-organizacao">Organização</p>
   <ul class="navegacao__lista" aria-labelledby="navegacao-organizacao">
     <li>

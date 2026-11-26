@@ -249,6 +249,28 @@ app-lancamentos .lancamentos__tipos button[aria-pressed='true'] {
   color: var(--flux-ouro-texto);
 }
 
+app-lancamentos .lancamentos__previstos {
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--flux-borda);
+  border-radius: var(--flux-raio-controle);
+  background: var(--flux-card);
+  color: var(--flux-texto-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+app-lancamentos .lancamentos__previstos[aria-pressed='true'] {
+  border-color: rgba(var(--flux-ouro-rgb), 0.55);
+  background: rgba(var(--flux-ouro-rgb), 0.08);
+  color: var(--flux-ouro-texto);
+}
+
 app-lancamentos .lancamentos__filtro {
   position: relative;
   height: 42px;
@@ -369,6 +391,11 @@ app-lancamentos .lancamentos__item + .lancamentos__item {
     height: 38px;
   }
 
+  app-lancamentos .lancamentos__previstos {
+    height: 38px;
+    order: -1;
+  }
+
   app-lancamentos .lancamentos__filtro select {
     max-width: 190px;
   }
@@ -379,5 +406,29 @@ app-lancamentos .lancamentos__item + .lancamentos__item {
 
   app-lancamentos .lancamentos__data {
     padding: 14px var(--flux-espaco-4) 4px;
+  }
+}
+
+// Os previstos de cada dia, com o recuo e a altura das linhas de lançamento.
+app-lancamentos .lancamentos__item .flux-ocorrencia {
+  min-height: 64px;
+  gap: 14px;
+  padding: 10px var(--flux-espaco-6);
+}
+
+app-lancamentos .lancamentos__item .flux-ocorrencia__selo {
+  width: 42px;
+  height: 42px;
+}
+
+@media (max-width: 959.98px) {
+  app-lancamentos .lancamentos__item .flux-ocorrencia {
+    gap: 12px;
+    padding: 10px var(--flux-espaco-4);
+  }
+
+  app-lancamentos .lancamentos__item .flux-ocorrencia__selo {
+    width: 40px;
+    height: 40px;
   }
 }

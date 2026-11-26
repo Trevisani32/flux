@@ -55,8 +55,9 @@ public class LancamentoController {
                                      @RequestParam(required = false) Long cartao,
                                      @RequestParam(required = false) String categoria,
                                      @RequestParam(required = false) String tipo,
-                                     @RequestParam(required = false) String busca) {
-        return lista.listar(usuarioAtual.id(), FiltroDaLista.de(mes, conta, cartao, categoria, tipo, busca));
+                                     @RequestParam(required = false) String busca,
+                                     @RequestParam(defaultValue = "true") boolean previstos) {
+        return lista.listar(usuarioAtual.id(), FiltroDaLista.de(mes, conta, cartao, categoria, tipo, busca, previstos));
     }
 
     @GetMapping("/ultimos")

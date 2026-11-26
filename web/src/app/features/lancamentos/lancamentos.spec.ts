@@ -11,6 +11,7 @@ import { PagamentoDialogo } from '../cartoes/pagamento-dialogo/pagamento-dialogo
 import { Categoria, CategoriasService, ListaDeCategorias } from '../categorias/categorias.service';
 import { Conta, ContasService, ListaDeContas } from '../contas/contas.service';
 import { FluxoDeRegras } from '../regras/fluxo-de-regras';
+import { FluxoDaOcorrencia } from '../recorrencias/fluxo-da-ocorrencia';
 import { LancamentoDialogo } from './lancamento-dialogo/lancamento-dialogo';
 import { ItemDaLista, LancamentosService, ListaDoMes } from './lancamentos.service';
 import { Lancamentos } from './lancamentos';
@@ -84,6 +85,10 @@ describe('Lancamentos', () => {
     const restaurado = new Subject<void>();
     const aplicadas = new Subject<number>();
     const fluxo = { aplicadas$: aplicadas.asObservable(), aplicar: vi.fn(() => of(3)) };
+    const mudouDaOcorrencia = new Subject<void>();
+    const fluxoDaOcorrencia = {
+      mudou$: mudouDaOcorrencia.asObservable(), confirmar: vi.fn(), pular: vi.fn(), jaLancei: vi.fn(), acoes: vi.fn(),
+    };
     const servico = { listar: vi.fn(resposta), ultimaConta: null as number | null, restaurado$: restaurado.asObservable() };
     // Um Subject por diálogo aberto: fechamentos[n] fecha o n-ésimo.
     const fechamentos: Subject<unknown>[] = [];
@@ -103,6 +108,7 @@ describe('Lancamentos', () => {
         { provide: CategoriasService, useValue: { listar: () => of(categorias) } },
         { provide: MatDialog, useValue: dialogo },
         { provide: FluxoDeRegras, useValue: fluxo },
+        { provide: FluxoDaOcorrencia, useValue: fluxoDaOcorrencia },
         { provide: AGORA, useValue: () => new Date('2026-11-09T15:00:00Z') },
       ],
     });
@@ -111,7 +117,10 @@ describe('Lancamentos', () => {
     fixture.detectChanges();
     const elemento = fixture.nativeElement as HTMLElement;
     const atualizar = () => fixture.detectChanges();
-    return { elemento, atualizar, servico, dialogo, fechamentos, navegar, url, restaurado, fluxo, aplicadas };
+    return {
+      elemento, atualizar, servico, dialogo, fechamentos, navegar, url, restaurado, fluxo, aplicadas,
+      fluxoDaOcorrencia, mudouDaOcorrencia,
+    };
   }
 
   function textos(elemento: HTMLElement, seletor: string): string[] {
@@ -309,5 +318,85 @@ describe('Lancamentos', () => {
 
     const semFiltro = criar({ mes: '2026-10' });
     expect(semFiltro.elemento.querySelector('.lancamentos__regras')).toBeNull();
+  });
+
+  it('a faixa dos previstos de novembro e de dezembro', () => {
+    const novembroComPrevistos: ListaDoMes = {
+      ...outubro,
+      mes: '2026-11',
+      previstos: { entradas: 8200, saidas: -3150, quantidade: 5, atrasadas: 1 },
+    };
+    const novembro = criar({ mes: '2026-11' }, () => of(novembroComPrevistos));
+    const faixaNovembro = novembro.elemento.querySelector('.flux-faixa-previstos') as HTMLElement;
+    expect(faixaNovembro.textContent?.replace(/\s+/g, ' ')).toContain('Previstos em novembro:');
+    expect(faixaNovembro.querySelectorAll('.valor__texto')[0]?.textContent?.replace(/\u00a0/g, ' ')).toBe('+R$ 8.200,00');
+    expect(faixaNovembro.textContent?.replace(/\s+/g, ' ')).toContain('em 5, 1 atrasada');
+    expect(faixaNovembro.textContent?.replace(/\s+/g, ' ')).toContain('Ficam fora dos totais até você confirmar.');
+    const desktop = (faixa: HTMLElement) => faixa.querySelector('.flux-so-desktop')?.textContent?.replace(/\s+/g, ' ').trim();
+    const celular = (faixa: HTMLElement) => faixa.querySelector('.flux-so-celular')?.textContent?.replace(/\s+/g, ' ').trim();
+    expect(desktop(faixaNovembro)).toBe('Previstos em novembro: +R$ 8.200,00mais R$ 8.200,00 e −R$ 3.150,00menos R$ 3.150,00 '
+      + 'em 5, 1 atrasada. Ficam fora dos totais até você confirmar. Ver recorrências');
+    expect(celular(faixaNovembro)).toBe('Previstos: em 5, 1 atrasada. Fora dos totais.');
+    TestBed.resetTestingModule();
+    const dezembroComPrevistos: ListaDoMes = {
+      ...outubro,
+      mes: '2026-12',
+      previstos: { entradas: 0, saidas: -4200, quantidade: 14, atrasadas: 0 },
+    };
+    const dezembro = criar({ mes: '2026-12' }, () => of(dezembroComPrevistos));
+    const faixaDezembro = dezembro.elemento.querySelector('.flux-faixa-previstos') as HTMLElement;
+    expect(faixaDezembro.textContent?.replace(/\s+/g, ' ')).toContain('Previstos em dezembro:');
+    expect(faixaDezembro.querySelector('.valor__texto')?.textContent?.replace(/\u00a0/g, ' ')).toBe('−R$ 4.200,00');
+    expect(faixaDezembro.textContent?.replace(/\s+/g, ' ')).toContain('em 14');
+    expect(desktop(faixaDezembro)).toBe('Previstos em dezembro: −R$ 4.200,00menos R$ 4.200,00 em 14. '
+      + 'Ficam fora dos totais até você confirmar. Ver recorrências');
+  });
+
+  it('o chip Previstos navega com previstos=nao', () => {
+    const { elemento, navegar } = criar({ mes: '2026-10' });
+    const chip = Array.from(elemento.querySelectorAll<HTMLButtonElement>('button'))
+      .find((botao) => botao.textContent?.trim() === 'Previstos') as HTMLButtonElement;
+    expect(chip.getAttribute('aria-pressed')).toBe('true');
+    chip.click();
+    expect(parametrosNavegados(navegar)).toEqual({
+      mes: '2026-10', conta: null, cartao: null, categoria: null, tipo: null, busca: null, previstos: 'nao',
+    });
+  });
+
+  it('os previstos vêm antes dos lançamentos do dia, e o lançamento ligado diz da recorrência', () => {
+    const previsto = {
+      recorrenciaId: 7,
+      periodo: '2026-11-01',
+      data: '2026-11-30',
+      dataNaLista: '2026-11-30',
+      descricao: 'Conta de luz Fictícia',
+      tipo: 'DESPESA' as const,
+      valor: -189.9,
+      valorPrevisto: 189.9,
+      valorVaria: false,
+      contaId: 1,
+      contaNome: 'Banco Horizonte',
+      cartaoId: null,
+      cartaoNome: null,
+      cartaoCor: null,
+      categoriaId: 2,
+      categoriaNome: 'Mercado',
+      categoriaMaeNome: 'Alimentação',
+      atrasada: false,
+      visivelAte: null,
+    };
+    const listaComPrevisto: ListaDoMes = {
+      ...vazia('2026-11'),
+      quantidadeLancamentos: 1,
+      dias: [{
+        data: '2026-11-30', saldoNoFimDoDia: 0, previstos: [previsto],
+        itens: [item({ descricao: 'Luz confirmada', data: '2026-11-30', recorrenciaId: 7 })],
+      }],
+    };
+    const { elemento } = criar({ mes: '2026-11' }, () => of(listaComPrevisto));
+    const linhas = Array.from(elemento.querySelectorAll('.lancamentos__dia .lancamentos__item'));
+    expect(linhas[0].querySelector('.flux-ocorrencia__titulo')?.textContent).toBe('Conta de luz Fictícia');
+    expect(linhas[1].querySelector('.linha__titulo')?.textContent).toBe('Luz confirmada');
+    expect(linhas[1].querySelector('.linha__da-recorrencia')?.textContent).toBe('da recorrência');
   });
 });

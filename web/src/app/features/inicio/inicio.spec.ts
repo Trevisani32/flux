@@ -14,6 +14,8 @@ import { PagamentoDialogo } from '../cartoes/pagamento-dialogo/pagamento-dialogo
 import { CategoriasService, ListaDeCategorias } from '../categorias/categorias.service';
 import { ContasService, ListaDeContas } from '../contas/contas.service';
 import { ItemDaLista, LancamentosService, ListaDoMes } from '../lancamentos/lancamentos.service';
+import { FluxoDaOcorrencia } from '../recorrencias/fluxo-da-ocorrencia';
+import { AConfirmar, Ocorrencia, RecorrenciasService } from '../recorrencias/recorrencias.service';
 import { Inicio } from './inicio';
 
 const comContas: ListaDeContas = {
@@ -54,9 +56,11 @@ const semNada: ListaDoMes = { ...novembro, quantidadeLancamentos: 0, quantidadeT
 
 describe('Inicio', () => {
   function criar(resposta: () => Observable<ListaDeContas>, mes: ListaDoMes = novembro, ultimos: ItemDaLista[] = [padaria],
-                 cartoes: () => Observable<ListaDeCartoes> = () => of(comCartao)) {
+                 cartoes: () => Observable<ListaDeCartoes> = () => of(comCartao),
+                 aConfirmar: () => Observable<AConfirmar> = () => of({ ate: '2026-11-13', recorrencias: 0, ocorrencias: [] })) {
     const auth = { usuario: signal<Usuario | null>({ id: 1, nome: 'Dev', email: 'dev@flux.local' }) };
     const restaurado = new Subject<void>();
+    const mudou = new Subject<void>();
     const lancamentos = { listar: vi.fn(() => of(mes)), ultimos: vi.fn(() => of(ultimos)), ultimaConta: null,
       restaurado$: restaurado.asObservable() };
     const fechamento = new Subject<unknown>();
@@ -70,6 +74,8 @@ describe('Inicio', () => {
         { provide: ContasService, useValue: { listar: resposta } },
         { provide: CartoesService, useValue: { listar: cartoes } },
         { provide: LancamentosService, useValue: lancamentos },
+        { provide: RecorrenciasService, useValue: { aConfirmar } },
+        { provide: FluxoDaOcorrencia, useValue: { mudou$: mudou.asObservable() } },
         { provide: CategoriasService, useValue: { listar: () => of(categorias) } },
         { provide: MatDialog, useValue: dialogo },
       ],
@@ -156,7 +162,9 @@ describe('Inicio', () => {
 
   it('mostra o mês e os últimos lançamentos, com os totais da API', () => {
     const { elemento, lancamentos } = criar(() => of(comContas));
-    expect(lancamentos.listar).toHaveBeenCalledWith({ mes: '2026-11', conta: null, cartao: null, categoria: null, tipo: null, busca: '' });
+    expect(lancamentos.listar).toHaveBeenCalledWith({
+      mes: '2026-11', conta: null, cartao: null, categoria: null, tipo: null, busca: '', previstos: false,
+    });
     expect(textos(elemento, '.inicio-mes .card__titulo')).toEqual(['Novembro']);
     expect(textos(elemento, '.inicio-mes .valor__texto')).toEqual(['+R$ 4.769,13', '+R$ 8.491,28', '−R$ 3.722,15']);
     expect(textos(elemento, '.inicio-mes__rotulo')).toEqual(['Entradas · 3', 'Saídas · 11']);
@@ -199,5 +207,64 @@ describe('Inicio', () => {
     const { elemento } = criar(() => throwError(() => new HttpErrorResponse({ status: 500 })));
     expect(elemento.querySelector('[role="alert"]')?.textContent).toContain('Não foi possível carregar o saldo das contas.');
     expect(elemento.querySelectorAll('.inicio-faturas')).toHaveLength(1);
+  });
+
+  it('o card A confirmar mostra 6 e e mais 3 até 02/12', () => {
+    const ocorrencias = Array.from({ length: 9 }, (_, indice) => ({
+      recorrenciaId: indice + 1,
+      periodo: '2026-11-01',
+      data: indice === 0 ? '2026-11-05' : `2026-11-${String(6 + indice).padStart(2, '0')}`,
+      dataNaLista: null,
+      descricao: `Prevista ${indice + 1}`,
+      tipo: 'DESPESA' as const,
+      valor: -100 - indice,
+      valorPrevisto: 100 + indice,
+      valorVaria: false,
+      contaId: 1,
+      contaNome: 'Banco Horizonte',
+      cartaoId: null,
+      cartaoNome: null,
+      cartaoCor: null,
+      categoriaId: null,
+      categoriaNome: null,
+      categoriaMaeNome: null,
+      atrasada: indice === 0,
+      visivelAte: indice === 0 ? '2027-01-04' : null,
+    } satisfies Ocorrencia));
+    const { elemento } = criar(
+      () => of(comContas), novembro, [padaria], () => of(comCartao),
+      () => of({ ate: '2026-12-02', recorrencias: 9, ocorrencias }),
+    );
+    expect(elemento.querySelector('.inicio-confirmar .card__titulo')?.textContent).toBe('A confirmar');
+    expect(elemento.querySelector('.inicio-confirmar__nota')?.textContent).toBe('A atrasada e o que vence até quarta, 02/12');
+    expect(textos(elemento, '.inicio-confirmar__lista .flux-ocorrencia__titulo')).toEqual([
+      'Prevista 1', 'Prevista 2', 'Prevista 3', 'Prevista 4', 'Prevista 5', 'Prevista 6',
+    ]);
+    // No celular, só as 3 primeiras: as outras têm a classe que as esconde abaixo de 960 px.
+    expect(Array.from(elemento.querySelectorAll('.inicio-confirmar__lista > li'))
+      .map((linha) => linha.classList.contains('inicio-confirmar__a-mais'))).toEqual([false, false, false, true, true, true]);
+    expect(textos(elemento, '.inicio-confirmar__mais.flux-so-desktop')).toEqual(['e mais 3 até 02/12']);
+    expect(textos(elemento, '.inicio-confirmar__mais.flux-so-celular')).toEqual(['e mais 6 até 02/12']);
+    expect(elemento.querySelector('.inicio-confirmar a[href="/recorrencias"]')?.textContent?.trim()).toBe('Ver todas');
+  });
+
+  it('sem nada a confirmar', () => {
+    const { elemento } = criar(
+      () => of(comContas), novembro, [padaria], () => of(comCartao),
+      () => of({ ate: '2026-12-02', recorrencias: 4, ocorrencias: [] }),
+    );
+    expect(elemento.querySelector('.inicio-confirmar__vazio')?.textContent).toBe('Nada a confirmar nos próximos 7 dias.');
+    expect(elemento.querySelector('.inicio-confirmar a[href="/recorrencias"]')?.textContent?.trim()).toBe('Ver recorrências');
+  });
+
+  it('sem recorrência, o convite', () => {
+    const { elemento } = criar(
+      () => of(comContas), novembro, [padaria], () => of(comCartao),
+      () => of({ ate: '2026-12-02', recorrencias: 0, ocorrencias: [] }),
+    );
+    expect(elemento.querySelector('.inicio-confirmar__vazio')?.textContent)
+      .toBe('Cadastre o salário, o aluguel e as assinaturas para ver o que vem por aí.');
+    const convite = elemento.querySelector<HTMLAnchorElement>('.inicio-confirmar a[href="/recorrencias?nova=recorrencia"]');
+    expect(convite?.textContent?.trim()).toBe('Nova recorrência');
   });
 });

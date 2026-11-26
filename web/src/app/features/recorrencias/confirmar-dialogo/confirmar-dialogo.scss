@@ -1,0 +1,112 @@
+// O recuo dos diálogos do Flux (o mesmo do lancamento-dialogo e da confirmação): os tokens do
+// "flux-dialogo" zeram o do Material.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 26px 26px 22px;
+}
+
+.confirmar-dialogo__conteudo {
+  display: grid;
+  gap: 12px;
+}
+
+.confirmar-dialogo__subtitulo,
+.confirmar-dialogo__dica {
+  margin: 0;
+  color: var(--flux-texto-2);
+}
+
+.confirmar-dialogo__formulario {
+  display: grid;
+  gap: 8px;
+}
+
+.confirmar-dialogo__formulario label {
+  display: grid;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.confirmar-dialogo__formulario input,
+.confirmar-dialogo__formulario textarea {
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--flux-borda);
+  border-radius: var(--flux-raio-controle);
+  background: var(--flux-card);
+  color: var(--flux-texto);
+  font: inherit;
+}
+
+.confirmar-dialogo__moeda {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.confirmar-dialogo__moeda input {
+  width: 100%;
+}
+
+.confirmar-dialogo__formulario small {
+  color: var(--flux-negativo);
+}
+
+.confirmar-dialogo__formulario dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.confirmar-dialogo__formulario dt {
+  color: var(--flux-texto-3);
+}
+
+.confirmar-dialogo__formulario dd {
+  margin: 0;
+}
+
+.confirmar-dialogo__previa {
+  padding: 12px;
+  border: 1px solid var(--flux-borda);
+  border-radius: var(--flux-raio-controle);
+}
+
+.confirmar-dialogo__previa p {
+  margin: 4px 0;
+}
+
+.confirmar-dialogo__candidatos {
+  display: grid;
+  gap: 8px;
+  border: 0;
+  padding: 0;
+}
+
+.confirmar-dialogo__candidatos label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--flux-borda);
+  border-radius: var(--flux-raio-controle);
+}
+
+.confirmar-dialogo__candidatos small {
+  display: block;
+  color: var(--flux-texto-3);
+}
+
+.confirmar-dialogo__acoes {
+  width: 100%;
+}
+
+.confirmar-dialogo__espaco {
+  flex: 1 1 auto;
+}

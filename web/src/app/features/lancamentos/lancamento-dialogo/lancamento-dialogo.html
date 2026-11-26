@@ -30,6 +30,9 @@
       <dt>Observação</dt>
       <dd>{{ item.observacao ?? '—' }}</dd>
     </dl>
+    @if (item.recorrenciaId) {
+      <button mat-button type="button" (click)="verHistoricoDaRecorrencia()">Ver histórico da recorrência</button>
+    }
     <div class="lancamento-dialogo__acoes">
       <button mat-stroked-button type="button" (click)="cancelar()">Fechar</button>
     </div>
@@ -169,6 +172,10 @@
 
     @if (erroGeral(); as mensagem) {
       <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem" />
+    }
+
+    @if (item?.recorrenciaId) {
+      <button mat-button type="button" (click)="verHistoricoDaRecorrencia()">Ver histórico da recorrência</button>
     }
 
     <div class="lancamento-dialogo__acoes">

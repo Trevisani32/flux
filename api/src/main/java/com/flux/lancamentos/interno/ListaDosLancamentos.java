@@ -26,6 +26,9 @@ import com.flux.contas.ContaResumo;
 import com.flux.contas.ContasConsulta;
 import com.flux.lancamentos.interno.dto.ItemDaLista;
 import com.flux.lancamentos.interno.dto.ListaDoMesResponse;
+import com.flux.lancamentos.interno.dto.PrevistoDaLista;
+import com.flux.lancamentos.PrevistosNaLista;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,9 +52,11 @@ public class ListaDosLancamentos {
     private final CompraRepository compras;
     private final FaturaRepository faturas;
     private final Clock clock;
+    private final ObjectProvider<PrevistosNaLista> previstosNaLista;
 
     public ListaDosLancamentos(LancamentoRepository repositorio, ContasConsulta contas, CartoesConsulta cartoes,
-                               CategoriasConsulta categorias, CompraRepository compras, FaturaRepository faturas, Clock clock) {
+                               CategoriasConsulta categorias, CompraRepository compras, FaturaRepository faturas, Clock clock,
+                               ObjectProvider<PrevistosNaLista> previstosNaLista) {
         this.repositorio = repositorio;
         this.contas = contas;
         this.cartoes = cartoes;
@@ -59,6 +64,7 @@ public class ListaDosLancamentos {
         this.compras = compras;
         this.faturas = faturas;
         this.clock = clock;
+        this.previstosNaLista = previstosNaLista;
     }
 
     @Transactional(readOnly = true)
@@ -67,9 +73,13 @@ public class ListaDosLancamentos {
         YearMonth mes = filtro.mes() == null ? YearMonth.from(hoje) : filtro.mes();
         List<Lancamento> doMes = repositorio.findAllByUsuarioIdAndDataBetweenAndIgnoradoEmIsNull(usuarioId, mes.atDay(1),
                 mes.atEndOfMonth());
+        List<ContaResumo> todasAsContas = contas.listar(usuarioId);
+        List<CartaoResumo> todosOsCartoes = cartoes.listar(usuarioId);
         List<CategoriaResumo> todasAsCategorias = categorias.listar(usuarioId);
-        Montagem montagem = new Montagem(contas.listar(usuarioId), cartoes.listar(usuarioId), todasAsCategorias,
-                comprasDe(usuarioId, doMes), faturasPagasDe(usuarioId, doMes), hoje);
+        PrevistosNaLista moduloDosPrevistos = filtro.previstos() ? previstosNaLista.getIfAvailable() : null;
+        PrevistosNaLista.Ligacoes ligacoes = ligacoes(usuarioId, doMes, moduloDosPrevistos);
+        Montagem montagem = new Montagem(todasAsContas, todosOsCartoes, todasAsCategorias, comprasDe(usuarioId, doMes),
+                faturasPagasDe(usuarioId, doMes), ligacoes.porLancamento(), ligacoes.porCompra(), hoje);
         Set<Long> categoriasDoFiltro = filtro.categoriaId() == null ? Set.of()
                 : idsComSubcategorias(todasAsCategorias, filtro.categoriaId());
         String chaveDaBusca = filtro.busca() == null ? null : TextoComparavel.chave(filtro.busca());
@@ -106,15 +116,24 @@ public class ListaDosLancamentos {
         TreeMap<LocalDate, BigDecimal> saldos = saldosNoFimDoDia(usuarioId, filtro.contaId(), montagem, mes, doMes);
         Map<LocalDate, List<ItemDaLista>> porDia = new LinkedHashMap<>();
         linhas.forEach(linha -> porDia.computeIfAbsent(linha.item().data(), data -> new ArrayList<>()).add(linha.item()));
-        List<ListaDoMesResponse.Dia> dias = porDia.entrySet().stream()
-                .map(dia -> new ListaDoMesResponse.Dia(dia.getKey(), saldos.isEmpty() ? null : saldoAte(saldos, dia.getKey()),
-                        List.copyOf(dia.getValue())))
+        List<PrevistoNoDia> previstos = previstosDoMes(usuarioId, mes, filtro, moduloDosPrevistos, todosOsCartoes,
+                categoriasDoFiltro, chaveDaBusca, montagem);
+        Map<LocalDate, List<PrevistoDaLista>> previstosPorDia = previstos.stream().collect(Collectors.groupingBy(PrevistoNoDia::dataNaLista,
+                LinkedHashMap::new, Collectors.mapping(PrevistoNoDia::item, Collectors.toCollection(ArrayList::new))));
+        previstosPorDia.values().forEach(itensDoDia -> itensDoDia.sort(Comparator.comparing(PrevistoDaLista::descricao,
+                TextoComparavel.ordemAlfabetica()).thenComparing(PrevistoDaLista::recorrenciaId).thenComparing(PrevistoDaLista::data)));
+        List<LocalDate> datas = Stream.concat(porDia.keySet().stream(), previstosPorDia.keySet().stream()).distinct()
+                .sorted(Comparator.reverseOrder()).toList();
+        List<ListaDoMesResponse.Dia> dias = datas.stream()
+                .map(data -> new ListaDoMesResponse.Dia(data, saldos.isEmpty() ? null : saldoAte(saldos, data),
+                        List.copyOf(porDia.getOrDefault(data, List.of())), List.copyOf(previstosPorDia.getOrDefault(data, List.of()))))
                 .toList();
         List<ItemDaLista> itens = linhas.stream().map(Linha::item).toList();
+        ListaDoMesResponse.ResumoDosPrevistos resumoDosPrevistos = moduloDosPrevistos == null ? null : resumoDosPrevistos(previstos);
         return new ListaDoMesResponse(mes.toString(), hoje, totais(itens),
                 (int) itens.stream().filter(item -> item.tipo() != TipoLancamento.TRANSFERENCIA).count(),
                 (int) itens.stream().filter(item -> item.tipo() == TipoLancamento.TRANSFERENCIA).count(), dias,
-                faturaDoFiltro(usuarioId, filtro.cartaoId(), montagem, mes, doMes, hoje));
+                faturaDoFiltro(usuarioId, filtro.cartaoId(), montagem, mes, doMes, hoje, previstos), resumoDosPrevistos);
     }
 
     /** Os 5 mais recentes de conta até hoje, sem os futuros e sem os de fatura (decisão 26 da 05a); a transferência é um item só. */
@@ -122,7 +141,8 @@ public class ListaDosLancamentos {
     public List<ItemDaLista> ultimos(Long usuarioId) {
         LocalDate hoje = LocalDate.now(clock);
         List<Lancamento> recentes =
-                repositorio.findTop10ByUsuarioIdAndContaIdIsNotNullAndDataLessThanEqualAndIgnoradoEmIsNullOrderByDataDescIdDesc(usuarioId, hoje);
+                repositorio.findTop10ByUsuarioIdAndContaIdIsNotNullAndDataLessThanEqualAndIgnoradoEmIsNullOrderByDataDescIdDesc(
+                        usuarioId, hoje);
         Montagem montagem = montagem(usuarioId, recentes);
         Map<Long, List<Lancamento>> lados = ladosDasTransferencias(usuarioId, recentes);
         List<ItemDaLista> itens = new ArrayList<>();
@@ -159,6 +179,89 @@ public class ListaDosLancamentos {
                 comprasDe(usuarioId, lancamentos), faturasPagasDe(usuarioId, lancamentos), LocalDate.now(clock));
     }
 
+    private PrevistosNaLista.Ligacoes ligacoes(Long usuarioId, List<Lancamento> doMes, PrevistosNaLista modulo) {
+        if (modulo == null) {
+            return new PrevistosNaLista.Ligacoes(Map.of(), Map.of());
+        }
+        List<Long> lancamentoIds = doMes.stream().filter(lancamento -> lancamento.getContaId() != null)
+                .filter(lancamento -> lancamento.getTipo() == TipoLancamento.RECEITA || lancamento.getTipo() == TipoLancamento.DESPESA)
+                .map(Lancamento::getId).toList();
+        List<Long> compraIds = doMes.stream().filter(Lancamento::deFatura).map(Lancamento::getCompraId).distinct().toList();
+        return modulo.ligacoes(usuarioId, lancamentoIds, compraIds);
+    }
+
+    private List<PrevistoNoDia> previstosDoMes(Long usuarioId, YearMonth mes, FiltroDaLista filtro, PrevistosNaLista modulo,
+                                                List<CartaoResumo> todosOsCartoes, Set<Long> categoriasDoFiltro,
+                                                String chaveDaBusca, Montagem montagem) {
+        if (modulo == null || !tipoAceitaPrevistos(filtro.tipo())) {
+            return List.of();
+        }
+        LocalDate de = mes.atDay(1);
+        for (CartaoResumo cartao : todosOsCartoes) {
+            LocalDate inicioDaFatura = FaturasDoCartao.carregar(faturas, usuarioId, cartao).inicio(mes);
+            if (inicioDaFatura.isBefore(de)) {
+                de = inicioDaFatura;
+            }
+        }
+        List<PrevistoNoDia> resultado = new ArrayList<>();
+        for (PrevistosNaLista.Previsto previsto : modulo.previstos(usuarioId, de, mes.atEndOfMonth())) {
+            LocalDate dataNaLista = dataNaLista(usuarioId, mes, previsto, montagem);
+            if (dataNaLista == null || !passaPrevisto(previsto, filtro, categoriasDoFiltro, chaveDaBusca)) {
+                continue;
+            }
+            resultado.add(new PrevistoNoDia(dataNaLista, previstoDaLista(previsto, dataNaLista, montagem)));
+        }
+        return resultado;
+    }
+
+    private LocalDate dataNaLista(Long usuarioId, YearMonth mes, PrevistosNaLista.Previsto previsto, Montagem montagem) {
+        if (previsto.contaId() != null) {
+            return YearMonth.from(previsto.data()).equals(mes) ? previsto.data() : null;
+        }
+        CartaoResumo cartao = montagem.cartao(previsto.cartaoId());
+        if (cartao == null) {
+            return null;
+        }
+        FaturasDoCartao doCartao = FaturasDoCartao.carregar(faturas, usuarioId, cartao);
+        YearMonth fatura = doCartao.faturaDe(previsto.data());
+        return fatura.equals(mes) ? doCartao.datas(fatura).vencimento() : null;
+    }
+
+    private static boolean tipoAceitaPrevistos(TipoLancamento tipo) {
+        return tipo == null || tipo == TipoLancamento.RECEITA || tipo == TipoLancamento.DESPESA;
+    }
+
+    private static boolean passaPrevisto(PrevistosNaLista.Previsto previsto, FiltroDaLista filtro, Set<Long> categoriasDoFiltro,
+                                         String chaveDaBusca) {
+        return (filtro.contaId() == null || filtro.contaId().equals(previsto.contaId()))
+                && (filtro.cartaoId() == null || filtro.cartaoId().equals(previsto.cartaoId()))
+                && (filtro.categoriaId() == null || categoriasDoFiltro.contains(previsto.categoriaId()))
+                && (!filtro.semCategoria() || previsto.categoriaId() == null)
+                && (filtro.tipo() == null || filtro.tipo().name().equals(previsto.tipo()))
+                && (chaveDaBusca == null || TextoComparavel.chave(previsto.descricao()).contains(chaveDaBusca));
+    }
+
+    private static PrevistoDaLista previstoDaLista(PrevistosNaLista.Previsto previsto, LocalDate dataNaLista, Montagem montagem) {
+        ContaResumo conta = previsto.contaId() == null ? null : montagem.conta(previsto.contaId());
+        CartaoResumo cartao = previsto.cartaoId() == null ? null : montagem.cartao(previsto.cartaoId());
+        CategoriaResumo categoria = montagem.categoriaPorId(previsto.categoriaId());
+        return new PrevistoDaLista(previsto.recorrenciaId(), previsto.periodo(), previsto.data(), dataNaLista, previsto.descricao(),
+                previsto.tipo(), previsto.valor(), previsto.valor().abs(), previsto.valorVaria(), previsto.contaId(),
+                conta == null ? null : conta.nome(), previsto.cartaoId(), cartao == null ? null : cartao.nome(),
+                cartao == null ? null : cartao.cor(), previsto.categoriaId(), categoria == null ? null : categoria.nome(),
+                categoria == null ? null : categoria.nomeDaMae(), previsto.atrasada(),
+                previsto.atrasada() ? previsto.data().plusDays(60) : null);
+    }
+
+    private static ListaDoMesResponse.ResumoDosPrevistos resumoDosPrevistos(List<PrevistoNoDia> previstos) {
+        List<BigDecimal> entradas = previstos.stream().map(PrevistoNoDia::item).filter(item -> item.valor().signum() > 0)
+                .map(PrevistoDaLista::valor).toList();
+        List<BigDecimal> saidas = previstos.stream().map(PrevistoNoDia::item).filter(item -> item.valor().signum() < 0)
+                .map(PrevistoDaLista::valor).toList();
+        return new ListaDoMesResponse.ResumoDosPrevistos(somar(entradas.stream()), somar(saidas.stream()), previstos.size(),
+                (int) previstos.stream().filter(item -> item.item().atrasada()).count());
+    }
+
     /** As faturas dos pagamentos (Fatia 05b), por id. */
     private Map<Long, Fatura> faturasPagasDe(Long usuarioId, List<Lancamento> lancamentos) {
         Set<Long> ids = lancamentos.stream().filter(Lancamento::pagamento).map(Lancamento::getFaturaPagaId).collect(Collectors.toSet());
@@ -178,7 +281,7 @@ public class ListaDosLancamentos {
      * inteira (os lançamentos do cartão no mês, sem os outros filtros). Cartão de outro usuário: sem faixa.
      */
     private ListaDoMesResponse.FaturaDoFiltro faturaDoFiltro(Long usuarioId, Long cartaoId, Montagem montagem, YearMonth mes,
-                                                             List<Lancamento> doMes, LocalDate hoje) {
+                                                             List<Lancamento> doMes, LocalDate hoje, List<PrevistoNoDia> previstos) {
         CartaoResumo cartao = cartaoId == null ? null : montagem.cartao(cartaoId);
         if (cartao == null) {
             return null;
@@ -187,8 +290,11 @@ public class ListaDosLancamentos {
         CalendarioDoCartao.Datas datas = doCartao.datas(mes);
         BigDecimal soma = somar(doMes.stream().filter(lancamento -> cartaoId.equals(lancamento.getCartaoId())).map(Lancamento::getValor));
         String situacao = PagamentosDasFaturas.carregar(repositorio, usuarioId, doCartao).resumo(mes, hoje).situacao().name();
+        BigDecimal previsto = somar(previstos.stream().map(PrevistoNoDia::item).filter(item -> cartaoId.equals(item.cartaoId()))
+                .map(PrevistoDaLista::valorPrevisto));
         return new ListaDoMesResponse.FaturaDoFiltro(cartao.id(), cartao.nome(), cartao.cor(), mes.toString(), datas.fechamento(),
-                datas.vencimento(), situacao, soma.negate().setScale(2, RoundingMode.UNNECESSARY));
+                datas.vencimento(), situacao, soma.negate().setScale(2, RoundingMode.UNNECESSARY),
+                previsto.signum() == 0 ? null : previsto);
     }
 
     private Map<Long, List<Lancamento>> ladosDasTransferencias(Long usuarioId, List<Lancamento> lancamentos) {
@@ -271,6 +377,9 @@ public class ListaDosLancamentos {
     }
 
     private record Linha(ItemDaLista item, long ordem) {
+    }
+
+    private record PrevistoNoDia(LocalDate dataNaLista, PrevistoDaLista item) {
     }
 
     /** Os dois lados de uma transferência: a saída é o negativo. */

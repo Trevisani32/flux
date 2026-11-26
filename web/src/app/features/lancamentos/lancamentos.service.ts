@@ -4,6 +4,7 @@ import { Observable, Subject, map, tap } from 'rxjs';
 
 import { CorConta } from '../contas/contas.service';
 import { Filtros, parametrosDaApi } from './filtros';
+import { Ocorrencia } from '../recorrencias/recorrencias.service';
 
 /** Fatia 05b: PAGAMENTO_FATURA, o pagamento da fatura do cartão, na conta; não é receita nem despesa. */
 export type TipoLancamento = 'RECEITA' | 'DESPESA' | 'TRANSFERENCIA' | 'PAGAMENTO_FATURA';
@@ -74,6 +75,8 @@ export interface ItemDaLista {
    * fatias anteriores.
    */
   readonly faturaPagaMes?: string | null;
+  /** Fatia 07a: o lançamento ou a compra foi confirmado por uma recorrência. */
+  readonly recorrenciaId?: number | null;
 }
 
 /** Fatia 05a (decisão 23): a fatura do mês, com o filtro de um cartão. `total` positivo é a pagar. */
@@ -86,6 +89,8 @@ export interface FaturaDoFiltro {
   readonly vencimento: string;
   readonly situacao: 'FUTURA' | 'ABERTA' | 'FECHADA' | 'PAGA';
   readonly total: number;
+  /** Previsto da fatura, sem os demais filtros; só com recorrências ativas. */
+  readonly previsto?: number | null;
 }
 
 /** Um par possível para a conversão (Fatia 04c, decisão 27): `valor` com sinal, oposto ao do importado. */
@@ -128,6 +133,14 @@ export interface DiaDaLista {
   /** Só com o filtro de uma conta. */
   readonly saldoNoFimDoDia: number | null;
   readonly itens: readonly ItemDaLista[];
+  readonly previstos?: readonly Ocorrencia[];
+}
+
+export interface ResumoDosPrevistos {
+  readonly entradas: number;
+  readonly saidas: number;
+  readonly quantidade: number;
+  readonly atrasadas: number;
 }
 
 /** Resposta de GET /api/lancamentos. */
@@ -140,6 +153,7 @@ export interface ListaDoMes {
   readonly dias: readonly DiaDaLista[];
   /** Fatia 05a: só com o filtro de um cartão; opcional pelos objetos de teste das fatias anteriores. */
   readonly fatura?: FaturaDoFiltro | null;
+  readonly previstos?: ResumoDosPrevistos | null;
 }
 
 /** Corpo de POST /api/lancamentos e PUT /api/lancamentos/{id}. O valor vai positivo. */

@@ -55,4 +55,27 @@ describe('filtros', () => {
     expect(mesLimite(HOJE)).toBe('2027-11');
     expect(mesLimite('2026-01-31')).toBe('2027-01');
   });
+  it('previstos=nao vai e volta da URL e da API, e não conta como filtro', () => {
+    const filtros = filtrosDaUrl(convertToParamMap({ mes: '2026-12', previstos: 'nao' }), HOJE);
+    expect(filtros).toEqual({ mes: '2026-12', conta: null, cartao: null, categoria: null, tipo: null, busca: '', previstos: false });
+    expect(parametrosDaUrl(filtros, HOJE)).toEqual({
+      mes: '2026-12',
+      conta: null,
+      cartao: null,
+      categoria: null,
+      tipo: null,
+      busca: null,
+      previstos: 'nao',
+    });
+    expect(parametrosDaApi(filtros)).toEqual({ mes: '2026-12', previstos: 'false' });
+    expect(temFiltro(filtros)).toBe(false);
+    expect(filtrosDaUrl(convertToParamMap({ mes: '2026-12' }), HOJE)).toEqual({
+      mes: '2026-12',
+      conta: null,
+      cartao: null,
+      categoria: null,
+      tipo: null,
+      busca: '',
+    });
+  });
 });

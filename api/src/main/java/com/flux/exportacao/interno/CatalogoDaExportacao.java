@@ -185,7 +185,34 @@ final class CatalogoDaExportacao {
                     texto("descricao", "descricao"),
                     instante("criada_em", "criadaEm"),
                     instante("atualizada_em", "atualizadaEm")),
-                    Set.of("usuario_id", "texto_chave")));
+                    Set.of("usuario_id", "texto_chave")),
+            new Tabela("recorrencias", "recorrencias", List.of(
+                    inteiro("id", "id"),
+                    texto("descricao", "descricao"),
+                    dinheiro("valor", "valor"),
+                    texto("tipo", "tipo"),
+                    inteiro("categoria_id", "categoriaId"),
+                    inteiro("conta_id", "contaId"),
+                    inteiro("cartao_id", "cartaoId"),
+                    texto("frequencia", "frequencia"),
+                    inteiro("dia_do_mes", "diaDoMes"),
+                    data("comeca_em", "comecaEm"),
+                    data("termina_em", "terminaEm"),
+                    booleano("valor_varia", "valorVaria"),
+                    data("ocorrencias_desde", "ocorrenciasDesde"),
+                    instante("criada_em", "criadaEm"),
+                    instante("atualizada_em", "atualizadaEm")),
+                    Set.of("usuario_id")),
+            new Tabela("ocorrencias_tratadas", "ocorrenciasTratadas", List.of(
+                    inteiro("id", "id"),
+                    inteiro("recorrencia_id", "recorrenciaId"),
+                    data("periodo", "periodo"),
+                    data("data_prevista", "dataPrevista"),
+                    texto("situacao", "situacao"),
+                    inteiro("lancamento_id", "lancamentoId"),
+                    inteiro("compra_id", "compraId"),
+                    instante("tratada_em", "tratadaEm")),
+                    Set.of("usuario_id")));
 
     /** As tabelas que não vão, com o motivo. */
     static final Map<String, String> TABELAS_FORA = Map.of(
