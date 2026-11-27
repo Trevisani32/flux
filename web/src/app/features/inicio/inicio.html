@@ -30,6 +30,21 @@
           </ul>
         </app-card>
       </div>
+      @if (avisoDaProjecao(); as aviso) {
+        @if (aviso.contas[0]; as conta) {
+          <app-alerta
+            class="inicio-aviso-projecao"
+            tipo="atencao"
+            icone="alerta"
+            [titulo]="tituloDoAviso(conta.contaNome, conta.primeiroNegativo, conta.hoje, hojeIso)"
+          >
+            <p>{{ textoDoAviso(conta.menor, conta.diaDoMenor, hojeIso, aviso.contas.length - 1) }}</p>
+            <span class="flux-alerta__acoes">
+              <a class="flux-link" routerLink="/projecao">Ver projeção</a>
+            </span>
+          </app-alerta>
+        }
+      }
       <div class="inicio-movimento">
         @if (mesComLancamentos(); as mes) {
           <app-card class="inicio-mes" [titulo]="nomeDoMesSemAno(mes.mes)">

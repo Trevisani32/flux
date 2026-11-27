@@ -14,6 +14,7 @@ import { PagamentoDialogo } from '../cartoes/pagamento-dialogo/pagamento-dialogo
 import { CategoriasService, ListaDeCategorias } from '../categorias/categorias.service';
 import { ContasService, ListaDeContas } from '../contas/contas.service';
 import { ItemDaLista, LancamentosService, ListaDoMes } from '../lancamentos/lancamentos.service';
+import { AvisoDaProjecao, ProjecaoService } from '../projecao/projecao.service';
 import { FluxoDaOcorrencia } from '../recorrencias/fluxo-da-ocorrencia';
 import { AConfirmar, Ocorrencia, RecorrenciasService } from '../recorrencias/recorrencias.service';
 import { Inicio } from './inicio';
@@ -57,7 +58,8 @@ const semNada: ListaDoMes = { ...novembro, quantidadeLancamentos: 0, quantidadeT
 describe('Inicio', () => {
   function criar(resposta: () => Observable<ListaDeContas>, mes: ListaDoMes = novembro, ultimos: ItemDaLista[] = [padaria],
                  cartoes: () => Observable<ListaDeCartoes> = () => of(comCartao),
-                 aConfirmar: () => Observable<AConfirmar> = () => of({ ate: '2026-11-13', recorrencias: 0, ocorrencias: [] })) {
+                 aConfirmar: () => Observable<AConfirmar> = () => of({ ate: '2026-11-13', recorrencias: 0, ocorrencias: [] }),
+                 aviso: () => Observable<AvisoDaProjecao> = () => of({ contas: [] })) {
     const auth = { usuario: signal<Usuario | null>({ id: 1, nome: 'Dev', email: 'dev@flux.local' }) };
     const restaurado = new Subject<void>();
     const mudou = new Subject<void>();
@@ -75,6 +77,7 @@ describe('Inicio', () => {
         { provide: CartoesService, useValue: { listar: cartoes } },
         { provide: LancamentosService, useValue: lancamentos },
         { provide: RecorrenciasService, useValue: { aConfirmar } },
+        { provide: ProjecaoService, useValue: { aviso } },
         { provide: FluxoDaOcorrencia, useValue: { mudou$: mudou.asObservable() } },
         { provide: CategoriasService, useValue: { listar: () => of(categorias) } },
         { provide: MatDialog, useValue: dialogo },
@@ -266,5 +269,84 @@ describe('Inicio', () => {
       .toBe('Cadastre o salário, o aluguel e as assinaturas para ver o que vem por aí.');
     const convite = elemento.querySelector<HTMLAnchorElement>('.inicio-confirmar a[href="/recorrencias?nova=recorrencia"]');
     expect(convite?.textContent?.trim()).toBe('Nova recorrência');
+  });
+
+  it('o aviso da projeção mostra a primeira conta negativa e leva à projeção', () => {
+    const { elemento } = criar(
+      () => of(comContas),
+      novembro,
+      [padaria],
+      () => of(comCartao),
+      () => of({ ate: '2026-11-13', recorrencias: 0, ocorrencias: [] }),
+      () => of({
+        contas: [{
+          contaId: 1,
+          contaNome: 'Banco Horizonte',
+          hoje: 4218.4,
+          primeiroNegativo: '2026-12-01',
+          menor: -2397.95,
+          diaDoMenor: '2026-12-04',
+        }],
+      }),
+    );
+    const alerta = elemento.querySelector<HTMLElement>('.inicio-aviso-projecao') as HTMLElement;
+    expect([
+      alerta.querySelector('.flux-alerta__titulo')?.textContent,
+      alerta.querySelector('p')?.textContent,
+      alerta.querySelector('a')?.textContent?.trim(),
+      alerta.querySelector('a')?.getAttribute('href'),
+    ]).toEqual([
+      'Banco Horizonte pode ficar no negativo em 01/12',
+      'O menor saldo previsto é −R$\u00a02.397,95, em 04/12.',
+      'Ver projeção',
+      '/projecao',
+    ]);
+    expect(alerta.previousElementSibling?.classList.contains('inicio-contas')).toBe(true);
+    expect(alerta.nextElementSibling?.classList.contains('inicio-movimento')).toBe(true);
+  });
+
+  it('com mais de uma conta negativa diz quantas mais', () => {
+    const { elemento } = criar(
+      () => of(comContas),
+      novembro,
+      [padaria],
+      () => of(comCartao),
+      () => of({ ate: '2026-11-13', recorrencias: 0, ocorrencias: [] }),
+      () => of({ contas: [
+        { contaId: 5, contaNome: 'Carteira', hoje: -317.7, primeiroNegativo: '2026-11-06', menor: -317.7, diaDoMenor: '2026-11-06' },
+        { contaId: 6, contaNome: 'Conta conjunta', hoje: 100, primeiroNegativo: '2026-11-28', menor: -551, diaDoMenor: '2026-11-28' },
+        {
+          contaId: 1,
+          contaNome: 'Banco Horizonte',
+          hoje: 4218.4,
+          primeiroNegativo: '2026-12-01',
+          menor: -2397.95,
+          diaDoMenor: '2026-12-04',
+        },
+      ] }),
+    );
+    const alerta = elemento.querySelector<HTMLElement>('.inicio-aviso-projecao') as HTMLElement;
+    expect([
+      alerta.querySelector('.flux-alerta__titulo')?.textContent,
+      alerta.querySelector('p')?.textContent,
+    ]).toEqual([
+      'Carteira está no negativo hoje',
+      'O menor saldo previsto é −R$\u00a0317,70, hoje. Mais 2 contas podem ficar no negativo.',
+    ]);
+  });
+
+  it('sem conta negativa ou com erro, não há aviso', () => {
+    const vazio = criar(() => of(comContas));
+    expect(vazio.elemento.querySelector('.inicio-aviso-projecao')).toBeNull();
+    TestBed.resetTestingModule();
+    const erro = criar(
+      () => of(comContas),
+      novembro,
+      [padaria],
+      () => of(comCartao),
+      () => of({ ate: '2026-11-13', recorrencias: 0, ocorrencias: [] }),
+      () => throwError(() => new HttpErrorResponse({ status: 500 })),
+    );
+    expect(erro.elemento.querySelector('.inicio-aviso-projecao')).toBeNull();
   });
 });

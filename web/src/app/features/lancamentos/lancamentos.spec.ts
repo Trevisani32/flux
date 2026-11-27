@@ -349,7 +349,8 @@ describe('Lancamentos', () => {
     expect(faixaDezembro.querySelector('.valor__texto')?.textContent?.replace(/\u00a0/g, ' ')).toBe('−R$ 4.200,00');
     expect(faixaDezembro.textContent?.replace(/\s+/g, ' ')).toContain('em 14');
     expect(desktop(faixaDezembro)).toBe('Previstos em dezembro: −R$ 4.200,00menos R$ 4.200,00 em 14. '
-      + 'Ficam fora dos totais até você confirmar. Ver recorrências');
+      + 'Ficam fora dos totais até você confirmar. Ver projeção');
+    expect(faixaDezembro.querySelector('a')?.getAttribute('href')).toBe('/projecao');
   });
 
   it('o chip Previstos navega com previstos=nao', () => {

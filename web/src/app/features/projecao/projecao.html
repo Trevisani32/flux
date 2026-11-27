@@ -1,0 +1,376 @@
+<app-cabecalho-pagina titulo="Projeção">
+  @if (projecao(); as r) {
+    <p complemento class="app-projecao__subtitulo">
+      <span class="flux-so-desktop">O saldo dia a dia, com o que já está lançado, o previsto nas recorrências e as faturas.</span>
+      <span class="flux-so-celular">{{ subtituloDoCelular(r.ate, r.escolhidas.length, r.contas.length, r.hoje) }}</span>
+    </p>
+  }
+</app-cabecalho-pagina>
+
+<div class="flux-conteudo">
+  @if (erro(); as mensagem) {
+    <app-alerta tipo="erro" icone="alerta" [titulo]="mensagem">
+      <span class="flux-alerta__acoes">
+        @if (mensagem === 'Não foi possível calcular a projeção.') {
+          <button mat-stroked-button type="button" (click)="tentarDeNovo()">Tentar de novo</button>
+        } @else {
+          <button mat-stroked-button type="button" (click)="voltarDoErro()">Voltar ao padrão</button>
+        }
+      </span>
+    </app-alerta>
+  } @else if (projecao(); as r) {
+    @if (!temContasAtivas()) {
+      <app-estado-vazio
+        icone="projecao"
+        titulo="Nenhuma conta para projetar"
+        texto="Cadastre uma conta para ver o saldo dos próximos dias."
+      >
+        <a mat-flat-button routerLink="/contas" [queryParams]="{ nova: 'conta' }">Cadastrar conta</a>
+      </app-estado-vazio>
+    } @else {
+      <section class="app-projecao__controles">
+        <div class="app-projecao__grupo" role="group" aria-label="Período">
+          <span class="app-projecao__rotulo">Até</span>
+          <div class="app-projecao__atalhos">
+            <button
+              type="button"
+              [attr.aria-pressed]="r.ate === r.periodos.padrao"
+              (click)="atalho(r.periodos.padrao)"
+            >Fim do mês que vem</button>
+            <button
+              type="button"
+              [attr.aria-pressed]="r.ate === r.periodos.tresMeses"
+              (click)="atalho(r.periodos.tresMeses)"
+            >3 meses</button>
+            <button
+              type="button"
+              [attr.aria-pressed]="r.ate === r.periodos.seisMeses"
+              (click)="atalho(r.periodos.seisMeses)"
+            >6 meses</button>
+            <button
+              type="button"
+              [attr.aria-pressed]="r.ate === r.periodos.dozeMeses"
+              (click)="atalho(r.periodos.dozeMeses)"
+            >12 meses</button>
+            <button
+              type="button"
+              class="app-projecao__abrir-data flux-so-celular"
+              [attr.aria-expanded]="mostrarCampoDaData()"
+              (click)="mostrarCampoDaData.update((valor) => !valor)"
+            >Até…</button>
+          </div>
+          <label class="app-projecao__data" [class.app-projecao__data--aberta]="mostrarCampoDaData()">
+            <span class="flux-visualmente-oculto">Até a data</span>
+            <input
+              type="date"
+              [min]="amanha(r.hoje)"
+              [max]="r.periodos.dozeMeses"
+              [value]="r.ate"
+              [attr.aria-invalid]="erroDaData() !== null"
+              [attr.aria-describedby]="erroDaData() === null ? null : 'projecao-erro-data'"
+              (change)="mudarData($any($event.target).value)"
+            />
+          </label>
+          @if (erroDaData(); as erroData) {
+            <p class="app-projecao__erro" id="projecao-erro-data">{{ erroData }}</p>
+          }
+        </div>
+        <div class="app-projecao__grupo" role="group" aria-label="Contas da projeção">
+          <span class="app-projecao__rotulo">Contas</span>
+          <div class="app-projecao__chips">
+            @for (conta of r.contas; track conta.id) {
+              <button
+                type="button"
+                class="app-projecao__chip"
+                [class.app-projecao__chip--negativa]="conta.escolhida && contaTemNegativo(conta.id)"
+                [attr.aria-pressed]="conta.escolhida"
+                (click)="alternarConta(conta.id)"
+              >
+                <i [style.--flux-cor]="corDaConta(conta.cor)" aria-hidden="true"></i>{{ conta.nome }}
+              </button>
+            }
+          </div>
+          @if (r.escolhidas.length > 0 && pedidoAtual().contas !== null && r.contas.some((conta) => conta.padrao)) {
+            <button type="button" class="flux-link app-projecao__padrao" (click)="voltarAoPadrao()">Voltar ao padrão</button>
+          }
+        </div>
+      </section>
+
+      @if (!temEscolha()) {
+        <app-card class="app-projecao__sem-escolha" titulo="Nenhuma conta escolhida">
+          <p>Escolha ao menos uma conta.</p>
+          @if (r.contas.some((conta) => conta.padrao)) {
+            <button type="button" class="flux-link" (click)="voltarAoPadrao()">Voltar ao padrão</button>
+          }
+        </app-card>
+      } @else {
+        <section class="app-projecao__avisos">
+          @if (!variasContas() && r.porConta[0].trechosNegativos.length > 0) {
+            <app-alerta tipo="erro" icone="alerta" [titulo]="tituloDoNegativo()">
+              @let complementoDoResumo = complementoDoMenor(r.resumo.diaDoMenor, r.resumo.trechosNegativos, r.ate);
+              <p>O menor saldo é <b>{{ formatarMoeda(r.resumo.menor) }}</b>{{ complementoDoResumo }}</p>
+            </app-alerta>
+          }
+          @if (variasContas() && r.resumo.trechosNegativos.length > 0) {
+            <app-alerta tipo="erro" icone="alerta" [titulo]="tituloDoTotalNegativo()">
+              @let complementoDoResumo = complementoDoMenor(r.resumo.diaDoMenor, r.resumo.trechosNegativos, r.ate);
+              <p>O menor saldo é <b>{{ formatarMoeda(r.resumo.menor) }}</b>{{ complementoDoResumo }}</p>
+            </app-alerta>
+          }
+          @if (variasContas()) {
+            @for (conta of r.porConta; track conta.contaId) {
+              @if (conta.trechosNegativos.length > 0) {
+                <app-alerta tipo="atencao" icone="alerta" [titulo]="tituloDaContaNegativa(conta)">
+                  @let complementoDaConta = complementoDoMenor(conta.diaDoMenor, conta.trechosNegativos, r.ate);
+                  <p>O menor saldo é <b>{{ formatarMoeda(conta.menor) }}</b>{{ complementoDaConta }}</p>
+                  <span class="flux-alerta__acoes">
+                    <button mat-stroked-button type="button" (click)="verSo(conta.contaId)">Ver só {{ conta.nome }}</button>
+                  </span>
+                </app-alerta>
+              }
+            }
+          }
+          @for (fatura of r.faturasFora; track fatura.cartaoId) {
+            <app-alerta tipo="atencao" icone="alerta" [titulo]="tituloDasFaturasFora(fatura)">
+              <p>{{ textoDasFaturasFora(fatura, r.hoje) }}</p>
+              <span class="flux-alerta__acoes"><a mat-stroked-button href="/cartoes" routerLink="/cartoes">Ir para Cartões</a></span>
+            </app-alerta>
+          }
+        </section>
+
+        <section class="app-projecao__numeros" aria-label="Resumo da projeção">
+          <div class="flux-card app-projecao__numero">
+            <span>Saldo hoje</span>
+            <app-valor [valor]="r.resumo.hoje" tipo="saldo" />
+            <small class="flux-so-desktop">{{ notaDoSaldoHoje(r.porConta.map((conta) => conta.nome), r.hoje) }}</small>
+            @if (r.resumo.pendencias !== 0) {
+              <small class="flux-so-celular">com as pendências, {{ formatarMoeda(r.resumo.inicio) }}</small>
+            }
+          </div>
+          <div class="flux-card app-projecao__numero">
+            <span class="flux-so-desktop">Menor saldo previsto</span>
+            <span class="flux-so-celular">Menor</span>
+            <app-valor [valor]="r.resumo.menor" tipo="saldo" />
+            <small class="flux-so-desktop">{{ notaDoMenor(r.resumo.diaDoMenor, r.resumo.diasNegativos, r.hoje, false) }}</small>
+            <small class="flux-so-celular">{{ notaDoMenor(r.resumo.diaDoMenor, r.resumo.diasNegativos, r.hoje, true) }}</small>
+          </div>
+          <div class="flux-card app-projecao__numero">
+            <span class="flux-so-desktop">{{ rotuloDoFim(r.ate, r.hoje, false) }}</span>
+            <span class="flux-so-celular">{{ rotuloDoFim(r.ate, r.hoje, true) }}</span>
+            <app-valor [valor]="r.resumo.fim" tipo="saldo" />
+            <small class="flux-so-desktop">{{ notaDoFim(r.diasDepoisDeHoje) }}</small>
+          </div>
+        </section>
+
+        <app-card class="app-projecao__grafico" titulo="Saldo dia a dia">
+          <p class="app-projecao__nota">{{ periodoDoGrafico(r.hoje, r.ate) }}</p>
+          <ul class="app-projecao__legenda" aria-label="Legenda">
+            <li><i class="app-projecao__legenda-previsto"></i>Saldo previsto</li>
+            <li><i class="app-projecao__legenda-negativo"></i>Abaixo de zero</li>
+            <li><i class="app-projecao__legenda-zero"></i>Zero</li>
+          </ul>
+          <button
+            class="app-projecao__alternar"
+            mat-stroked-button
+            type="button"
+            [attr.aria-pressed]="tabela()"
+            (click)="tabela.update((valor) => !valor)"
+          >
+            <app-icone [nome]="tabela() ? 'grafico' : 'tabela'" />
+            <span class="flux-so-desktop">{{ tabela() ? 'Ver gráfico' : 'Ver tabela' }}</span>
+            <span class="flux-so-celular">{{ tabela() ? 'Gráfico' : 'Tabela' }}</span>
+          </button>
+          @if (tabela()) {
+            <div class="app-projecao__rolagem">
+              <table class="relatorios__tabela app-projecao__tabela">
+                <thead>
+                  <tr>
+                    <th>Dia</th>
+                    <th>Movimento</th>
+                    <th>Saldo depois</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Hoje, {{ dataCurta(r.hoje).slice(0, 5) }}</td>
+                    <td>{{ r.resumo.pendencias === 0 ? '—' : formatarMoeda(r.resumo.pendencias) + ' (pendências)' }}</td>
+                    <td><app-valor [valor]="r.resumo.inicio" tipo="saldo" /></td>
+                  </tr>
+                  @for (dia of r.dias; track dia.data) {
+                    <tr>
+                      <td>{{ diaDaOcorrencia(dia.data) }}</td>
+                      <td><app-valor [valor]="dia.movimento" /></td>
+                      <td><app-valor [valor]="dia.saldo" tipo="saldo" /></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <app-grafico-degraus
+              [dias]="diasDoGrafico()"
+              [menor]="menorDoGrafico()"
+              [rotulo]="'Saldo previsto dia a dia, de ' + dataCurta(r.hoje).slice(0, 5) + ' a ' + dataCurta(r.ate).slice(0, 5)"
+              [altura]="desktop() ? 270 : 210"
+            />
+          }
+        </app-card>
+
+        @if (r.pendencias.length > 0) {
+          <app-card class="app-projecao__pendencias" titulo="Pendências contadas hoje">
+            <span acao><app-valor [valor]="r.resumo.pendencias" /></span>
+            <p class="app-projecao__nota">Saem do saldo de hoje até você pagar, confirmar ou pular.</p>
+            <ul class="app-projecao__lista flux-lista">
+              @for (item of r.pendencias; track item.tipo + item.data + item.contaId + item.cartaoId) {
+                <li class="app-projecao__pendencia">
+                  @if (item.tipo === 'FATURA') {
+                    <span class="app-projecao__selo" [style.--flux-cor]="corDaConta(item.cartaoCor)"><app-icone nome="cartao" /></span>
+                    <div class="app-projecao__textos">
+                      <b>{{ textoDaFatura(item, r.hoje) }}</b>
+                      @if (metaDaPendencia(item, r.hoje, variasContas()).pilula; as pilula) {
+                        <span class="flux-pilula flux-pilula--atrasada">{{ pilula }}</span>
+                      }
+                      <span>{{ metaDaPendencia(item, r.hoje, variasContas()).texto }}</span>
+                    </div>
+                    <app-valor [valor]="item.valor" />
+                    @if (item.pendente! > 0) {
+                      <div class="app-projecao__acoes">
+                        <button mat-stroked-button type="button" (click)="abrirPagamento(item)">
+                          <app-icone nome="pagar" [tamanho]="16" />
+                          Pagar fatura
+                        </button>
+                      </div>
+                    }
+                    @for (prevista of item.previstos; track prevista.recorrenciaId + prevista.periodo) {
+                      <div class="app-projecao__prevista-da-fatura">
+                        <span>{{ linhaDaPrevistaNaFatura(prevista, r.hoje) }}</span>
+                        <app-valor [valor]="-prevista.valor" tipo="previsto" />
+                        @if (prevista.ocorrencia; as ocorrencia) {
+                          <div class="app-projecao__acoes">
+                            <button mat-stroked-button type="button" (click)="fluxoDaOcorrencia.confirmar(ocorrencia, r.hoje)">
+                              <app-icone nome="check" [tamanho]="16" />
+                              Confirmar
+                            </button>
+                            <button type="button" class="flux-link" (click)="fluxoDaOcorrencia.pular(ocorrencia)">Pular</button>
+                          </div>
+                        }
+                      </div>
+                    }
+                  } @else {
+                    <span class="app-projecao__selo app-projecao__selo--previsto"><app-icone nome="repetir" /></span>
+                    <div class="app-projecao__textos">
+                      <b>{{ item.descricao }}</b>
+                      @if (metaDaPendencia(item, r.hoje, variasContas()).pilula; as pilula) {
+                        <span class="flux-pilula" [class.flux-pilula--atrasada]="pilula === 'Atrasada'">{{ pilula }}</span>
+                      }
+                      <span>{{ metaDaPendencia(item, r.hoje, variasContas()).texto }}</span>
+                    </div>
+                    <div class="app-projecao__valor">
+                      @if (item.valorVaria) {
+                        ≈
+                      }
+                      <app-valor [valor]="item.valor" tipo="previsto" />
+                    </div>
+                    @if (item.ocorrencia; as ocorrencia) {
+                      <div class="app-projecao__acoes">
+                        <button mat-stroked-button type="button" (click)="fluxoDaOcorrencia.confirmar(ocorrencia, r.hoje)">
+                          <app-icone nome="check" [tamanho]="16" />
+                          Confirmar
+                        </button>
+                        <button type="button" class="flux-link" (click)="fluxoDaOcorrencia.pular(ocorrencia)">Pular</button>
+                      </div>
+                    }
+                  }
+                </li>
+              }
+            </ul>
+            <p class="app-projecao__rodape">
+              Saldo de hoje com as pendências:
+              <b>{{ formatarMoeda(r.resumo.inicio) }}</b>. É o primeiro ponto do gráfico.
+            </p>
+          </app-card>
+        }
+
+        @if (variasContas()) {
+          <app-card class="app-projecao__por-conta" titulo="Por conta">
+            <p class="app-projecao__nota">até {{ dataCurta(r.ate).slice(0, 5) }}</p>
+            <div class="app-projecao__rolagem">
+              <table class="relatorios__tabela app-projecao__tabela">
+                <thead>
+                  <tr>
+                    <th>Conta</th>
+                    <th>Hoje</th>
+                    <th>Menor</th>
+                    <th>{{ rotuloDoFim(r.ate, r.hoje, true) }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (conta of r.porConta; track conta.contaId) {
+                    <tr>
+                      <td><button type="button" class="flux-link" (click)="verSo(conta.contaId)">{{ conta.nome }}</button></td>
+                      <td><app-valor [valor]="conta.hoje" tipo="saldo" /></td>
+                      <td>
+                        <app-valor [valor]="conta.menor" tipo="saldo" />
+                        <small>{{ conta.diaDoMenor === r.hoje ? 'hoje' : dataCurta(conta.diaDoMenor).slice(0, 5) }}</small>
+                      </td>
+                      <td><app-valor [valor]="conta.fim" tipo="saldo" /></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <p class="app-projecao__rodape">
+              {{ rodapeDoPorConta(r.contas.filter((conta) => !conta.escolhida).map((conta) => conta.nome)) }}
+            </p>
+          </app-card>
+        }
+
+        <app-card class="app-projecao__dia-a-dia" titulo="Dia a dia">
+          <p class="app-projecao__nota">Só os dias com movimento. "≈" é o valor que varia; "Futuro" já está lançado.</p>
+          <div class="app-projecao__dias">
+            @for (dia of diasVisiveis(); track dia.data; let indice = $index) {
+              <section
+                class="app-projecao__dia"
+                [class.app-projecao__dia--negativo]="dia.saldo < 0"
+                [class.app-projecao__dia--no-celular]="!todosOsDias() && indice >= 6"
+              >
+                <h3>{{ diaDaOcorrencia(dia.data) }}@if (dia.saldo < 0) {
+                  <span class="flux-pilula flux-pilula--atrasada">Negativo</span>
+                }</h3>
+                <ul class="flux-lista">
+                  @for (item of dia.itens; track item.tipo + item.data + item.contaId + item.cartaoId + item.descricao) {
+                    <li class="app-projecao__item">
+                      <span class="flux-pilula">{{ rotuloDoItem(item) }}</span>
+                      <span>{{ textoDoItem(item) }}@if (variasContas()) { · {{ item.contaNome }} }</span>
+                      <div class="app-projecao__valor">
+                        @if (item.valorVaria) {
+                          ≈
+                        }
+                        <app-valor [valor]="item.valor" [tipo]="item.tipo === 'PREVISTO' ? 'previsto' : 'sinal'" />
+                      </div>
+                    </li>
+                  }
+                </ul>
+                <span class="app-projecao__saldo-depois">saldo depois <app-valor [valor]="dia.saldo" tipo="saldo" /></span>
+              </section>
+            }
+          </div>
+          @if (!todosOsDias() && restoNoDesktop() > 0) {
+            <button
+              type="button"
+              class="flux-link flux-so-desktop"
+              (click)="todosOsDias.set(true)"
+            >{{ maisDias(restoNoDesktop(), r.ate, r.hoje) }}</button>
+          }
+          @if (!todosOsDias() && restoNoCelular() > 0) {
+            <button
+              type="button"
+              class="flux-link flux-so-celular"
+              (click)="todosOsDias.set(true)"
+            >{{ maisDias(restoNoCelular(), r.ate, r.hoje) }}</button>
+          }
+        </app-card>
+      }
+    }
+  }
+</div>
