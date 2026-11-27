@@ -123,10 +123,19 @@ export async function criarUsuarioConfirmado(
 }
 
 /** Navega pelo menu principal; no celular, abre a gaveta antes. */
-export async function irPeloMenu(
-  page: Page,
-  item: 'Início' | 'Lançamentos' | 'Relatórios' | 'Importação' | 'Contas' | 'Cartões' | 'Recorrências' | 'Categorias' | 'Regras',
-): Promise<void> {
+type ItemDoMenu =
+  | 'Início'
+  | 'Lançamentos'
+  | 'Relatórios'
+  | 'Importação'
+  | 'Contas'
+  | 'Cartões'
+  | 'Projeção'
+  | 'Recorrências'
+  | 'Categorias'
+  | 'Regras';
+
+export async function irPeloMenu(page: Page, item: ItemDoMenu): Promise<void> {
   if (!ehDesktop(page)) {
     await page.getByRole('button', { name: 'Abrir menu' }).click();
   }

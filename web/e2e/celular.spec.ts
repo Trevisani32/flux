@@ -60,6 +60,7 @@ test('nenhuma tela tem rolagem horizontal a 375 px', async ({ page }) => {
     ['/importacao', 'Importação'],
     ['/contas', 'Contas'],
     ['/cartoes', 'Cartões'],
+    ['/projecao', 'Projeção'],
     ['/recorrencias', 'Recorrências'],
     ['/categorias', 'Categorias'],
     ['/categorias?natureza=receita', 'Categorias'],
@@ -77,7 +78,8 @@ test('a gaveta tem os grupos do menu, e a página aberta fica marcada', async ({
   const navegacao = page.getByRole('navigation', { name: 'Menu principal' });
   await expect(navegacao.getByRole('list', { name: 'Visão geral' }).getByRole('link'))
     .toHaveText(['Início', 'Lançamentos', 'Relatórios', 'Importação', 'Contas', 'Cartões']);
-  await expect(navegacao.getByRole('list', { name: 'Planejamento' }).getByRole('link')).toHaveText(['Recorrências']);
+  await expect(navegacao.getByRole('list', { name: 'Planejamento' }).getByRole('link'))
+    .toHaveText(['Projeção', 'Recorrências']);
   await expect(navegacao.getByRole('list', { name: 'Organização' }).getByRole('link')).toHaveText(['Categorias', 'Regras']);
   await navegacao.getByRole('link', { name: 'Categorias' }).click();
   await expect(page.getByRole('heading', { name: 'Categorias', level: 1 })).toBeVisible();
