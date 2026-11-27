@@ -17,7 +17,7 @@ public interface PrevistosNaLista {
     /**
      * As ocorrências não tratadas com a data de {@code de} a {@code ate}, inclusive, das recorrências que não estão
      * pausadas, presas à janela de hoje − 60 dias a hoje + 12 meses (decisões 12 e 20). A data é a prevista: no cartão, a
-     * da compra. Em ordem de data, descrição e id da recorrência. Só lê.
+     * da compra. Sem ordem definida: quem usa ordena. Só lê.
      */
     List<Previsto> previstos(Long usuarioId, LocalDate de, LocalDate ate);
 

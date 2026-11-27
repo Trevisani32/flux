@@ -9,6 +9,7 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -346,21 +347,28 @@ public class RecorrenciaService {
         if (inicio.isAfter(fim)) {
             return List.of();
         }
-        Map<String, OcorrenciaTratada> porChave = new HashMap<>();
-        for (OcorrenciaTratada tratada : tratadas.findAllByUsuarioIdAndPeriodoBetween(usuarioId, inicio.minusYears(1), fim)) {
-            if (tratadaValida(usuarioId, tratada)) {
-                porChave.put(tratada.getRecorrenciaId() + ":" + tratada.getPeriodo(), tratada);
+        List<OcorrenciaTratada> daJanela = tratadas.findAllByUsuarioIdAndPeriodoBetween(usuarioId, inicio.minusYears(1), fim);
+        Set<Long> naoIgnorados = lancamentosNaoIgnorados(usuarioId, daJanela);
+        Set<String> tratadasValidas = new HashSet<>();
+        for (OcorrenciaTratada tratada : daJanela) {
+            boolean valida = tratada.getSituacao() == OcorrenciaTratada.Situacao.PULADA || tratada.getCompraId() != null
+                    || tratada.getLancamentoId() != null && naoIgnorados.contains(tratada.getLancamentoId());
+            if (valida) {
+                tratadasValidas.add(tratada.getRecorrenciaId() + ":" + tratada.getPeriodo());
             }
         }
+        Map<Long, ContaResumo> contasPorId = porId(contas.listar(usuarioId), ContaResumo::id);
+        Map<Long, CartaoResumo> cartoesPorId = porId(cartoes.listar(usuarioId), CartaoResumo::id);
+        Map<Long, CategoriaResumo> categoriasPorId = porId(categorias.listar(usuarioId), CategoriaResumo::id);
         List<OcorrenciaResponse> resultado = new ArrayList<>();
         for (Recorrencia recorrencia : recorrencias.findAllByUsuarioId(usuarioId)) {
-            if (pausada(recorrencia).isPresent()) {
+            Nomes nomes = new Nomes(categoriasPorId.get(recorrencia.getCategoriaId()), contasPorId.get(recorrencia.getContaId()),
+                    cartoesPorId.get(recorrencia.getCartaoId()));
+            if (motivoDaPausa(nomes).isPresent()) {
                 continue;
             }
-            Nomes nomes = null;
             for (CalendarioDaRecorrencia.Ocorrencia ocorrencia : recorrencia.calendario().entre(inicio, fim)) {
-                if (!porChave.containsKey(recorrencia.getId() + ":" + ocorrencia.periodo())) {
-                    nomes = nomes == null ? nomes(usuarioId, recorrencia) : nomes;
+                if (!tratadasValidas.contains(recorrencia.getId() + ":" + ocorrencia.periodo())) {
                     resultado.add(paraOcorrencia(recorrencia, nomes, ocorrencia));
                 }
             }
@@ -617,6 +625,24 @@ public class RecorrenciaService {
                 recorrencia.getCartaoId() == null ? null : cartoes.buscar(usuarioId, recorrencia.getCartaoId()).orElse(null));
     }
 
+    private Set<Long> lancamentosNaoIgnorados(Long usuarioId, List<OcorrenciaTratada> ocorrencias) {
+        List<Long> ids = ocorrencias.stream().map(OcorrenciaTratada::getLancamentoId)
+                .filter(java.util.Objects::nonNull).distinct().toList();
+        Set<Long> resultado = new HashSet<>();
+        for (int inicio = 0; inicio < ids.size(); inicio += 1_000) {
+            int fim = Math.min(inicio + 1_000, ids.size());
+            lancamentos.lancamentos(usuarioId, ids.subList(inicio, fim)).stream().filter(alvo -> !alvo.ignorado())
+                    .forEach(alvo -> resultado.add(alvo.id()));
+        }
+        return resultado;
+    }
+
+    private static <T> Map<Long, T> porId(List<T> itens, java.util.function.Function<T, Long> id) {
+        Map<Long, T> resultado = new HashMap<>();
+        itens.forEach(item -> resultado.put(id.apply(item), item));
+        return resultado;
+    }
+
     private OcorrenciaResponse paraOcorrencia(Long usuarioId, Recorrencia recorrencia,
                                               CalendarioDaRecorrencia.Ocorrencia ocorrencia) {
         return paraOcorrencia(recorrencia, nomes(usuarioId, recorrencia), ocorrencia);
@@ -636,23 +662,18 @@ public class RecorrenciaService {
     }
 
     private Optional<String> pausada(Recorrencia recorrencia) {
-        if (recorrencia.getContaId() != null) {
-            Optional<ContaResumo> conta = contas.buscar(recorrencia.getUsuarioId(), recorrencia.getContaId());
-            if (conta.isPresent() && conta.get().arquivada()) {
-                return Optional.of(conta.get().nome() + " está arquivada.");
-            }
+        return motivoDaPausa(nomes(recorrencia.getUsuarioId(), recorrencia));
+    }
+
+    private static Optional<String> motivoDaPausa(Nomes nomes) {
+        if (nomes.conta() != null && nomes.conta().arquivada()) {
+            return Optional.of(nomes.conta().nome() + " está arquivada.");
         }
-        if (recorrencia.getCartaoId() != null) {
-            Optional<CartaoResumo> cartao = cartoes.buscar(recorrencia.getUsuarioId(), recorrencia.getCartaoId());
-            if (cartao.isPresent() && cartao.get().arquivado()) {
-                return Optional.of(cartao.get().nome() + " está arquivado.");
-            }
+        if (nomes.cartao() != null && nomes.cartao().arquivado()) {
+            return Optional.of(nomes.cartao().nome() + " está arquivado.");
         }
-        if (recorrencia.getCategoriaId() != null) {
-            Optional<CategoriaResumo> categoria = categorias.buscar(recorrencia.getUsuarioId(), recorrencia.getCategoriaId());
-            if (categoria.isPresent() && categoria.get().arquivada()) {
-                return Optional.of("a categoria " + categoria.get().nome() + " está arquivada.");
-            }
+        if (nomes.categoria() != null && nomes.categoria().arquivada()) {
+            return Optional.of("a categoria " + nomes.categoria().nome() + " está arquivada.");
         }
         return Optional.empty();
     }
