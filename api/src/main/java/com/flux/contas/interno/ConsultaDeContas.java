@@ -39,6 +39,6 @@ public class ConsultaDeContas implements ContasConsulta {
 
     private static ContaResumo resumo(Conta conta) {
         return new ContaResumo(conta.getId(), conta.getNome(), conta.getSaldoInicial(), conta.getDataSaldoInicial(),
-                conta.arquivada(), conta.getTipo().name());
+                conta.arquivada(), conta.getTipo().name(), conta.getCor() == null ? null : conta.getCor().name());
     }
 }

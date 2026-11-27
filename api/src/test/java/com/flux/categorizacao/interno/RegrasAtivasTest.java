@@ -22,8 +22,8 @@ class RegrasAtivasTest {
             12L, new CategoriaResumo(12L, "Reembolsos", "RECEITA", null, null, false),
             13L, new CategoriaResumo(13L, "Lazer", "DESPESA", null, null, true));
     private static final Map<Long, ContaResumo> CONTAS = Map.of(
-            1L, new ContaResumo(1L, "Banco Horizonte", BigDecimal.ZERO, null, false, "CORRENTE"),
-            2L, new ContaResumo(2L, "Poupança antiga", BigDecimal.ZERO, null, true, "POUPANCA"));
+            1L, new ContaResumo(1L, "Banco Horizonte", BigDecimal.ZERO, null, false, "CORRENTE", null),
+            2L, new ContaResumo(2L, "Poupança antiga", BigDecimal.ZERO, null, true, "POUPANCA", null));
     private static final Map<Long, CartaoResumo> CARTOES = Map.of(
             8L, new CartaoResumo(8L, "Cartão Horizonte", null, new BigDecimal("1000.00"), 3, 10, 1L, false),
             9L, new CartaoResumo(9L, "Cartão Lua", null, new BigDecimal("1000.00"), 3, 10, 1L, true));

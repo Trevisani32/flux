@@ -8,6 +8,7 @@
  * também os pares sugeridos e os importados convertidos), e a
  * {@link com.flux.lancamentos.LancamentosParaRegras}, usada pelas regras de categorização (ADR 0015), e, desde a Fatia 07a,
  * a {@link com.flux.lancamentos.LancamentosDasRecorrencias}, usada pelas recorrências, que implementam o
- * {@link com.flux.lancamentos.PrevistosNaLista} (ADR 0022).
+ * {@link com.flux.lancamentos.PrevistosNaLista} (ADR 0022), e, desde a Fatia 07b, a
+ * {@link com.flux.lancamentos.LancamentosDaProjecao}, usada pela projeção (ADR 0023).
  */
 package com.flux.lancamentos;

@@ -29,10 +29,13 @@ class ModularidadeTest {
      * regras, e contas e categorias não dependem dos cartões. Relatórios depende só de compartilhado, e ninguém depende de
      * relatórios (ADR 0020). Exportação depende só de compartilhado e de acesso (a conferência da senha), e ninguém depende
      * dela (ADR 0021). Recorrências depende de contas, cartões, categorias e lançamentos, implementa PrevistosNaLista e
-     * UsoDaCategoria, e ninguém depende dela (ADR 0022).
+     * UsoDaCategoria, e só a projeção depende dela (ADR 0022 e ADR 0023). Projeção depende de contas, cartões, lançamentos e
+     * recorrências, pelas APIs públicas deles, e ninguém depende dela (ADR 0023).
      */
     @Test
     void dependenciasSeguemADirecaoCombinada() {
+        assertThat(dependenciasDiretas("projecao")).containsExactlyInAnyOrder("compartilhado", "contas", "cartoes", "lancamentos",
+                "recorrencias");
         assertThat(dependenciasDiretas("contas")).containsExactlyInAnyOrder("compartilhado");
         assertThat(dependenciasDiretas("categorias")).containsExactlyInAnyOrder("compartilhado", "acesso");
         assertThat(dependenciasDiretas("cartoes")).containsExactlyInAnyOrder("compartilhado", "contas");
@@ -54,6 +57,10 @@ class ModularidadeTest {
         for (String modulo : Set.of("contas", "categorias", "cartoes", "lancamentos", "categorizacao", "importacao", "acesso", "relatorios",
                 "exportacao")) {
             assertThat(dependenciasDiretas(modulo)).doesNotContain("recorrencias");
+        }
+        for (String modulo : Set.of("contas", "categorias", "cartoes", "lancamentos", "categorizacao", "importacao", "acesso", "relatorios",
+                "exportacao", "recorrencias")) {
+            assertThat(dependenciasDiretas(modulo)).doesNotContain("projecao");
         }
     }
 
