@@ -94,6 +94,8 @@ export const ICONES = {
   pular: ['m5 5 10 7-10 7z', 'M19 5v14'],
   ligar: ['M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1', 'M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1'],
   encerrar: ['M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0', 'M9.5 9.5h5v5h-5z'],
+  // Fatia 07b (projeção): o menu.
+  projecao: ['M3 20h18', 'm3 15 4.5-4.5 4 3', 'm14 11.5 1.5-1.5', 'm17.5 8 1.5-1.5', 'm20.6 4.9.4-.4'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type NomeIcone = keyof typeof ICONES;

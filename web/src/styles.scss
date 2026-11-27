@@ -19,6 +19,7 @@
 @use 'styles/graficos';
 @use 'styles/relatorios';
 @use 'styles/recorrencias';
+@use 'styles/projecao';
 
 html {
   @include mat.theme(

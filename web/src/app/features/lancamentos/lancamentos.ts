@@ -19,6 +19,7 @@ import { diaEMes, mesSemAno, textoDoTotal } from '../cartoes/apresentacao';
 import { CategoriasService, ListaDeCategorias } from '../categorias/categorias.service';
 import { ContasService, ListaDeContas } from '../contas/contas.service';
 import { quantidadeNaFaixa } from '../recorrencias/frases';
+import { ateDoMes } from '../projecao/apresentacao';
 import { FluxoDaOcorrencia } from '../recorrencias/fluxo-da-ocorrencia';
 import { LinhaDaOcorrencia } from '../recorrencias/linha-da-ocorrencia/linha-da-ocorrencia';
 import { FluxoDeRegras } from '../regras/fluxo-de-regras';
@@ -60,6 +61,7 @@ export class Lancamentos {
   private pedido: Subscription | null = null;
 
   readonly hoje = dataIsoNoFuso(inject(AGORA)());
+  readonly ateDoMes = ateDoMes;
   readonly nomeDoMes = nomeDoMes;
   readonly rotuloDoDia = rotuloDoDia;
   readonly marcaDoDia = marcaDoDia;

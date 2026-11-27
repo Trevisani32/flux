@@ -69,6 +69,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/cartoes/fatura/fatura').then((m) => m.PaginaDaFatura),
       },
       {
+        path: 'projecao', title: 'Projeção | Flux',
+        loadComponent: () => import('./features/projecao/projecao').then((m) => m.ProjecaoPagina),
+      },
+      {
         path: 'recorrencias', title: 'Recorrências | Flux',
         loadComponent: () => import('./features/recorrencias/recorrencias').then((m) => m.Recorrencias),
       },

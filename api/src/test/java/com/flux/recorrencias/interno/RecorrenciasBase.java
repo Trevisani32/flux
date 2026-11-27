@@ -15,7 +15,7 @@ import tools.jackson.databind.JsonNode;
 import static com.flux.suporte.ApiDeTeste.conta;
 import static org.assertj.core.api.Assertions.assertThat;
 
-abstract class RecorrenciasBase extends CartoesBase {
+public abstract class RecorrenciasBase extends CartoesBase {
 
     @Autowired
     private TokenAcessoService tokensDeAcesso;

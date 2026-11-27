@@ -16,3 +16,14 @@ export interface ColunaDoGrafico extends MesDoGrafico {
 export interface PontoDoGrafico extends MesDoGrafico {
   readonly saldo: number;
 }
+
+/** Valores e textos prontos para o gráfico diário, que não conhece a projeção. */
+export interface DiaDoDegrau {
+  readonly data: string;
+  readonly saldo: number;
+  readonly rotuloDoEixo: string | null;
+  readonly leitura: string;
+  readonly titulo: string;
+  readonly linhas: readonly { readonly texto: string; readonly valor: string }[];
+  readonly dica: string | null;
+}

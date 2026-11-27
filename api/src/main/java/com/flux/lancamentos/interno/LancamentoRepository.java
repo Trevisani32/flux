@@ -172,6 +172,10 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, Long> {
             LocalDate de,
             LocalDate ate);
 
+    /** Fatia 07b: os lançamentos das contas num período, para a projeção; os ignorados ficam de fora. */
+    List<Lancamento> findAllByUsuarioIdAndContaIdInAndTipoInAndIgnoradoEmIsNullAndDataBetweenOrderByDataAscIdAsc(Long usuarioId,
+            Collection<Long> contaIds, Collection<TipoLancamento> tipos, LocalDate de, LocalDate ate);
+
     /** Fatia 05a: as parcelas de compras (e os estornos), a primeira de cada compra antes. */
     List<Lancamento> findAllByUsuarioIdAndCompraIdInOrderByCompraIdAscNumeroParcelaAsc(Long usuarioId, Collection<Long> compraIds);
 

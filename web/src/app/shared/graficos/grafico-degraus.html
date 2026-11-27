@@ -1,0 +1,73 @@
+<svg [attr.width]="largura()" [attr.height]="altura()" role="img" [attr.aria-label]="rotulo()">
+  <defs>
+    <clipPath [attr.id]="acima()">
+      <rect x="46" y="0" [attr.width]="largura() - 60" [attr.height]="zero()" />
+    </clipPath>
+    <clipPath [attr.id]="abaixo()">
+      <rect x="46" [attr.y]="zero()" [attr.width]="largura() - 60" [attr.height]="altura() - zero()" />
+    </clipPath>
+  </defs>
+  @for (marca of marcas(); track marca) {
+    <line class="grafico-degraus__grade" x1="46" [attr.x2]="largura() - 14" [attr.y1]="y()(marca)" [attr.y2]="y()(marca)" />
+    <text class="grafico-degraus__eixo" x="38" [attr.y]="y()(marca) + 4" text-anchor="end">{{ textoDoEixo(marca) }}</text>
+  }
+  <line class="grafico-degraus__zero" x1="46" [attr.x2]="largura() - 14" [attr.y1]="zero()" [attr.y2]="zero()" />
+  <line class="grafico-degraus__hoje" x1="46.5" x2="46.5" y1="14" [attr.y2]="altura() - 30" />
+  @if (diasDesenhados().length > 0) {
+    <path class="grafico-degraus__area" [attr.d]="area()" [attr.clip-path]="'url(#' + acima() + ')'" />
+    <path class="grafico-degraus__linha" [attr.d]="linha()" [attr.clip-path]="'url(#' + acima() + ')'" />
+    <path class="grafico-degraus__area grafico-degraus__area--abaixo" [attr.d]="area()" [attr.clip-path]="'url(#' + abaixo() + ')'" />
+    <path class="grafico-degraus__linha grafico-degraus__linha--abaixo" [attr.d]="linha()" [attr.clip-path]="'url(#' + abaixo() + ')'" />
+  }
+  @for (dia of rotulos(); track dia.data) {
+    <text
+      class="grafico-degraus__rotulo"
+      [attr.x]="dia.x + larguraDoDia() / 2"
+      [attr.y]="altura() - 12"
+      text-anchor="middle"
+    >{{ dia.rotuloDoEixo }}</text>
+  }
+  @if (menorDesenhado(); as pontoMenor) {
+    <circle class="grafico-degraus__menor" [attr.cx]="pontoMenor.x + larguraDoDia() / 2" [attr.cy]="pontoMenor.y" r="5" />
+    <text
+      class="grafico-degraus__texto-menor"
+      [attr.x]="pontoMenor.x + larguraDoDia() / 2 + 10"
+      [attr.y]="pontoMenor.y - 8"
+    >{{ menor()!.rotulo }}</text>
+  }
+  @for (dia of diasDesenhados(); track dia.data) {
+    <rect
+      class="grafico-degraus__dia"
+      [attr.data-indice]="dia.indice"
+      [attr.x]="dia.x"
+      y="14"
+      [attr.width]="larguraDoDia()"
+      [attr.height]="altura() - 44"
+      role="img"
+      [attr.aria-label]="dia.leitura"
+      [attr.tabindex]="dia.indice === ativo() ? 0 : -1"
+      (pointerenter)="entrar(dia.indice)"
+      (pointerleave)="sair()"
+      (focus)="focar(dia.indice)"
+      (blur)="desfocar()"
+      (keydown)="tecla($event, dia.indice)"
+    />
+  }
+</svg>
+@if (mostrarBalao() && diaAtivo(); as dia) {
+  <div
+    class="grafico-degraus__balao"
+    aria-hidden="true"
+    [style.left.px]="esquerdaBalao(dia)"
+    [style.right.px]="direitaBalao(dia)"
+  >
+    <b>{{ dia.titulo }}</b>
+    <span>Saldo no fim do dia {{ formatarMoeda(dia.saldo) }}</span>
+    @for (linha of dia.linhas; track linha.texto) {
+      <span>{{ linha.texto }} <b>{{ linha.valor }}</b></span>
+    }
+    @if (dia.dica !== null) {
+      <small>{{ dia.dica }}</small>
+    }
+  </div>
+}

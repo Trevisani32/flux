@@ -6,7 +6,7 @@ import { ICONES } from '../../../shared/icone/icones';
 import { Navegacao } from './navegacao';
 
 describe('Navegacao', () => {
-  it('tem os grupos Visão geral (Início, Lançamentos, Relatórios, Importação, Contas, Cartões), Planejamento (Recorrências) '
+  it('tem os grupos Visão geral (Início, Lançamentos, Relatórios, Importação, Contas, Cartões), Planejamento (Projeção e Recorrências) '
     + 'e Organização (Categorias e Regras)', () => {
     TestBed.configureTestingModule({ imports: [Navegacao], providers: [provideRouter([])] });
     const fixture = TestBed.createComponent(Navegacao);
@@ -29,6 +29,7 @@ describe('Navegacao', () => {
       ['Importação', '/importacao'],
       ['Contas', '/contas'],
       ['Cartões', '/cartoes'],
+      ['Projeção', '/projecao'],
       ['Recorrências', '/recorrencias'],
       ['Categorias', '/categorias'],
       ['Regras', '/regras'],
@@ -41,6 +42,7 @@ describe('Navegacao', () => {
       [...ICONES.importar],
       [...ICONES.contas],
       [...ICONES.cartao],
+      [...ICONES.projecao],
       [...ICONES.repetir],
       [...ICONES.etiqueta],
       [...ICONES.regra],

@@ -1,0 +1,563 @@
+app-projecao .app-projecao__controles,
+app-projecao .app-projecao__avisos,
+app-projecao .app-projecao__numeros,
+app-projecao .app-projecao__grafico,
+app-projecao .app-projecao__pendencias,
+app-projecao .app-projecao__por-conta,
+app-projecao .app-projecao__dia-a-dia,
+app-inicio .inicio-aviso-projecao {
+  margin-bottom: 16px;
+}
+
+// Início, no desktop: o "Ver projeção" à direita do título e do texto, como no quadro `#d-inicio`.
+@media (min-width: 960px) {
+  app-inicio .inicio-aviso-projecao .flux-alerta__corpo {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 16px;
+    align-items: center;
+  }
+
+  app-inicio .inicio-aviso-projecao .flux-alerta__corpo > * {
+    grid-column: 1;
+  }
+
+  app-inicio .inicio-aviso-projecao .flux-alerta__corpo > .flux-alerta__acoes {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    margin-top: 0;
+  }
+}
+
+// `minmax(0, 1fr)`: sem ele, a fileira de chips que rola no celular estica a coluna e a página rola de lado.
+app-projecao .app-projecao__controles {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+// Como a `.linha-controles` do mockup: o rótulo, o grupo e o campo na mesma linha.
+app-projecao .app-projecao__grupo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+app-projecao .app-projecao__rotulo {
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+// O período é um segmentado (`.abas` do mockup); no celular, vira uma fileira de chips.
+app-projecao .app-projecao__atalhos {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--flux-borda);
+  border-radius: var(--flux-raio-controle);
+  background: var(--flux-card);
+}
+
+app-projecao .app-projecao__atalhos button {
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--flux-texto-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+app-projecao .app-projecao__atalhos button[aria-pressed='true'] {
+  background: rgba(var(--flux-ouro-rgb), 0.15);
+  color: var(--flux-ouro-texto);
+}
+
+// No desktop, os chips entram direto na linha (como no mockup) e quebram um a um, com o rótulo ao lado.
+app-projecao .app-projecao__chips {
+  display: contents;
+}
+
+app-projecao .app-projecao__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--flux-borda-2);
+  border-radius: var(--flux-raio-pilula);
+  background: var(--flux-card);
+  color: var(--flux-texto-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+app-projecao .app-projecao__chip[aria-pressed='true'] {
+  border-color: rgba(var(--flux-ouro-rgb), 0.7);
+  background: rgba(var(--flux-ouro-rgb), 0.12);
+  color: var(--flux-ouro-texto);
+}
+
+app-projecao .app-projecao__chip i {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--flux-cor, var(--flux-ouro));
+}
+
+// Depois do pressionado e com a mesma especificidade: a borda vermelha vence a dourada.
+app-projecao .app-projecao__chip.app-projecao__chip--negativa {
+  border-color: color-mix(in srgb, var(--flux-negativo) 55%, transparent);
+}
+
+app-projecao .app-projecao__data {
+  display: block;
+}
+
+app-projecao .app-projecao__data input {
+  width: 180px;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--flux-borda-2);
+  border-radius: var(--flux-raio-controle);
+  background: var(--flux-card);
+  color: var(--flux-texto);
+  font: inherit;
+  font-size: 14px;
+}
+
+app-projecao .app-projecao__erro {
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--flux-negativo);
+  font-size: 13px;
+}
+
+app-projecao .app-projecao__sem-escolha {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 20px;
+}
+
+app-projecao .app-projecao__sem-escolha p {
+  margin: 0;
+  color: var(--flux-texto-2);
+}
+
+app-projecao .app-projecao__avisos {
+  display: grid;
+  gap: 10px;
+}
+
+app-projecao .flux-alerta p {
+  margin: 5px 0 0;
+}
+
+app-projecao .app-projecao__numeros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+app-projecao .app-projecao__numero {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  padding: 20px 22px;
+}
+
+app-projecao .app-projecao__numero > span {
+  color: var(--flux-texto-2);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+// O `.kpi .numero` do mockup: 26 px no desktop (encolhendo até 22 px a 960 px, onde os três cards
+// ficam estreitos) e 18 px no celular.
+app-projecao .app-projecao__numero > app-valor {
+  font-size: clamp(22px, 1.25vw + 10px, 26px);
+  font-weight: 800;
+  line-height: 32px;
+  letter-spacing: -0.7px;
+  white-space: nowrap;
+}
+
+app-projecao .app-projecao__numero small,
+app-projecao .app-projecao__nota,
+app-projecao .app-projecao__rodape {
+  color: var(--flux-texto-3);
+  font-size: 13px;
+  line-height: 19px;
+}
+
+app-projecao .app-projecao__grafico,
+app-projecao .app-projecao__pendencias,
+app-projecao .app-projecao__por-conta,
+app-projecao .app-projecao__dia-a-dia {
+  position: relative;
+  padding: 20px;
+}
+
+app-projecao .app-projecao__nota {
+  margin: 4px 0 12px;
+}
+
+app-projecao .app-projecao__legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 13px;
+  margin: 0 0 12px;
+  padding: 0;
+  color: var(--flux-texto-2);
+  font-size: 12px;
+  list-style: none;
+}
+
+app-projecao .app-projecao__legenda li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+app-projecao .app-projecao__legenda i {
+  width: 17px;
+  height: 3px;
+  border-radius: var(--flux-raio-pilula);
+}
+
+app-projecao .app-projecao__legenda-previsto {
+  background: var(--flux-ouro);
+}
+
+app-projecao .app-projecao__legenda-negativo {
+  background: var(--flux-negativo);
+}
+
+app-projecao .app-projecao__legenda-zero {
+  background: var(--flux-borda-2);
+}
+
+app-projecao .app-projecao__alternar {
+  position: absolute;
+  top: 15px;
+  right: 16px;
+}
+
+// `relative`: o texto oculto do `app-valor` (absoluto) se prende à rolagem; preso ao card, ele escapa dela e
+// a página rola de lado no celular.
+app-projecao .app-projecao__rolagem {
+  position: relative;
+  overflow-x: auto;
+}
+
+// A `relatorios__tabela` só vale dentro de `app-relatorios`: as mesmas regras, aqui.
+app-projecao .app-projecao__tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+app-projecao .app-projecao__tabela td,
+app-projecao .app-projecao__tabela th {
+  padding: 9px 6px;
+  border-top: 1px solid var(--flux-borda);
+  text-align: right;
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+app-projecao .app-projecao__tabela th {
+  color: var(--flux-texto-3);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+app-projecao .app-projecao__tabela th:first-child,
+app-projecao .app-projecao__tabela td:first-child {
+  text-align: left;
+}
+
+app-projecao .app-projecao__tabela td small {
+  display: block;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+}
+
+app-projecao .app-projecao__lista,
+app-projecao .app-projecao__dias {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// Os botões de texto da página (Pular, Voltar ao padrão, os nomes de Por conta, "e mais N dias"):
+// o `.flux-link` global é de link, e o botão precisa perder a borda e o fundo.
+app-projecao button.flux-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--flux-ouro-texto);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+app-projecao .app-projecao__pendencia {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 6px 12px;
+  align-items: center;
+  padding: 13px 0;
+}
+
+app-projecao .app-projecao__valor {
+  color: var(--flux-texto-2);
+  white-space: nowrap;
+}
+
+// As ações como as da 07a: "Confirmar" e "Pagar fatura" contornados e compactos, "Pular" de texto.
+app-projecao .app-projecao__acoes {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+app-projecao .app-projecao__acoes .mat-mdc-outlined-button {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+app-projecao .app-projecao__acoes app-icone {
+  margin-right: 4px;
+}
+
+app-projecao .app-projecao__pendencia + .app-projecao__pendencia {
+  border-top: 1px solid var(--flux-borda);
+}
+
+app-projecao .app-projecao__selo {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--flux-cor, var(--flux-ouro)) 70%, transparent);
+  border-radius: 50%;
+  color: var(--flux-cor, var(--flux-ouro));
+}
+
+app-projecao .app-projecao__selo--previsto {
+  border-style: dashed;
+}
+
+// O título numa linha e, embaixo, a pílula e a meta lado a lado (a `.meta` do mockup).
+app-projecao .app-projecao__textos {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 6px;
+}
+
+app-projecao .app-projecao__textos > b {
+  flex: 1 1 100%;
+  color: var(--flux-texto);
+}
+
+app-projecao .app-projecao__textos > span:not(.flux-pilula) {
+  color: var(--flux-texto-3);
+  font-size: 13px;
+}
+
+app-projecao .app-projecao__prevista-da-fatura {
+  grid-column: 2 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 6px 12px;
+  align-items: center;
+  padding-top: 4px;
+  color: var(--flux-texto-3);
+  font-size: 13px;
+}
+
+app-projecao .app-projecao__rodape {
+  margin: 13px 0 0;
+}
+
+app-projecao .app-projecao__dias {
+  display: grid;
+}
+
+app-projecao .app-projecao__dia {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.65fr) minmax(0, 1.7fr) auto;
+  gap: 14px;
+  align-items: start;
+  padding: 14px 0;
+}
+
+app-projecao .app-projecao__dia + .app-projecao__dia {
+  border-top: 1px solid var(--flux-borda);
+}
+
+app-projecao .app-projecao__dia h3 {
+  margin: 0;
+  color: var(--flux-texto-2);
+  font-size: 14px;
+}
+
+app-projecao .app-projecao__dia h3 .flux-pilula {
+  margin-left: 5px;
+}
+
+app-projecao .app-projecao__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  color: var(--flux-texto-2);
+  font-size: 13px;
+}
+
+app-projecao .app-projecao__item + .app-projecao__item {
+  margin-top: 6px;
+}
+
+app-projecao .app-projecao__saldo-depois {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+  color: var(--flux-texto-3);
+  font-size: 12px;
+}
+
+@media (max-width: 959.98px) {
+  app-projecao .app-projecao__subtitulo .flux-so-desktop {
+    display: none;
+  }
+
+  app-projecao .app-projecao__data {
+    display: none;
+  }
+
+  app-projecao .app-projecao__data--aberta {
+    display: block;
+  }
+
+  // Como o quadro de celular: sem os rótulos (os grupos têm `aria-label`), cada fileira rola de lado.
+  app-projecao .app-projecao__grupo {
+    gap: 10px;
+  }
+
+  app-projecao .app-projecao__rotulo {
+    display: none;
+  }
+
+  app-projecao .app-projecao__atalhos,
+  app-projecao .app-projecao__chips {
+    display: flex;
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    gap: 8px;
+    min-width: 0;
+    padding: 0 0 2px;
+    border: 0;
+    background: none;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  app-projecao .app-projecao__atalhos button {
+    flex: none;
+    height: 34px;
+    padding: 0 12px;
+    border: 1px solid var(--flux-borda-2);
+    border-radius: var(--flux-raio-pilula);
+    background: var(--flux-card);
+    font-size: 13px;
+  }
+
+  app-projecao .app-projecao__atalhos button[aria-pressed='true'] {
+    border-color: rgba(var(--flux-ouro-rgb), 0.7);
+    background: rgba(var(--flux-ouro-rgb), 0.12);
+  }
+
+  app-projecao .app-projecao__chip {
+    flex: none;
+  }
+
+  app-projecao .app-projecao__numeros {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  app-projecao .app-projecao__numero:first-child {
+    grid-column: 1 / -1;
+  }
+
+  app-projecao .app-projecao__numero {
+    gap: 4px;
+    padding: 14px;
+  }
+
+  app-projecao .app-projecao__numero > app-valor {
+    font-size: 18px;
+    line-height: 24px;
+    letter-spacing: -0.4px;
+  }
+
+  app-projecao .app-projecao__grafico,
+  app-projecao .app-projecao__pendencias,
+  app-projecao .app-projecao__por-conta,
+  app-projecao .app-projecao__dia-a-dia {
+    padding: 16px;
+  }
+
+  app-projecao .app-projecao__pendencia {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  // No celular, as ações descem para baixo do texto.
+  app-projecao .app-projecao__pendencia > .app-projecao__acoes {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+  }
+
+  app-projecao .app-projecao__prevista-da-fatura {
+    grid-column: 2 / -1;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  app-projecao .app-projecao__prevista-da-fatura > .app-projecao__acoes {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  app-projecao .app-projecao__dia {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  app-projecao .app-projecao__saldo-depois {
+    justify-items: start;
+  }
+
+  app-projecao .app-projecao__dia--no-celular {
+    display: none;
+  }
+}

@@ -76,7 +76,15 @@
                 @if (lista.previstos.entradas !== 0 && lista.previstos.saidas !== 0) { e }
                 @if (lista.previstos.saidas !== 0) { <b><app-valor [valor]="lista.previstos.saidas" tipo="sinal" /></b> }
                 {{ quantidadeNaFaixa(lista.previstos.quantidade, lista.previstos.atrasadas) }}. Ficam fora dos totais até você confirmar.
-                <a class="flux-link" routerLink="/recorrencias">Ver recorrências</a>
+                @if (lista.mes > hoje.slice(0, 7)) {
+                  <a
+                    class="flux-link"
+                    routerLink="/projecao"
+                    [queryParams]="{ ate: ateDoMes(lista.mes, hoje) }"
+                  >Ver projeção</a>
+                } @else {
+                  <a class="flux-link" routerLink="/recorrencias">Ver recorrências</a>
+                }
               </span>
               <span class="flux-so-celular">
                 Previstos: {{ quantidadeNaFaixa(lista.previstos.quantidade, lista.previstos.atrasadas) }}. Fora dos totais.

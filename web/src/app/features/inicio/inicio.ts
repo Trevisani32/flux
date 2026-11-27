@@ -27,6 +27,8 @@ import { mesDe } from '../lancamentos/filtros';
 import { abrirDialogoDeLancamento, contaPadrao } from '../lancamentos/lancamento-dialogo/lancamento-dialogo';
 import { ItemDaLista, LancamentosService, ListaDoMes } from '../lancamentos/lancamentos.service';
 import { LinhaDoLancamento } from '../lancamentos/linha-do-lancamento/linha-do-lancamento';
+import { textoDoAviso, tituloDoAviso } from '../projecao/frases';
+import { AvisoDaProjecao, ProjecaoService } from '../projecao/projecao.service';
 import { maisAte, notaDoAConfirmar } from '../recorrencias/frases';
 import { FluxoDaOcorrencia } from '../recorrencias/fluxo-da-ocorrencia';
 import { LinhaDaOcorrencia } from '../recorrencias/linha-da-ocorrencia/linha-da-ocorrencia';
@@ -61,6 +63,7 @@ export class Inicio {
   private readonly cartoesService = inject(CartoesService);
   private readonly lancamentosService = inject(LancamentosService);
   private readonly recorrenciasService = inject(RecorrenciasService);
+  private readonly projecaoService = inject(ProjecaoService);
   private readonly fluxoDaOcorrencia = inject(FluxoDaOcorrencia);
   private readonly dialogo = inject(MatDialog);
   private readonly agora = inject(AGORA)();
@@ -82,6 +85,8 @@ export class Inicio {
   readonly ultimos = signal<readonly ItemDaLista[] | null>(null);
   /** Sem a resposta, o card some, como o de próximas faturas. */
   readonly aConfirmar = signal<AConfirmar | null>(null);
+  /** Sem resposta ou erro, o aviso não aparece e o Início continua disponível. */
+  readonly avisoDaProjecao = signal<AvisoDaProjecao | null>(null);
   readonly falhaAoCarregar = signal(false);
   private readonly categorias = signal<ListaDeCategorias | null>(null);
   readonly temInvestimento = computed(() => this.contas()?.ativas.some((conta) => conta.tipo === 'INVESTIMENTO') ?? false);
@@ -94,11 +99,16 @@ export class Inicio {
   readonly faturas = computed(() => proximasFaturas(this.cartoes()?.ativos ?? []));
   readonly notaDoAConfirmar = notaDoAConfirmar;
   readonly maisAte = maisAte;
+  readonly tituloDoAviso = tituloDoAviso;
+  readonly textoDoAviso = textoDoAviso;
   constructor() {
     this.carregar();
     // O "Desfazer" de um importado excluído volta depois que o diálogo fechou (Fatia 04a).
     this.lancamentosService.restaurado$.pipe(takeUntilDestroyed()).subscribe(() => this.carregar());
-    this.fluxoDaOcorrencia.mudou$.pipe(takeUntilDestroyed()).subscribe(() => this.carregarAConfirmar());
+    this.fluxoDaOcorrencia.mudou$.pipe(takeUntilDestroyed()).subscribe(() => {
+      this.carregarAConfirmar();
+      this.carregarAvisoDaProjecao();
+    });
     inject(CategoriasService).listar().subscribe({
       next: (categorias) => this.categorias.set(categorias),
       error: () => this.categorias.set(null),
@@ -172,12 +182,20 @@ export class Inicio {
       error: () => this.ultimos.set(null),
     });
     this.carregarAConfirmar();
+    this.carregarAvisoDaProjecao();
   }
 
   private carregarAConfirmar(): void {
     this.recorrenciasService.aConfirmar().subscribe({
       next: (aConfirmar) => this.aConfirmar.set(aConfirmar),
       error: () => this.aConfirmar.set(null),
+    });
+  }
+
+  private carregarAvisoDaProjecao(): void {
+    this.projecaoService.aviso().subscribe({
+      next: (aviso) => this.avisoDaProjecao.set(aviso),
+      error: () => this.avisoDaProjecao.set(null),
     });
   }
 }
