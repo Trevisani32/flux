@@ -279,7 +279,7 @@ O que isso exige do produto:
   atual até 12 meses à frente (a atrasada, no mês dela, por até 60 dias), com "Previsto" ou
   "Atrasada" e com Confirmar e Pular; a do cartão, no vencimento da fatura em que cairia.
   Ficam fora das entradas, das saídas, do resultado e do saldo do dia; uma faixa diz quanto
-  está previsto no mês. Os filtros valem; "Transferências" e "Pagamentos de fatura" não os
+  está previsto no mês (nos meses seguintes, com "Ver projeção"). Os filtros valem; "Transferências" e "Pagamentos de fatura" não os
   mostram; "Previstos" esconde todos (`?previstos=nao`). O lançamento confirmado por uma
   recorrência diz "da recorrência".
 - **Totais do filtro:** entradas, saídas e resultado, só de receitas e despesas, inclusive as
@@ -670,6 +670,8 @@ Ver [ADR 0020](decisoes/0020-graficos-sem-biblioteca-e-modulo-de-relatorios.md).
 - **Estados:** sem conta orienta a cadastrar; antes do primeiro saldo inicial, o saldo não é inventado.
 - **Início:** “Ver relatório” fica ao lado de “Ver lançamentos”. “Próximas faturas” lista, por vencimento, fechadas com
   pendente e abertas com lançamento; vencida fica laranja, a aberta mostra total e disponível, e clicar abre a fatura.
+  Desde a 07b, um aviso diz quando uma conta do padrão da projeção pode ficar no negativo até o fim do mês seguinte, com
+  “Ver projeção”.
 
 **Fatia 06b:** exportar meus dados (módulo 1).
 
@@ -704,15 +706,21 @@ Ver [ADR 0022](decisoes/0022-recorrencias-calculadas.md).
 - Há a opção "copiar orçamento do mês anterior".
 - No MVP, o que sobra num mês não passa para o seguinte.
 
-### 12. Projeção de saldo — Fatia 07
+### 12. Projeção de saldo — Fatia 07b
 
-- A projeção vai até uma data escolhida: por padrão o fim do mês seguinte, e no
-  máximo 12 meses à frente.
-- Saldo projetado em cada dia = saldo atual das contas + recorrências previstas −
-  faturas a pagar. Cada fatura sai da conta de pagamento padrão do cartão, na data
-  de vencimento.
-- O sistema mostra o **menor saldo previsto** no período e o dia em que ele acontece.
-- Por padrão, contas de investimento e contas arquivadas ficam fora da projeção.
+Ver [ADR 0023](decisoes/0023-projecao-de-saldo.md).
+
+- A página Projeção é só de leitura e calcula tudo a cada pedido.
+- O período e as contas ficam no endereço: por padrão, vai até o fim do mês seguinte com as contas ativas sem
+  investimento; há atalhos de 3, 6 e 12 meses e uma data de amanhã até hoje + 12 meses. Conta arquivada nunca entra.
+- O saldo projetado soma o saldo de hoje, os lançamentos futuros, as recorrências previstas e as faturas na conta de
+  pagamento, no vencimento. A prevista do cartão entra na fatura da data dela; pago a mais e fatura paga fora do Flux
+  absorvem a prevista.
+- As pendências contam hoje: a fatura vencida com pendente, a recorrência atrasada e a prevista de hoje.
+- Conta de pagamento fora da seleção ou arquivada, cartão arquivado e transferência com a outra conta fora têm o
+  tratamento próprio do cálculo.
+- A página mostra saldo hoje, menor saldo e o dia, fim, gráfico em degraus, pendências, dia a dia e “Por conta”.
+- O Início avisa quando uma conta do padrão pode ficar no negativo.
 
 ### 13. Demonstração — Fatia 08
 
@@ -764,7 +772,7 @@ Ver [ADR 0022](decisoes/0022-recorrencias-calculadas.md).
 | 06a | Dashboard e relatórios: página Relatórios, gráficos sem biblioteca e próximas faturas no Início | Concluída |
 | 06b | Exportação dos dados (LGPD): JSON completo e CSV dos lançamentos, com a senha | Concluída |
 | 07a | Recorrências: cadastro, previstos, confirmar, "Já lancei", pular, os previstos em Lançamentos e o card "A confirmar" | Concluída |
-| 07b | Projeção de saldo | — |
+| 07b | Projeção de saldo: página Projeção, pendências de hoje, gráfico em degraus e aviso no Início | Implementada, aguardando publicação |
 | 07c | Ligação das recorrências na importação | — |
 | 07d | Orçamento | — |
 | 08 | Deploy, demo pública e README completo | — |
