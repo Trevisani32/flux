@@ -1,5 +1,7 @@
-# Só para testes (job e2e da CI e conferência local): acrescenta o Mailpit e liga
-# o cadastro público. Uso: docker compose -f docker-compose.yml -f docker-compose.e2e.yml up
+# Só para testes (job e2e da CI e conferência local): acrescenta o Mailpit, liga
+# o cadastro público e desliga o limite por IP, como o perfil dev: todas as jornadas
+# vêm do mesmo IP, e cada uma cria o seu usuário. Os limites por e-mail continuam.
+# Uso: docker compose -f docker-compose.yml -f docker-compose.e2e.yml up
 services:
   mailpit:
     image: axllent/mailpit:v1.33.0
@@ -14,6 +16,7 @@ services:
       APP_CADASTRO_PUBLICO: "true"
       APP_CONTROLADOR_NOME: Responsável fictício
       APP_CONTROLADOR_EMAIL: privacidade@flux.local
+      APP_CONTA_LIMITEPORIP: "false"
       MAIL_HOST: mailpit
       MAIL_PORTA: "1025"
       MAIL_USUARIO: ""

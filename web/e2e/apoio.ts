@@ -106,7 +106,8 @@ export interface UsuarioDaJornada {
 
 /**
  * Cria e confirma um usuário pela API (cadastro + link do Mailpit), para jornadas que
- * começam sem contas. Cada chamada conta 1 no limite de cadastros por IP (10 por hora).
+ * começam sem contas. O limite de 10 cadastros por IP por hora fica desligado no perfil dev
+ * e no docker-compose.e2e.yml da CI; o de 3 por e-mail continua (o e-mail é único).
  */
 export async function criarUsuarioConfirmado(
   request: APIRequestContext,
